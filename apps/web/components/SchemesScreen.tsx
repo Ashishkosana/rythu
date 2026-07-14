@@ -26,7 +26,7 @@ function SchemeCard({ s }: { s: Scheme }) {
   const badge = STATUS[s.status];
   const dimmed = s.status === "closed" || s.status === "suspended";
   return (
-    <div className={`rounded-2xl border border-stone-200 bg-white p-4 shadow-sm ${dimmed ? "opacity-80" : ""}`}>
+    <div className={`card p-4 ${dimmed ? "opacity-70" : ""}`}>
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-start justify-between gap-3 text-left">
         <div>
           <h2 className="text-lg font-semibold leading-tight">{s.name_te}</h2>
@@ -86,13 +86,13 @@ export default function SchemesScreen() {
 
   return (
     <div className="mx-auto min-h-dvh max-w-md pb-28 text-stone-900">
-      <header className="safe-top sticky top-0 z-20 bg-green-800 px-4 py-3 text-white shadow-sm">
-        <span className="text-lg font-bold">🏛️ ప్రభుత్వ పథకాలు</span>
-        <p className="text-xs text-green-100">రైతులకు ఉపయోగపడే పథకాలు · Benefits for farmers</p>
+      <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-green-700 to-green-800 px-5 pb-6 pt-4 text-white shadow-[var(--shadow-hero)]">
+        <h1 className="text-2xl font-bold tracking-tight">🏛️ ప్రభుత్వ పథకాలు</h1>
+        <p className="mt-0.5 text-sm text-green-100">రైతులకు ఉపయోగపడే పథకాలు · Benefits for farmers</p>
       </header>
 
       {/* filter tabs */}
-      <div className="sticky top-[60px] z-10 flex gap-2 bg-[var(--bg)] px-4 py-3">
+      <div className="flex gap-2 px-4 pt-5 pb-2">
         {FILTERS.map((f) => (
           <button
             key={f.key}

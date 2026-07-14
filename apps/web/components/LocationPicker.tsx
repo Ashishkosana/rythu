@@ -83,17 +83,17 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
     <div className="mb-3">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-xl border border-stone-300 bg-white px-4 py-3 text-left"
+        className="flex w-full items-center justify-between rounded-2xl bg-white/95 px-4 py-3 text-left shadow-[var(--shadow-1)] backdrop-blur"
       >
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-2 truncate">
           <span aria-hidden>📍</span>
-          <span className="font-semibold text-stone-800">{currentPlace}</span>
+          <span className="truncate font-semibold text-stone-800">{currentPlace}</span>
         </span>
-        <span className="text-sm text-green-700">{open ? "మూసివేయి" : "మార్చు · Change"}</span>
+        <span className="shrink-0 text-sm font-medium text-green-700">{open ? "మూసివేయి" : "మార్చు"}</span>
       </button>
 
       {open && (
-        <div className="mt-2 space-y-3 rounded-xl border border-stone-200 bg-white p-3">
+        <div className="mt-2 space-y-3 rounded-2xl bg-white p-3 text-stone-900 shadow-[var(--shadow-2)]">
           <button
             onClick={useGps}
             disabled={gpsBusy}

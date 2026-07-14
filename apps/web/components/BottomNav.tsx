@@ -14,7 +14,7 @@ const TABS = [
 export default function BottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md justify-around border-t border-stone-200 bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.06)]">
+    <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md justify-around border-t border-stone-200/80 bg-white/85 backdrop-blur-xl">
       {TABS.map((t) => {
         const active = pathname === t.href;
         return (
@@ -22,11 +22,11 @@ export default function BottomNav() {
             key={t.href}
             href={t.href}
             aria-current={active ? "page" : undefined}
-            className="flex flex-1 flex-col items-center gap-1 pt-2 pb-2.5"
+            className="flex flex-1 flex-col items-center gap-1 pt-2.5 pb-2"
           >
             <span
-              className={`flex h-9 w-14 items-center justify-center rounded-full text-2xl transition-colors ${
-                active ? "bg-green-100" : ""
+              className={`flex h-9 w-16 items-center justify-center rounded-2xl text-2xl transition-all ${
+                active ? "scale-105 bg-green-100" : "opacity-60"
               }`}
               aria-hidden
             >

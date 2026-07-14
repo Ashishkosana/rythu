@@ -1,12 +1,24 @@
 @import "tailwindcss";
 
-/* Rythu design foundation — tuned for farmers: bright outdoor light, older eyes,
-   low literacy, cheap Android, one-handed use. Light-only (no dark mode: a field
-   app is used in daylight, and a single high-contrast theme is easier to trust). */
+/* ─────────────────────────────────────────────────────────────────────────
+   Rythu design system — Apple-grade craft, tuned for the real user
+   (farmers, bright sun, older eyes, low literacy, cheap Android).
+   Principles: clarity · deference to content · depth · systematic type & space.
+   ───────────────────────────────────────────────────────────────────────── */
 
 :root {
-  --bg: #f6f4ec; /* warm paper — softer than stark white in sunlight */
-  --fg: #1c1917; /* stone-900 — maximum readable contrast */
+  --bg: #f4f2ec; /* warm paper — calm in sunlight, not stark white */
+  --fg: #1c1917; /* stone-900 — high contrast */
+  --muted: #78716c; /* stone-500 — secondary text */
+  --hairline: #e7e5e4; /* stone-200 — 1px separators */
+  --card: #ffffff;
+  --brand: #15803d; /* green-700 */
+  --brand-ink: #14532d; /* green-900 for text on light */
+
+  /* Elevation — soft, layered, Apple-like (never harsh) */
+  --shadow-1: 0 1px 2px rgba(28, 25, 23, 0.05), 0 1px 3px rgba(28, 25, 23, 0.06);
+  --shadow-2: 0 4px 12px rgba(28, 25, 23, 0.08), 0 2px 4px rgba(28, 25, 23, 0.04);
+  --shadow-hero: 0 12px 32px rgba(2, 44, 34, 0.22);
 }
 
 @theme inline {
@@ -16,18 +28,22 @@
 }
 
 html {
-  font-size: 17px; /* larger base for readability outdoors / older eyes */
+  font-size: 17px; /* generous base for outdoor / older eyes */
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-telugu), var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
+  letter-spacing: -0.01em; /* subtle tightening — cleaner headlines */
 }
 
-/* Respect the notch / home indicator when installed as an app. */
+/* Safe areas for the notch / home indicator when installed as an app */
 .safe-top {
   padding-top: env(safe-area-inset-top);
 }
@@ -35,10 +51,31 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* Gentle press feedback so taps feel native. */
+/* Reusable surfaces — one card language across the whole app */
+@utility card {
+  background: var(--card);
+  border-radius: 1.5rem; /* 24px — soft, consistent */
+  box-shadow: var(--shadow-1);
+}
+@utility card-2 {
+  background: var(--card);
+  border-radius: 1.5rem;
+  box-shadow: var(--shadow-2);
+}
+
+/* Tactile press feedback — makes taps feel native on touch devices */
 @media (hover: none) {
   button:active,
   a:active {
-    transform: scale(0.98);
+    transform: scale(0.97);
+    transition: transform 0.08s ease;
+  }
+}
+
+/* Respect reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
   }
 }

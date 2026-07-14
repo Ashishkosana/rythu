@@ -5,14 +5,14 @@ export const metadata = { title: "పంటలు · Crops — Rythu" };
 export default function CropsPage() {
   return (
     <div className="mx-auto min-h-dvh max-w-md pb-28 text-stone-900">
-      <header className="safe-top sticky top-0 z-20 bg-green-800 px-4 py-3 text-white shadow-sm">
-        <span className="text-lg font-bold">🌱 పంటల మార్గదర్శి</span>
-        <p className="text-xs text-green-100">ఖరీఫ్ · Kharif · భూపాలపల్లి</p>
+      <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-green-700 to-green-800 px-5 pb-6 pt-4 text-white shadow-[var(--shadow-hero)]">
+        <h1 className="text-2xl font-bold tracking-tight">🌱 పంటల మార్గదర్శి</h1>
+        <p className="mt-0.5 text-sm text-green-100">ఖరీఫ్ · Kharif · భూపాలపల్లి</p>
       </header>
 
-      <div className="space-y-3 p-4">
+      <div className="space-y-3 p-4 pt-6">
         {CROP_GUIDES.map((c) => (
-          <details key={c.key} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm" open={c.key === "paddy"}>
+          <details key={c.key} className="card p-4" open={c.key === "paddy"}>
             <summary className="flex cursor-pointer items-center gap-3 text-lg font-semibold">
               <span className="text-2xl" aria-hidden>
                 {c.emoji}
