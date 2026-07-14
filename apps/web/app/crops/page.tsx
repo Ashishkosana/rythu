@@ -1,4 +1,5 @@
 import { CROP_GUIDES } from "@/lib/crops";
+import FertilizerCalculator from "@/components/FertilizerCalculator";
 
 export const metadata = { title: "పంటలు · Crops — Rythu" };
 
@@ -11,6 +12,8 @@ export default function CropsPage() {
       </header>
 
       <div className="space-y-3 p-4 pt-6">
+        <FertilizerCalculator />
+        <h2 className="px-1 pt-2 text-lg font-bold tracking-tight text-stone-800">పంటల వివరాలు · Crop guide</h2>
         {CROP_GUIDES.map((c) => (
           <details key={c.key} className="card p-4" open={c.key === "paddy"}>
             <summary className="flex cursor-pointer items-center gap-3 text-lg font-semibold">
