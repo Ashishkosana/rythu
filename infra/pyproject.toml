@@ -1,0 +1,13 @@
+[project]
+name = "rythu-infra"
+version = "0.1.0"
+description = "AWS CDK infrastructure for Rythu (weather slice)"
+requires-python = ">=3.12"
+dependencies = [
+    "aws-cdk-lib>=2.170,<3",
+    "constructs>=10.3,<11",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
