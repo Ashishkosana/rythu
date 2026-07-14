@@ -50,11 +50,23 @@ const SEV_STYLES: Record<string, string> = {
   act: "border-red-300 bg-red-50 text-red-900",
 };
 
+const ACTION_ICON: Record<string, string> = {
+  spray: "💦",
+  irrigate: "🚿",
+  sow: "🌱",
+  harvest: "🧺",
+  fieldwork: "🚜",
+  scout: "🔍",
+};
+
 function ReadCard({ read, lang }: { read: FarmingRead; lang: Lang }) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`rounded-2xl border p-4 ${SEV_STYLES[read.severity] ?? SEV_STYLES.info}`}>
-      <p className="font-semibold leading-snug">{read.headline_en}</p>
+      <p className="font-semibold leading-snug">
+        <span className="mr-1">{ACTION_ICON[read.action] ?? "•"}</span>
+        {read.headline_en}
+      </p>
       {read.detail_en && <p className="mt-1 text-sm opacity-80">{read.detail_en}</p>}
       <button onClick={() => setOpen((v) => !v)} className="mt-2 text-xs font-semibold underline underline-offset-2">
         {L[lang].why} {open ? "▲" : "▼"}
