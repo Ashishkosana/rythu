@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import type { FarmingRead, WeatherContract } from "@/lib/types";
 
 type Lang = "te" | "en";
@@ -84,9 +84,13 @@ function ReadCard({ read, lang }: { read: FarmingRead; lang: Lang }) {
 export default function WeatherScreen({
   data,
   crop,
+  locationQuery,
+  children,
 }: {
   data: WeatherContract;
   crop: string;
+  locationQuery: string;
+  children?: ReactNode;
 }) {
   const [lang, setLang] = useState<Lang>("te");
   const t = L[lang];
@@ -102,7 +106,7 @@ export default function WeatherScreen({
     <div className="mx-auto min-h-dvh max-w-md bg-slate-50 pb-10 text-slate-900">
       {/* top bar */}
       <div className="flex items-center justify-between bg-green-700 px-4 py-3 text-xs text-white">
-        <span className="font-bold">🌾 Rythu · {t.place}</span>
+        <span className="font-bold">🌾 Rythu</span>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-white/20 px-2 py-0.5">{t.sellNothing}</span>
           <button
@@ -114,12 +118,15 @@ export default function WeatherScreen({
         </div>
       </div>
 
+      {/* location picker */}
+      {children && <div className="px-4 pt-3">{children}</div>}
+
       {/* crop selector */}
       <div className="flex gap-2 overflow-x-auto px-4 py-3">
         {CROPS.map((c) => (
           <a
             key={c}
-            href={`/?crop=${c}`}
+            href={`/?crop=${c}&${locationQuery}`}
             className={`flex shrink-0 items-center gap-1 rounded-full border px-3 py-1 text-sm ${
               c === crop ? "border-green-600 bg-green-600 text-white" : "border-slate-300 bg-white"
             }`}

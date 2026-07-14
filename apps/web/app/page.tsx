@@ -1,4 +1,7 @@
 import WeatherScreen from "@/components/WeatherScreen";
+import LocationPicker from "@/components/LocationPicker";
+import { DEFAULT_PLACE } from "@/lib/locations";
+import { isValidCoord } from "@/lib/geocode";
 import type { WeatherContract } from "@/lib/types";
 
 // The Python weather backend. Server-side fetch, so the phone only ever talks to Next.
@@ -21,10 +24,27 @@ export default async function Page({
   const crop = CROPS.has(rawCrop ?? "") ? (rawCrop as string) : "chilli"; // mirchi = main local crop
   const water = first(sp.water) ?? "rainfed";
 
+  // Location: honor ?lat&lon when valid, else fall back to the district HQ.
+  const lat = Number(first(sp.lat));
+  const lon = Number(first(sp.lon));
+  const hasCoords = first(sp.lat) !== undefined && first(sp.lon) !== undefined && isValidCoord(lat, lon);
+  const place =
+    first(sp.place) ?? (hasCoords ? "ఎంచుకున్న ప్రాంతం · Selected" : `${DEFAULT_PLACE.name_te} · ${DEFAULT_PLACE.name_en}`);
+
+  // Preserved across crop switches so changing crop doesn't reset the location.
+  const loc = new URLSearchParams({ water });
+  if (hasCoords) {
+    loc.set("lat", String(lat));
+    loc.set("lon", String(lon));
+  }
+  loc.set("place", place);
+  const locationQuery = loc.toString();
+
   let data: WeatherContract | null = null;
   let error: string | null = null;
   try {
-    const res = await fetch(`${API}/weather?crop=${crop}&water=${water}`, { cache: "no-store" });
+    const coords = hasCoords ? `&lat=${lat}&lon=${lon}` : "";
+    const res = await fetch(`${API}/weather?crop=${crop}&water=${water}${coords}`, { cache: "no-store" });
     data = (await res.json()) as WeatherContract;
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
@@ -35,14 +55,14 @@ export default async function Page({
       <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-2 p-8 text-center text-slate-700">
         <p className="text-2xl">🌧️</p>
         <p className="font-semibold">Weather backend not reachable</p>
-        <p className="text-sm text-slate-500">
-          Start it with{" "}
-          <code className="rounded bg-slate-100 px-1">uv run python -m rythu_weather.app.local_server 8001</code>
-        </p>
         {error && <p className="text-xs text-slate-400">{error}</p>}
       </main>
     );
   }
 
-  return <WeatherScreen data={data} crop={crop} />;
+  return (
+    <WeatherScreen data={data} crop={crop} locationQuery={locationQuery}>
+      <LocationPicker currentPlace={place} />
+    </WeatherScreen>
+  );
 }
