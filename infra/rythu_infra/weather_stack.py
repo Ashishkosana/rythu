@@ -36,6 +36,13 @@ from constructs import Construct
 
 # repo-root/services/weather/src → the folder whose top level is the `rythu_weather` package
 SERVICE_SRC = Path(__file__).resolve().parents[2] / "services" / "weather" / "src"
+# Deploy asset with bundled deps, produced by build_lambda.sh. Falls back to pure source so
+# `cdk synth` works without a build (deps missing there, but synth doesn't need them).
+LAMBDA_BUILD = Path(__file__).resolve().parents[1] / "build" / "lambda"
+
+
+def _lambda_asset_dir() -> str:
+    return str(LAMBDA_BUILD if LAMBDA_BUILD.exists() else SERVICE_SRC)
 
 
 class WeatherStack(Stack):
@@ -56,10 +63,13 @@ class WeatherStack(Stack):
             "WeatherFn",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="rythu_weather.app.handler.handler",
-            code=lambda_.Code.from_asset(str(SERVICE_SRC)),
+            code=lambda_.Code.from_asset(_lambda_asset_dir()),
             timeout=Duration.seconds(15),
             memory_size=256,
             environment={"RYTHU_CACHE_TABLE": cache.table_name},
+            # Cost safety on a public endpoint: cap concurrent executions. The DynamoDB cache
+            # already caps upstream Open-Meteo calls to ~1 per grid cell per TTL window.
+            reserved_concurrent_executions=10,
         )
         cache.grant_read_write_data(weather_fn)
 
