@@ -4,21 +4,21 @@ export const metadata = { title: "పంటలు · Crops — Rythu" };
 
 export default function CropsPage() {
   return (
-    <div className="mx-auto min-h-dvh max-w-md bg-slate-50 pb-24 text-slate-900">
-      <div className="bg-green-700 px-4 py-3 text-white">
-        <span className="font-bold">🌱 పంటల మార్గదర్శి · Crop guide</span>
+    <div className="mx-auto min-h-dvh max-w-md pb-28 text-stone-900">
+      <header className="safe-top sticky top-0 z-20 bg-green-800 px-4 py-3 text-white shadow-sm">
+        <span className="text-lg font-bold">🌱 పంటల మార్గదర్శి</span>
         <p className="text-xs text-green-100">ఖరీఫ్ · Kharif · భూపాలపల్లి</p>
-      </div>
+      </header>
 
       <div className="space-y-3 p-4">
         {CROP_GUIDES.map((c) => (
-          <details key={c.key} className="rounded-2xl border border-slate-200 bg-white p-4" open={c.key === "paddy"}>
+          <details key={c.key} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm" open={c.key === "paddy"}>
             <summary className="flex cursor-pointer items-center gap-3 text-lg font-semibold">
               <span className="text-2xl" aria-hidden>
                 {c.emoji}
               </span>
               <span>
-                {c.name_te} <span className="text-sm font-normal text-slate-500">· {c.name_en}</span>
+                {c.name_te} <span className="text-sm font-normal text-stone-500">· {c.name_en}</span>
               </span>
             </summary>
 
@@ -38,14 +38,14 @@ export default function CropsPage() {
                     </span>
                     <span>
                       {tip}
-                      <span className="block text-xs text-slate-400">{c.tips_en[i]}</span>
+                      <span className="block text-xs text-stone-400">{c.tips_en[i]}</span>
                     </span>
                   </li>
                 ))}
               </ul>
             </div>
 
-            <p className="mt-3 text-xs text-slate-400">
+            <p className="mt-3 text-xs text-stone-400">
               సరైన తేదీలు, మోతాదుల కోసం మీ వ్యవసాయ అధికారి (AEO)ని సంప్రదించండి ·{" "}
               <a href={c.source} target="_blank" rel="noopener noreferrer" className="text-green-700 underline">
                 Source: PJTSAU
@@ -71,13 +71,13 @@ function Row({
 }) {
   return (
     <div className="flex gap-2">
-      <dt className="w-20 shrink-0 font-medium text-slate-500">
+      <dt className="w-20 shrink-0 font-medium text-stone-500">
         {label_te}
-        <span className="block text-[10px] text-slate-400">{label_en}</span>
+        <span className="block text-[10px] text-stone-400">{label_en}</span>
       </dt>
       <dd>
         {te}
-        <span className="block text-xs text-slate-400">{en}</span>
+        <span className="block text-xs text-stone-400">{en}</span>
       </dd>
     </div>
   );

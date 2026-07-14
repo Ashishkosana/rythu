@@ -1,26 +1,44 @@
 @import "tailwindcss";
 
+/* Rythu design foundation — tuned for farmers: bright outdoor light, older eyes,
+   low literacy, cheap Android, one-handed use. Light-only (no dark mode: a field
+   app is used in daylight, and a single high-contrast theme is easier to trust). */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f6f4ec; /* warm paper — softer than stark white in sunlight */
+  --fg: #1c1917; /* stone-900 — maximum readable contrast */
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --font-sans: var(--font-telugu), var(--font-geist-sans), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  font-size: 17px; /* larger base for readability outdoors / older eyes */
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-telugu), var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Respect the notch / home indicator when installed as an app. */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Gentle press feedback so taps feel native. */
+@media (hover: none) {
+  button:active,
+  a:active {
+    transform: scale(0.98);
+  }
 }

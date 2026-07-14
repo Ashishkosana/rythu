@@ -52,10 +52,10 @@ export default async function Page({
 
   if (!data) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-2 p-8 text-center text-slate-700">
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-2 p-8 text-center text-stone-700">
         <p className="text-2xl">🌧️</p>
         <p className="font-semibold">Weather backend not reachable</p>
-        {error && <p className="text-xs text-slate-400">{error}</p>}
+        {error && <p className="text-xs text-stone-400">{error}</p>}
       </main>
     );
   }
