@@ -44,6 +44,12 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 disallow_any_generics = true
 
+# boto3 is provided by the AWS Lambda runtime and imported lazily in the DynamoDB cache
+# adapter; it is not a build dependency, so it has no stubs here.
+[[tool.mypy.overrides]]
+module = ["boto3", "boto3.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
