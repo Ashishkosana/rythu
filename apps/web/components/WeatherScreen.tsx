@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import type { FarmingRead, WeatherContract } from "@/lib/types";
+import { speak, weatherSpeech } from "@/lib/speak";
+import { loadLang, saveLang } from "@/lib/prefs";
 
 type Lang = "te" | "en";
 
@@ -90,15 +92,24 @@ function ReadCard({ read, lang }: { read: FarmingRead; lang: Lang }) {
 export default function WeatherScreen({
   data,
   crop,
+  place,
   locationQuery,
   children,
 }: {
   data: WeatherContract;
   crop: string;
+  place: string;
   locationQuery: string;
   children?: ReactNode;
 }) {
-  const [lang, setLang] = useState<Lang>("te");
+  // Saved language (client-only read, hydration-safe); user toggle overrides it.
+  const savedLang = useSyncExternalStore(
+    () => () => {},
+    () => loadLang(),
+    () => null,
+  );
+  const [override, setOverride] = useState<Lang | null>(null);
+  const lang: Lang = override ?? savedLang ?? "te";
   const t = L[lang];
   const today = data.daily[0];
   const now = data.hourly_rain[0];
@@ -119,7 +130,11 @@ export default function WeatherScreen({
           <div className="flex items-center gap-2 text-xs">
             <span className="rounded-full bg-white/15 px-2.5 py-1 font-medium">✓ {t.sellNothing}</span>
             <button
-              onClick={() => setLang((v) => (v === "te" ? "en" : "te"))}
+              onClick={() => {
+                const next: Lang = lang === "te" ? "en" : "te";
+                saveLang(next);
+                setOverride(next);
+              }}
               className="rounded-full bg-white px-3 py-1 font-bold text-green-800"
             >
               {lang === "te" ? "A" : "అ"}
@@ -171,6 +186,13 @@ export default function WeatherScreen({
                   {chance !== null && <span className="text-3xl">%</span>}
                 </p>
                 <p className="mt-2 text-base font-semibold">{wet ? t.rainLikely : t.rainLow}</p>
+                <button
+                  onClick={() => speak(weatherSpeech({ place, chance, temp, wet }), "te")}
+                  className="mt-3 flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-sm font-medium"
+                  aria-label="వినండి"
+                >
+                  🔊 వినండి
+                </button>
               </div>
               <div className="text-right">
                 <p className="text-6xl leading-none">{emoji}</p>

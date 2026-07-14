@@ -1,5 +1,6 @@
 import WeatherScreen from "@/components/WeatherScreen";
 import LocationPicker from "@/components/LocationPicker";
+import RestoreLocation from "@/components/RestoreLocation";
 import { DEFAULT_PLACE } from "@/lib/locations";
 import { isValidCoord } from "@/lib/geocode";
 import type { WeatherContract } from "@/lib/types";
@@ -61,8 +62,11 @@ export default async function Page({
   }
 
   return (
-    <WeatherScreen data={data} crop={crop} locationQuery={locationQuery}>
-      <LocationPicker currentPlace={place} />
-    </WeatherScreen>
+    <>
+      <RestoreLocation />
+      <WeatherScreen data={data} crop={crop} place={place} locationQuery={locationQuery}>
+        <LocationPicker currentPlace={place} />
+      </WeatherScreen>
+    </>
   );
 }

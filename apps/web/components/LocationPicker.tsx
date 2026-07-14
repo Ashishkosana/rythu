@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PILOT_MANDALS } from "@/lib/locations";
 import { formatPlaceLabel, roundCoord, searchPlaces, type GeoResult } from "@/lib/geocode";
+import { savePlace } from "@/lib/prefs";
 
 // Telugu-first location chooser. Three honest paths to a real coordinate:
 //   1. GPS  → the farmer's exact spot (one tap, no typing — best for low literacy)
@@ -23,9 +24,12 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
   const [searching, setSearching] = useState(false);
 
   function go(lat: number, lon: number, place: string) {
+    const rlat = roundCoord(lat);
+    const rlon = roundCoord(lon);
+    savePlace({ lat: rlat, lon: rlon, place }); // remember for next time
     const p = new URLSearchParams(params.toString());
-    p.set("lat", String(roundCoord(lat)));
-    p.set("lon", String(roundCoord(lon)));
+    p.set("lat", String(rlat));
+    p.set("lon", String(rlon));
     p.set("place", place);
     router.push(`/?${p.toString()}`);
     setOpen(false);

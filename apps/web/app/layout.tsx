@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Noto_Sans_Telugu } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
+import Welcome from "@/components/Welcome";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -42,6 +43,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
         <BottomNav />
+        <Welcome />
       </body>
     </html>
   );
