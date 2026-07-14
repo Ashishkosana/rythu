@@ -16,13 +16,16 @@ Design invariants (from the verified spec, ``docs/weather-slice-spec.md``):
 from __future__ import annotations
 
 from datetime import date
+from itertools import pairwise
 
 from rythu_weather.domain.models import (
     Crop,
+    DailyPoint,
     FarmAction,
     FarmerContext,
     Fired,
     Forecast,
+    HourlyPoint,
     RuleSpec,
     Severity,
     WaterSource,
@@ -31,13 +34,14 @@ from rythu_weather.domain.windows import (
     all_below,
     any_at_or_above,
     choose_morning_day,
+    longest_run,
     max_present,
     morning_hours,
     next_days,
     next_hours,
     sum_present,
 )
-from rythu_weather.domain.wmo import THUNDERSTORM_CODES
+from rythu_weather.domain.wmo import THUNDERSTORM_CODES, WET_CODES
 
 # --- thresholds (cited; TODO-VET marks numbers needing agri-office sign-off) ---------------
 
@@ -68,8 +72,46 @@ DRAINAGE_PROB = 70  # % chance gating the softer amount
 SOW_WINDOW = ((6, 1), (8, 15))  # monsoon-onset sowing window for dryland crops
 PADDY_HARVEST_WINDOW = ((9, 1), (12, 31))  # Kharif paddy harvest — never fires on green monsoon paddy
 
-# Rules recorded but intentionally NOT run in v0 (need crop-stage/scouting data to be safe).
-DEFERRED_RULE_IDS: frozenset[str] = frozenset({"cotton-pinkbollworm-spray-window"})
+# Chilli (mirchi) thresholds + season month-sets (verified spec; TODO-VET the numbers with the
+# district agri office / PJTSAU). Months are disjoint Kharif+Rabi windows.
+CHILLI_DRAIN_MM_HARD = 40.0
+CHILLI_DRAIN_MM_SOFT = 25.0
+CHILLI_DRAIN_PROB = 70
+
+CHILLI_HEAT_TMAX = 35.0
+CHILLI_HEAT_TMAX_SEVERE = 40.0
+CHILLI_HEAT_MONTHS = frozenset({2, 3, 4, 9, 10, 11, 12})  # Kharif + Rabi/summer flowering
+
+CHILLI_HARVEST_PROB = 60
+CHILLI_HARVEST_MM = 5.0  # open-yard drying chillies spoil at a few mm (lower than paddy's 10)
+CHILLI_HARVEST_MONTHS = frozenset({11, 12, 1, 2, 3, 4, 5})
+
+CHILLI_ANTHRAC_RH = 85
+CHILLI_ANTHRAC_TEMP_LO = 20.0
+CHILLI_ANTHRAC_TEMP_HI = 30.0
+CHILLI_ANTHRAC_RUN_H = 6  # consecutive humid hours that set up fruit-rot infection
+CHILLI_ANTHRAC_WET_MM = 0.2
+CHILLI_ANTHRAC_MONTHS = frozenset({9, 10, 11})
+
+CHILLI_THRIPS_DRY_MM = 2.0
+CHILLI_THRIPS_DRY_PROB = 40
+CHILLI_THRIPS_TMAX_LO = 28.0
+CHILLI_THRIPS_TMAX_HI = 38.0
+CHILLI_THRIPS_RH_DAY = 60  # afternoon RH below this = dry, thrips-favourable
+CHILLI_THRIPS_MONTHS = frozenset({8, 9, 10, 11, 12, 1, 2, 3})
+
+# Rules recorded but intentionally NOT run (need crop-stage/scouting/species data to be safe, or
+# are redundant with shipped rules). See docs/chilli-rules-spec.md.
+DEFERRED_RULE_IDS: frozenset[str] = frozenset(
+    {
+        "cotton-pinkbollworm-spray-window",
+        "chilli-thrips-mite-rain-suppress-hold-spray",  # rain≠control for local black thrips
+        "chilli-mite-warm-humid-leafcurl",  # contested weather premise
+        "chilli-nursery-dampingoff-wet",  # needs nursery-stage the app can't see
+        "chilli-spray-timing-rain-wind-washoff",  # duplicate of shipped spray rules
+        "chilli-transplant-avoid-heavy-rain",  # duplicate of sow-avoid-before-washout
+    }
+)
 
 
 # --- small text helpers -------------------------------------------------------------------
@@ -283,11 +325,169 @@ def _drainage_heavy_rain(forecast: Forecast, ctx: FarmerContext) -> Fired | None
                 headline_en=(
                     f"Heavy rain possible {when} (up to ≈{round(s)} mm{chance}) — "
                     "clearing your field drains now is cheap insurance; "
-                    "chilli, maize and red gram are hurt by even a few hours of standing water."
+                    "maize and red gram are hurt by even a few hours of standing water."
                 ),
                 window_note="checked next 3 days",
             )
     return None
+
+
+# --- chilli (mirchi) predicates -----------------------------------------------------------
+
+
+def _chilli_drainage(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
+    for d in next_days(forecast, ctx.now, 3):
+        s = d.precipitation_sum_mm
+        if s is None:
+            continue
+        p = d.precipitation_probability_max
+        hard = s >= CHILLI_DRAIN_MM_HARD
+        soft = p is not None and s >= CHILLI_DRAIN_MM_SOFT and p >= CHILLI_DRAIN_PROB
+        if hard or soft:
+            when = _rel_day(d.day, ctx.now.date())
+            chance = f", {p}% chance" if p is not None else ""
+            return Fired(
+                headline_en=(
+                    f"Heavy rain possible {when} (up to ≈{round(s)} mm{chance}) — clear and deepen "
+                    "your field drains now; chilli roots and collar rot after only a few hours of standing water."
+                ),
+                detail_en=(
+                    "Chilli is very waterlogging-sensitive. Open drains and low-spot channels, ridge/bed the "
+                    "crop, and hold back irrigation before the rain. Low-regret field prep — no spraying."
+                ),
+                window_note="checked next 3 days",
+            )
+    return None
+
+
+def _chilli_heat_flowerdrop(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
+    days = next_days(forecast, ctx.now, 7)
+
+    def _rain_coming(d: DailyPoint) -> bool:
+        p, s = d.precipitation_probability_max, d.precipitation_sum_mm
+        return (p is not None and p >= 60) or (s is not None and s >= 2)
+
+    for a, b in pairwise(days):
+        ta, tb = a.temperature_max_c, b.temperature_max_c
+        if ta is None or tb is None or ta < CHILLI_HEAT_TMAX or tb < CHILLI_HEAT_TMAX:
+            continue
+        if _rain_coming(a) or _rain_coming(b):
+            continue  # rain will cool/wet the field — don't push irrigation into a wet window
+        peak = max(ta, tb)
+        lead = "Extreme heat" if peak >= CHILLI_HEAT_TMAX_SEVERE else "A hot spell"
+        return Fired(
+            headline_en=(
+                f"If your chilli is flowering or setting fruit: {lead.lower()} (~{round(peak)}°C for 2+ days) "
+                "is likely and some flowers may drop — give light, even irrigation early morning or evening."
+            ),
+            detail_en=(
+                "Days above ~35°C (worse with warm nights) shed chilli flowers and young fruit. Water lightly "
+                "at the cooler hours and mulch to keep roots cool. Do NOT flood or water daily — soggy soil "
+                "also drops flowers and rots roots. Heat drop usually recovers on cooling; no spray is needed."
+            ),
+            window_note="checked next 7 days (2+ consecutive hot days)",
+        )
+    return None
+
+
+def _chilli_harvest_drying(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
+    days = next_days(forecast, ctx.now, 3)
+    fires = False
+    for d in days:
+        p, s = d.precipitation_probability_max, d.precipitation_sum_mm
+        if (p is not None and p >= CHILLI_HARVEST_PROB) or (s is not None and s >= CHILLI_HARVEST_MM):
+            fires = True
+            break
+    if not fires:
+        return None
+    pct = max_present(d.precipitation_probability_max for d in days)
+    chance = f"{pct}% chance" if pct is not None else "rain likely"
+    return Fired(
+        headline_en=(
+            f"Rain possible in the next 3 days ({chance}) — ONLY if your chilli is already red-ripe and ready, "
+            "pick it now, and cover any harvested or drying chillies to prevent rot and mould."
+        ),
+        detail_en=(
+            "Telangana chilli is mostly sold sun-dried; rain on ripe fruit and drying stock causes rot, mould "
+            "and price loss. Do NOT strip green fruit early — chilli is picked in several rounds. If nothing is "
+            "ripe yet, just cover harvested/drying stock."
+        ),
+        window_note="checked next 3 days",
+    )
+
+
+def _chilli_anthracnose(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
+    hrs = next_hours(forecast, ctx.now, 48)
+    if not hrs:
+        return None
+
+    def _humid(h: HourlyPoint) -> bool:
+        rh, t = h.relative_humidity, h.temperature_c
+        return (
+            rh is not None
+            and t is not None
+            and rh >= CHILLI_ANTHRAC_RH
+            and CHILLI_ANTHRAC_TEMP_LO <= t <= CHILLI_ANTHRAC_TEMP_HI
+        )
+
+    if longest_run(hrs, _humid) < CHILLI_ANTHRAC_RUN_H:
+        return None
+    wet = any(
+        (h.precipitation_mm is not None and h.precipitation_mm >= CHILLI_ANTHRAC_WET_MM)
+        or (h.weather_code in WET_CODES)
+        for h in hrs
+    )
+    if not wet:
+        return None
+    return Fired(
+        headline_en=(
+            "If your chilli is carrying fruit or turning red: a warm, humid, wet spell is possible in the next "
+            "1–2 days that can raise fruit-rot (anthracnose) risk — walk your field and check the fruit."
+        ),
+        detail_en=(
+            "Warm + humid + surface wetness during ripening drives anthracnose/fruit-rot (Colletotrichum). "
+            "Remove and carry away any fruit with sunken dark or water-soaked spots, avoid overhead watering, "
+            "and keep good spacing so plants dry faster. This is a reminder to LOOK, not to spray."
+        ),
+        window_note="checked next 48h (humid-wet run)",
+    )
+
+
+def _chilli_thrips(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
+    days = next_days(forecast, ctx.now, 3)
+    if not days:
+        return None
+    # All-clear-style dryness: every day must be KNOWN and dry (a None day = unknown → no fire).
+    if not all_below([d.precipitation_sum_mm for d in days], CHILLI_THRIPS_DRY_MM):
+        return None
+    if not all_below([d.precipitation_probability_max for d in days], CHILLI_THRIPS_DRY_PROB):
+        return None
+    if not any(
+        t is not None and CHILLI_THRIPS_TMAX_LO <= t <= CHILLI_THRIPS_TMAX_HI
+        for t in (d.temperature_max_c for d in days)
+    ):
+        return None
+    daytime = [
+        h for h in next_hours(forecast, ctx.now, 72) if 9 <= h.time_local.hour < 18 and h.relative_humidity is not None
+    ]
+    if not daytime:
+        return None
+    dry_hours = sum(
+        1 for h in daytime if h.relative_humidity is not None and h.relative_humidity < CHILLI_THRIPS_RH_DAY
+    )
+    if dry_hours * 2 <= len(daytime):  # need a strict majority
+        return None
+    return Fired(
+        headline_en=(
+            "A hot, dry, rain-free spell is likely over the next 3 days, which can favour thrips leaf-curl "
+            "(murda) — go and LOOK at the newest leaves and curled shoots; do not spray on a guess."
+        ),
+        detail_en=(
+            "Thrips build up in dry warm weather and curl new growth. Turn over young leaves and check growing "
+            "tips. Spraying blind wastes money, breeds resistance and can flare mites — scout first."
+        ),
+        window_note="checked next 3 days",
+    )
 
 
 # --- registry -----------------------------------------------------------------------------
@@ -420,7 +620,7 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
         crop_label="maize",
         severity=Severity.INFO,
         confidence="medium",
-        applies_to_crops=frozenset({Crop.MAIZE, Crop.RED_GRAM, Crop.CHILLI}),
+        applies_to_crops=frozenset({Crop.MAIZE, Crop.RED_GRAM}),
         caveat_en=(
             "Rain is a probability, not a certainty. Source: Open-Meteo (~11 km); forecasts can be wrong "
             "and may miss local showers, so also watch the sky. Clearing drains is low-cost insurance even "
@@ -430,5 +630,102 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "https://www.siasat.com/telangana-pjtsau-advises-farmers-to-utilise-rains-for-sowing-dry-crops-2688339/",
         ),
         predicate=_drainage_heavy_rain,
+    ),
+    # --- chilli (mirchi) specific reads (verified spec; see docs/chilli-rules-spec.md) ---
+    RuleSpec(
+        id="chilli-waterlogging-drainage",
+        action=FarmAction.FIELDWORK,
+        crop_label="chilli",
+        severity=Severity.CAUTION,
+        confidence="high",
+        applies_to_crops=frozenset({Crop.CHILLI}),
+        caveat_en=(
+            "Rain is a CHANCE from a ~11 km model (Open-Meteo) that can be wrong and often MISSES local "
+            "downpours — a warning is a probability, not a promise, and NO warning is not a guarantee of dry "
+            "weather, so watch your own field and low spots. This is a drainage/field-prep alert, not a spray order."
+        ),
+        sources=(
+            "https://pnwhandbooks.org/plantdisease/host-disease/pepper-capsicum-spp-phytophthora-blight-root-crown-rot",
+            "https://ipm.ucanr.edu/agriculture/peppers/root-and-crown-rots-and-damping-off-diseases/",
+        ),
+        predicate=_chilli_drainage,
+    ),
+    RuleSpec(
+        id="chilli-heat-flowerdrop",
+        action=FarmAction.IRRIGATE,
+        crop_label="chilli",
+        severity=Severity.CAUTION,
+        confidence="medium",
+        applies_to_crops=frozenset({Crop.CHILLI}),
+        months=CHILLI_HEAT_MONTHS,
+        caveat_en=(
+            "Only relevant once the crop is flowering/fruiting. Temperatures are from a ~11 km model that can be "
+            "wrong; a 'no-rain' forecast can miss local showers, so check the topsoil before watering and do NOT "
+            "over-irrigate. Heat cutoffs (35/40°C) to be vetted with the Bhupalpally agri office / PJTSAU."
+        ),
+        sources=(
+            "https://data.longpaddock.qld.gov.au/static/dcap/DCAP3/DCAP%203__3%20Capsicum%20CTT%20Final.pdf",
+            "https://agritech.tnau.ac.in/horticulture/horti_vegetables_chilli.html",
+        ),
+        predicate=_chilli_heat_flowerdrop,
+    ),
+    RuleSpec(
+        id="chilli-harvest-drying-rain",
+        action=FarmAction.HARVEST,
+        crop_label="chilli",
+        severity=Severity.CAUTION,
+        confidence="medium",
+        applies_to_crops=frozenset({Crop.CHILLI}),
+        months=CHILLI_HARVEST_MONTHS,
+        caveat_en=(
+            "Only helps if fruit is actually mature — do not harvest immature fruit on a forecast. Rain chance is "
+            "from a ~11 km model (no leaf-wetness sensor) that can over- or under-call local showers. Watch the "
+            "sky and keep drying chillies covered whenever rain threatens."
+        ),
+        sources=(
+            "https://agritech.tnau.ac.in/crop_protection/chilli_diseases_2.html",
+            "https://www.pjtsau.edu.in/files/AgriMkt/2023/December/yasangi-pre-harvest-chilli-2023.pdf",
+        ),
+        predicate=_chilli_harvest_drying,
+    ),
+    RuleSpec(
+        id="chilli-anthracnose-humid-wet-fruiting",
+        action=FarmAction.SCOUT,
+        crop_label="chilli",
+        severity=Severity.CAUTION,
+        confidence="medium",
+        applies_to_crops=frozenset({Crop.CHILLI}),
+        months=CHILLI_ANTHRAC_MONTHS,
+        caveat_en=(
+            "Only if the crop is already fruiting/ripening. We cannot measure leaf wetness or see your plants; "
+            "humidity and rain are from a ~11 km model that can be wrong and often MISSES local showers, so a quiet "
+            "forecast is NOT a guarantee of dry leaves. Decide by what you see, and ask your KVK/agri officer before "
+            "any treatment."
+        ),
+        sources=(
+            "https://pmc.ncbi.nlm.nih.gov/articles/PMC5044472/",
+            "https://agritech.tnau.ac.in/crop_protection/chilli_diseases_2.html",
+        ),
+        predicate=_chilli_anthracnose,
+    ),
+    RuleSpec(
+        id="chilli-thrips-dry-warm-leafcurl",
+        action=FarmAction.SCOUT,
+        crop_label="chilli",
+        severity=Severity.INFO,
+        confidence="medium",
+        applies_to_crops=frozenset({Crop.CHILLI}),
+        months=CHILLI_THRIPS_MONTHS,
+        caveat_en=(
+            "A SCOUT prompt from a ~11 km model (misses local showers), not a spray order or a diagnosis. The local "
+            "black thrips also spreads in HUMID/RAINY weather, so NO alert here does NOT mean your crop is safe — "
+            "keep checking in wet weather too. Curl can be thrips, mites or virus; take a leaf to your KVK officer "
+            "before using any product."
+        ),
+        sources=(
+            "https://agritech.tnau.ac.in/crop_protection/crop_prot_crop_insect-veg_chillies_pest&disease.html",
+            "https://www.intechopen.com/chapters/71703",
+        ),
+        predicate=_chilli_thrips,
     ),
 )

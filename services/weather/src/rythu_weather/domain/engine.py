@@ -71,6 +71,8 @@ def evaluate_reads(forecast: Forecast, ctx: FarmerContext) -> tuple[FarmingRead,
             continue
         if not _in_season(spec.season, ctx.now.date()):
             continue
+        if spec.months is not None and ctx.now.month not in spec.months:
+            continue
         fired = spec.predicate(forecast, ctx)
         if fired is None:
             continue

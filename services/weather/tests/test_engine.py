@@ -81,13 +81,21 @@ def test_sow_season_gate_boundary():
     assert "sow-avoid-before-washout" not in _ids(evaluate_reads(off, ctx(at(2026, 8, 16, 9), crop=Crop.COTTON)))
 
 
-def test_drainage_crop_scope_covers_waterlogging_sensitive_crops():
+def test_drainage_rules_do_not_double_fire_across_crops():
     now = at(2026, 7, 15, 9)
     fc = forecast(now, daily=[day(now.date(), pp_max=0, precip_sum=60.0)])
-    for crop in (Crop.MAIZE, Crop.RED_GRAM, Crop.CHILLI):
-        assert "drainage-heavy-rain-maize" in _ids(evaluate_reads(fc, ctx(now, crop=crop)))
+    for crop in (Crop.MAIZE, Crop.RED_GRAM):
+        ids = _ids(evaluate_reads(fc, ctx(now, crop=crop)))
+        assert "drainage-heavy-rain-maize" in ids
+        assert "chilli-waterlogging-drainage" not in ids
+    # chilli gets exactly ONE drainage read — its own (tighter) rule, not the maize one
+    chilli_ids = _ids(evaluate_reads(fc, ctx(now, crop=Crop.CHILLI)))
+    assert "chilli-waterlogging-drainage" in chilli_ids
+    assert "drainage-heavy-rain-maize" not in chilli_ids
     for crop in (Crop.COTTON, Crop.PADDY, None):
-        assert "drainage-heavy-rain-maize" not in _ids(evaluate_reads(fc, ctx(now, crop=crop)))
+        ids = _ids(evaluate_reads(fc, ctx(now, crop=crop)))
+        assert "drainage-heavy-rain-maize" not in ids
+        assert "chilli-waterlogging-drainage" not in ids
 
 
 def test_chilli_receives_crop_agnostic_reads():

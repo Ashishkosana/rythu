@@ -26,6 +26,7 @@ class FarmAction(StrEnum):
     SOW = "sow"
     HARVEST = "harvest"
     FIELDWORK = "fieldwork"
+    SCOUT = "scout"  # "go look at your crop" — never "spray"; for scouting-gated pest/disease reads
 
 
 class Crop(StrEnum):
@@ -240,6 +241,9 @@ class RuleSpec:
     excludes_crops: frozenset[Crop] = field(default_factory=frozenset)
     applies_to_water_sources: frozenset[WaterSource] | None = None
     season: SeasonWindow | None = None
+    # A set of calendar months (1-12) the rule may fire in. Unlike ``season`` (one contiguous
+    # range), this expresses disjoint windows, e.g. chilli's Kharif + Rabi flowering. None = any.
+    months: frozenset[int] | None = None
 
 
 class WeatherProvider(Protocol):

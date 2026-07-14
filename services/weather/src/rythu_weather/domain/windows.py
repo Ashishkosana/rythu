@@ -11,7 +11,7 @@ Two opposite None behaviours are encoded here on purpose (see the spec):
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from datetime import date, datetime, time, timedelta
 
 from rythu_weather.domain.models import DailyPoint, Forecast, HourlyPoint
@@ -72,6 +72,19 @@ def hours_in(forecast: Forecast, start: datetime, end: datetime) -> list[HourlyP
 def next_hours(forecast: Forecast, now: datetime, hours: int) -> list[HourlyPoint]:
     """Forward window ``now .. now + hours``. Every returned point is guaranteed >= now."""
     return hours_in(forecast, now, now + timedelta(hours=hours))
+
+
+def longest_run(points: list[HourlyPoint], predicate: Callable[[HourlyPoint], bool]) -> int:
+    """Longest streak of CONSECUTIVE points satisfying ``predicate``.
+
+    The predicate must return False on unknown (None) metrics, so a missing reading breaks the
+    run rather than silently extending it (used for the anthracnose humid-wet spell check).
+    """
+    best = current = 0
+    for p in points:
+        current = current + 1 if predicate(p) else 0
+        best = max(best, current)
+    return best
 
 
 def choose_morning_day(now: datetime) -> date:

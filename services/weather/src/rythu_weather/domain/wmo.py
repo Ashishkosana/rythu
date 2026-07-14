@@ -138,6 +138,10 @@ WMO_TABLE: dict[int, WMOCondition] = {c.code: c for c in _CONDITIONS}
 # Codes that mean a thunderstorm — used by the fieldwork storm guard.
 THUNDERSTORM_CODES: frozenset[int] = frozenset({95, 96, 99})
 
+# Codes that mean actual falling water (drizzle/rain/showers/thunderstorm) — a leaf-wetness
+# proxy for the chilli anthracnose rule. Excludes fog (45/48), which we don't treat as wetting.
+WET_CODES: frozenset[int] = frozenset({51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99})
+
 _UNKNOWN = WMOCondition(-1, "Unknown", WMOCategory.CLOUD, "❓", "No sky condition reported.")
 
 
