@@ -35,6 +35,7 @@ class Crop(StrEnum):
     PADDY = "paddy"
     RED_GRAM = "red_gram"
     MAIZE = "maize"
+    CHILLI = "chilli"  # mirchi — a major Telangana crop
 
 
 class WaterSource(StrEnum):

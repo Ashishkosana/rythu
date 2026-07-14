@@ -283,7 +283,7 @@ def _drainage_heavy_rain(forecast: Forecast, ctx: FarmerContext) -> Fired | None
                 headline_en=(
                     f"Heavy rain possible {when} (up to ≈{round(s)} mm{chance}) — "
                     "clearing your field drains now is cheap insurance; "
-                    "maize and red gram are hurt by even a few hours of standing water."
+                    "chilli, maize and red gram are hurt by even a few hours of standing water."
                 ),
                 window_note="checked next 3 days",
             )
@@ -420,7 +420,7 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
         crop_label="maize",
         severity=Severity.INFO,
         confidence="medium",
-        applies_to_crops=frozenset({Crop.MAIZE, Crop.RED_GRAM}),
+        applies_to_crops=frozenset({Crop.MAIZE, Crop.RED_GRAM, Crop.CHILLI}),
         caveat_en=(
             "Rain is a probability, not a certainty. Source: Open-Meteo (~11 km); forecasts can be wrong "
             "and may miss local showers, so also watch the sky. Clearing drains is low-cost insurance even "

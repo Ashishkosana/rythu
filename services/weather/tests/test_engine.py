@@ -81,10 +81,17 @@ def test_sow_season_gate_boundary():
     assert "sow-avoid-before-washout" not in _ids(evaluate_reads(off, ctx(at(2026, 8, 16, 9), crop=Crop.COTTON)))
 
 
-def test_drainage_crop_scope_covers_maize_and_red_gram_only():
+def test_drainage_crop_scope_covers_waterlogging_sensitive_crops():
     now = at(2026, 7, 15, 9)
     fc = forecast(now, daily=[day(now.date(), pp_max=0, precip_sum=60.0)])
-    for crop in (Crop.MAIZE, Crop.RED_GRAM):
+    for crop in (Crop.MAIZE, Crop.RED_GRAM, Crop.CHILLI):
         assert "drainage-heavy-rain-maize" in _ids(evaluate_reads(fc, ctx(now, crop=crop)))
     for crop in (Crop.COTTON, Crop.PADDY, None):
         assert "drainage-heavy-rain-maize" not in _ids(evaluate_reads(fc, ctx(now, crop=crop)))
+
+
+def test_chilli_receives_crop_agnostic_reads():
+    # A windy morning fires the crop-agnostic spray-wind rule for chilli too.
+    now = at(2026, 7, 15, 8)
+    fc = forecast(now, hourly=hours_from(at(2026, 7, 15, 0), 24, wind=18.0), daily=[day(now.date(), pp_max=10)])
+    assert "spray-wind-drift" in _ids(evaluate_reads(fc, ctx(now, crop=Crop.CHILLI)))
