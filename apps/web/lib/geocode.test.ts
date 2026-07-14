@@ -3,6 +3,7 @@ import {
   formatPlaceLabel,
   isValidCoord,
   normalizeGeoResults,
+  normalizeNominatim,
   roundCoord,
 } from "./geocode";
 
@@ -65,5 +66,36 @@ describe("normalizeGeoResults", () => {
     expect(normalizeGeoResults(null)).toEqual([]);
     expect(normalizeGeoResults({})).toEqual([]);
     expect(normalizeGeoResults({ results: "nope" })).toEqual([]);
+  });
+});
+
+describe("normalizeNominatim", () => {
+  it("prefers village name from address details and parses string coords", () => {
+    const out = normalizeNominatim([
+      {
+        place_id: 42,
+        lat: "18.23781",
+        lon: "79.77502",
+        display_name: "Regonda, Bhupalpally, Telangana, India",
+        address: { village: "Regonda", state_district: "Bhupalpally", state: "Telangana" },
+      },
+    ]);
+    expect(out).toEqual([
+      { id: 42, name: "Regonda", admin2: "Bhupalpally", admin1: "Telangana", lat: 18.2378, lon: 79.775 },
+    ]);
+  });
+
+  it("falls back through hamlet/town/city then display_name", () => {
+    const out = normalizeNominatim([
+      { place_id: 1, lat: "18.5", lon: "79.7", address: { hamlet: "Tinyville", state: "Telangana" } },
+      { place_id: 2, lat: "18.6", lon: "79.8", display_name: "Nowhere, X", address: {} },
+    ]);
+    expect(out.map((r) => r.name)).toEqual(["Tinyville", "Nowhere"]);
+  });
+
+  it("drops rows with invalid coordinates and handles non-arrays", () => {
+    expect(normalizeNominatim([{ place_id: 1, lat: "999", lon: "79", address: { village: "Bad" } }])).toEqual([]);
+    expect(normalizeNominatim(null)).toEqual([]);
+    expect(normalizeNominatim({ results: [] })).toEqual([]);
   });
 });

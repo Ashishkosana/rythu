@@ -1,6 +1,8 @@
-// Village/town search via Open-Meteo's free geocoding API (no key, covers India).
-// The pure helpers (normalizeGeoResults, roundCoord, isValidCoord, formatPlaceLabel)
-// are unit-tested in geocode.test.ts; searchPlaces is the thin network wrapper.
+// Village/town search. The client calls our own /api/geocode route (see
+// app/api/geocode/route.ts), which queries OpenStreetMap (Nominatim) first —
+// far better coverage of small Indian villages than GeoNames — and falls back
+// to Open-Meteo. The pure normalizers + helpers here are unit-tested in
+// geocode.test.ts; only the tiny fetch wrapper touches the network.
 
 export interface GeoResult {
   id: number;
@@ -10,8 +12,6 @@ export interface GeoResult {
   lat: number;
   lon: number;
 }
-
-const GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search";
 
 /** Clamp to 4 decimals (~11 m) — matches the weather grid's honest resolution. */
 export function roundCoord(n: number): number {
@@ -34,7 +34,7 @@ export function formatPlaceLabel(r: Pick<GeoResult, "name" | "admin2">): string 
   return r.admin2 && r.admin2 !== r.name ? `${r.name}, ${r.admin2}` : r.name;
 }
 
-/** Pure: turn the raw geocoding JSON into typed, valid results (drops malformed rows). */
+/** Pure: normalize Open-Meteo geocoding JSON → typed, valid results. */
 export function normalizeGeoResults(json: unknown): GeoResult[] {
   const results = (json as { results?: unknown })?.results;
   if (!Array.isArray(results)) return [];
@@ -56,15 +56,47 @@ export function normalizeGeoResults(json: unknown): GeoResult[] {
   return out;
 }
 
-/** Search Indian places by name. Returns [] on any failure (caller shows "no results"). */
+/** Pure: normalize OpenStreetMap Nominatim (jsonv2 + addressdetails) → results. */
+export function normalizeNominatim(json: unknown): GeoResult[] {
+  if (!Array.isArray(json)) return [];
+  const out: GeoResult[] = [];
+  for (const raw of json) {
+    const r = raw as Record<string, unknown>;
+    const lat = typeof r.lat === "string" ? parseFloat(r.lat) : NaN;
+    const lon = typeof r.lon === "string" ? parseFloat(r.lon) : NaN;
+    if (!isValidCoord(lat, lon)) continue;
+    const addr = (r.address as Record<string, unknown>) ?? {};
+    const pick = (k: string): string | undefined =>
+      typeof addr[k] === "string" ? (addr[k] as string) : undefined;
+    const name =
+      pick("village") ??
+      pick("hamlet") ??
+      pick("town") ??
+      pick("city") ??
+      (typeof r.name === "string" && r.name ? r.name : undefined) ??
+      (typeof r.display_name === "string" ? r.display_name.split(",")[0]!.trim() : undefined);
+    if (!name) continue;
+    out.push({
+      id: typeof r.place_id === "number" ? r.place_id : out.length,
+      name,
+      admin2: pick("state_district") ?? pick("county"),
+      admin1: pick("state"),
+      lat: roundCoord(lat),
+      lon: roundCoord(lon),
+    });
+  }
+  return out;
+}
+
+/** Search Indian villages via our /api/geocode route. Returns [] on any failure. */
 export async function searchPlaces(query: string, signal?: AbortSignal): Promise<GeoResult[]> {
   const q = query.trim();
   if (q.length < 2) return [];
-  const url = `${GEOCODE_URL}?name=${encodeURIComponent(q)}&count=8&country=IN&language=en`;
   try {
-    const res = await fetch(url, { signal });
+    const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`, { signal });
     if (!res.ok) return [];
-    return normalizeGeoResults(await res.json());
+    const data = (await res.json()) as { results?: unknown };
+    return Array.isArray(data.results) ? (data.results as GeoResult[]) : [];
   } catch {
     return [];
   }
