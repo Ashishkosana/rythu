@@ -103,7 +103,7 @@ export default function WeatherScreen({
   const maxProb = Math.max(10, ...bars.map((h) => h.precipitation_probability ?? 0));
 
   return (
-    <div className="mx-auto min-h-dvh max-w-md bg-slate-50 pb-10 text-slate-900">
+    <div className="mx-auto min-h-dvh max-w-md bg-slate-50 pb-24 text-slate-900">
       {/* top bar */}
       <div className="flex items-center justify-between bg-green-700 px-4 py-3 text-xs text-white">
         <span className="font-bold">🌾 Rythu</span>
