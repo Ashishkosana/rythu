@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="te">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rythu — Prototype v2 (Bhupalpally, research-backed)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body{ background:#eef2f5; font-family: ui-sans-serif, system-ui, "Noto Sans Telugu", sans-serif; }
+  .phone{ width:390px; height:820px; }
+  .screen{ display:none; } .screen.active{ display:block; }
+  .no-scrollbar::-webkit-scrollbar{display:none} .no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}
+  .spk{ cursor:pointer; }
+</style>
+</head>
+<body class="min-h-screen flex items-start justify-center gap-8 p-8 flex-wrap">
+
+<div class="phone bg-white rounded-[2.5rem] shadow-2xl overflow-hidden relative border-8 border-gray-900 flex flex-col">
+
+  <!-- top bar: language toggle + trust chip -->
+  <div class="bg-green-700 text-white px-4 pt-3 pb-2 flex items-center justify-between text-xs">
+    <span class="font-bold">🌾 Rythu · భూపాలపల్లి</span>
+    <div class="flex items-center gap-2">
+      <span class="bg-white/20 rounded-full px-2 py-0.5" data-te="మేము ఏదీ అమ్మము" data-en="We sell you nothing">మేము ఏదీ అమ్మము</span>
+      <button id="langBtn" onclick="toggleLang()" class="bg-white text-green-700 font-bold rounded-full px-2 py-0.5">English</button>
+    </div>
+  </div>
+
+  <div class="flex-1 overflow-y-auto no-scrollbar" id="scroller">
+
+    <!-- ============ ONBOARDING ============ -->
+    <section id="onboard" class="screen active p-5 space-y-4">
+      <h1 class="text-xl font-bold" data-te="నీటి వనరు ఏది?" data-en="What's your water source?">నీటి వనరు ఏది?</h1>
+      <p class="text-sm text-gray-500" data-te="ఇది మీకు సరైన పంట చెప్పడానికి ముఖ్యం" data-en="This is the most important input for the right crop advice.">ఇది మీకు సరైన పంట చెప్పడానికి ముఖ్యం</p>
+      <div class="grid grid-cols-2 gap-3">
+        <button onclick="pickWater(this,'canal')" class="water border-2 border-gray-200 rounded-2xl p-4 text-center"><div class="text-4xl">🌊</div><p class="mt-1 font-semibold" data-te="కాలువ / లిఫ్ట్" data-en="Canal / Lift">కాలువ / లిఫ్ట్</p></button>
+        <button onclick="pickWater(this,'tank')" class="water border-2 border-gray-200 rounded-2xl p-4 text-center"><div class="text-4xl">🛖</div><p class="mt-1 font-semibold" data-te="చెరువు" data-en="Tank">చెరువు</p></button>
+        <button onclick="pickWater(this,'bore')" class="water border-2 border-gray-200 rounded-2xl p-4 text-center"><div class="text-4xl">🕳️</div><p class="mt-1 font-semibold" data-te="బోరు బావి" data-en="Borewell">బోరు బావి</p></button>
+        <button onclick="pickWater(this,'rain')" class="water border-2 border-gray-200 rounded-2xl p-4 text-center"><div class="text-4xl">🌧️</div><p class="mt-1 font-semibold" data-te="వర్షాధారం" data-en="Rainfed">వర్షాధారం</p></button>
+      </div>
+      <div class="text-sm bg-gray-50 rounded-xl p-3">
+        <p class="text-gray-500" data-te="📍 ప్రాంతం" data-en="📍 Location">📍 ప్రాంతం</p>
+        <p class="font-semibold">Bhupalpally · 18.44°N, 79.86°E <span class="text-xs text-green-600">✓ GPS</span></p>
+        <p class="text-gray-500 mt-2" data-te="🌱 నేల (డిఫాల్ట్)" data-en="🌱 Soil (default)">🌱 నేల (డిఫాల్ట్)</p>
+        <p class="font-semibold" data-te="ఎర్ర నేల (చల్క) — మార్చవచ్చు" data-en="Red / chalka soil — changeable">ఎర్ర నేల (చల్క) — మార్చవచ్చు</p>
+      </div>
+      <p class="text-[11px] text-gray-400" data-te="ఫోన్ నంబర్ మాత్రమే. ఆధార్ / భూమి రికార్డు అవసరం లేదు." data-en="Phone number only. No Aadhaar / land records needed.">ఫోన్ నంబర్ మాత్రమే. ఆధార్ / భూమి రికార్డు అవసరం లేదు.</p>
+      <button onclick="show('home')" class="w-full bg-green-700 text-white font-bold rounded-xl py-3" data-te="ప్రారంభించండి →" data-en="Get started →">ప్రారంభించండి →</button>
+    </section>
+
+    <!-- ============ HOME ============ -->
+    <section id="home" class="screen p-5 space-y-4">
+      <div class="flex justify-between items-start">
+        <div>
+          <p class="text-gray-500 text-sm" data-te="నమస్తే 🙏" data-en="Namaste 🙏">నమస్తే 🙏</p>
+          <h1 class="text-2xl font-bold">రవి</h1>
+          <p class="text-sm text-gray-500" data-te="📍 భూపాలపల్లి · ఖరీఫ్ · బోరు నీరు" data-en="📍 Bhupalpally · Kharif · Borewell">📍 భూపాలపల్లి · ఖరీఫ్ · బోరు నీరు</p>
+        </div>
+        <button class="spk text-2xl" onclick="speak()" title="వినండి">🔊</button>
+      </div>
+
+      <!-- honest weather hero -->
+      <button onclick="show('weather')" class="w-full text-left bg-gradient-to-br from-sky-500 to-indigo-600 text-white rounded-2xl p-4">
+        <div class="flex justify-between items-center">
+          <div>
+            <p class="text-sm opacity-90" data-te="ఈరోజు వర్షం వచ్చే అవకాశం" data-en="Chance of rain today">ఈరోజు వర్షం వచ్చే అవకాశం</p>
+            <p class="text-4xl font-bold mt-1">60% 🌦️</p>
+            <p class="text-sm opacity-90" data-te="మధ్యాహ్నం వర్షం రావచ్చు" data-en="Rain likely this afternoon">మధ్యాహ్నం వర్షం రావచ్చు</p>
+          </div>
+          <div class="text-right text-sm"><p class="text-3xl font-bold">28°</p><p class="opacity-80" data-te="మధ్యస్థ నమ్మకం" data-en="Medium confidence">మధ్యస్థ నమ్మకం</p></div>
+        </div>
+        <p class="text-xs opacity-90 mt-2" data-te="👉 ఈరోజు పిచికారీ వాయిదా వేయండి" data-en="👉 Hold off spraying today">👉 ఈరోజు పిచికారీ వాయిదా వేయండి</p>
+      </button>
+
+      <!-- crops glance -->
+      <button onclick="show('crops')" class="w-full text-left bg-white border border-gray-200 rounded-2xl p-4">
+        <p class="text-xs text-gray-500" data-te="ఈ ఖరీఫ్‌లో మీకు తగినవి" data-en="Best for you this Kharif">ఈ ఖరీఫ్‌లో మీకు తగినవి</p>
+        <div class="flex gap-3 mt-2">
+          <div class="flex-1 bg-green-50 rounded-xl p-2 text-center"><div class="text-2xl">🧺</div><p class="text-sm font-semibold mt-1" data-te="పత్తి" data-en="Cotton">పత్తి</p><p class="text-[11px] text-green-700">90%</p></div>
+          <div class="flex-1 bg-green-50 rounded-xl p-2 text-center"><div class="text-2xl">🫛</div><p class="text-sm font-semibold mt-1" data-te="కంది" data-en="Red gram">కంది</p><p class="text-[11px] text-green-700">85%</p></div>
+          <div class="flex-1 bg-yellow-50 rounded-xl p-2 text-center"><div class="text-2xl">🌾</div><p class="text-sm font-semibold mt-1" data-te="వరి" data-en="Paddy">వరి</p><p class="text-[11px] text-yellow-700">నీరు?</p></div>
+        </div>
+      </button>
+
+      <!-- market glance with MSP -->
+      <button onclick="show('market')" class="w-full text-left bg-white border border-gray-200 rounded-2xl p-4">
+        <p class="text-xs text-gray-500" data-te="మార్కెట్ · Warangal" data-en="Market · Warangal">మార్కెట్ · Warangal</p>
+        <div class="flex justify-between mt-1 text-sm items-center">
+          <span data-te="పత్తి" data-en="Cotton">పత్తి</span>
+          <span class="font-semibold text-green-600">₹7,521 <span class="text-[11px] bg-green-100 text-green-700 px-1.5 rounded" data-te="MSP పైన" data-en="above MSP">MSP పైన</span></span>
+        </div>
+      </button>
+
+      <!-- alert -->
+      <button onclick="show('alerts')" class="w-full text-left bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+        ⚠️ <span data-te="రేపు భారీ వర్షం — విత్తనం ఆపండి" data-en="Heavy rain tomorrow — pause sowing">రేపు భారీ వర్షం — విత్తనం ఆపండి</span>
+      </button>
+    </section>
+
+    <!-- ============ WEATHER (honest, probability-first) ============ -->
+    <section id="weather" class="screen bg-gradient-to-b from-sky-500 to-indigo-800 text-white min-h-full p-5">
+      <div class="flex justify-between items-center">
+        <p class="text-lg">భూపాలపల్లి</p>
+        <button class="spk text-2xl" onclick="speak()">🔊</button>
+      </div>
+      <div class="text-center pt-2">
+        <p class="text-6xl font-thin">28°</p>
+        <div class="mt-2 inline-block bg-white/15 backdrop-blur rounded-full px-4 py-1.5 text-sm">
+          🌦️ <span data-te="ఈరోజు వర్షం అవకాశం 60%" data-en="60% chance of rain today">ఈరోజు వర్షం అవకాశం 60%</span>
+        </div>
+        <p class="text-xs opacity-80 mt-2" data-te="⚠️ సూచనలు తప్పు కావచ్చు · మధ్యస్థ నమ్మకం" data-en="⚠️ Forecasts can be wrong · medium confidence">⚠️ సూచనలు తప్పు కావచ్చు · మధ్యస్థ నమ్మకం</p>
+      </div>
+
+      <div class="mt-5 bg-white/15 backdrop-blur rounded-2xl p-3">
+        <p class="text-xs opacity-80 mb-2" data-te="గంటకి వర్ష అవకాశం" data-en="Hourly rain chance">గంటకి వర్ష అవకాశం</p>
+        <div class="flex items-end gap-1 h-16">
+          <div class="flex-1 bg-white/30 rounded-t" style="height:15%"></div><div class="flex-1 bg-white/40 rounded-t" style="height:30%"></div>
+          <div class="flex-1 bg-white/70 rounded-t" style="height:60%"></div><div class="flex-1 bg-white/80 rounded-t" style="height:75%"></div>
+          <div class="flex-1 bg-white/50 rounded-t" style="height:40%"></div><div class="flex-1 bg-white/25 rounded-t" style="height:12%"></div>
+        </div>
+        <p class="text-[11px] opacity-80 mt-1" data-te="గరిష్ఠం 4గం మధ్యాహ్నం (75%)" data-en="Peak 4 PM (75%)">గరిష్ఠం 4గం మధ్యాహ్నం (75%)</p>
+      </div>
+
+      <div class="mt-4 bg-green-500/30 border border-white/20 rounded-2xl p-4 text-sm">
+        🌱 <b data-te="రైతు సలహా:" data-en="Farmer read:">రైతు సలహా:</b>
+        <span data-te="ఈరోజు పిచికారీ / ఎరువులు వద్దు. వర్షం తగ్గాక చేయండి." data-en="No spraying/fertilizer today. Do it after the rain eases.">ఈరోజు పిచికారీ / ఎరువులు వద్దు. వర్షం తగ్గాక చేయండి.</span>
+      </div>
+      <p class="text-[11px] opacity-70 text-center mt-3">మూలం: Open-Meteo (~11km) · నవీకరణ 8 ని. క్రితం</p>
+    </section>
+
+    <!-- ============ CROPS (explainable, water-gated) ============ -->
+    <section id="crops" class="screen p-5 space-y-4">
+      <div class="flex justify-between items-center">
+        <div><h2 class="text-xl font-bold" data-te="ఏం పండించాలి?" data-en="What to grow?">ఏం పండించాలి?</h2>
+        <p class="text-sm text-gray-500" data-te="ఖరీఫ్ · ఎర్ర నేల · బోరు నీరు" data-en="Kharif · red soil · borewell">ఖరీఫ్ · ఎర్ర నేల · బోరు నీరు</p></div>
+        <button class="spk text-2xl" onclick="speak()">🔊</button>
+      </div>
+
+      <!-- Cotton -->
+      <div onclick="show('grow')" class="bg-white border border-gray-200 rounded-2xl p-4 cursor-pointer">
+        <div class="flex justify-between items-start">
+          <div class="flex items-center gap-3"><span class="text-3xl">🧺</span><div><p class="font-bold" data-te="పత్తి / Cotton" data-en="Cotton">పత్తి / Cotton</p></div></div>
+          <span class="bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded-full">90%</span>
+        </div>
+        <div class="flex gap-2 mt-3 flex-wrap text-[11px]">
+          <span class="bg-gray-100 px-2 py-1 rounded-full" data-te="✅ సీజన్ సరిపోతుంది" data-en="✅ season fits">✅ సీజన్ సరిపోతుంది</span>
+          <span class="bg-gray-100 px-2 py-1 rounded-full" data-te="✅ ఎర్ర నేలకు మంచిది" data-en="✅ suits red soil">✅ ఎర్ర నేలకు మంచిది</span>
+          <span class="bg-gray-100 px-2 py-1 rounded-full" data-te="✅ బోరు నీరు చాలు" data-en="✅ borewell is enough">✅ బోరు నీరు చాలు</span>
+          <span class="bg-green-50 text-green-700 px-2 py-1 rounded-full" data-te="📈 ధర MSP పైన" data-en="📈 price above MSP">📈 ధర MSP పైన</span>
+        </div>
+        <p class="text-xs text-indigo-600 mt-3" data-te="ఎలా పండించాలి →" data-en="How to grow →">ఎలా పండించాలి →</p>
+      </div>
+
+      <!-- Red gram -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-4">
+        <div class="flex justify-between items-start">
+          <div class="flex items-center gap-3"><span class="text-3xl">🫛</span><p class="font-bold" data-te="కంది / Red gram" data-en="Red gram">కంది / Red gram</p></div>
+          <span class="bg-green-100 text-green-700 text-xs font-semibold px-2 py-1 rounded-full">85%</span>
+        </div>
+        <div class="flex gap-2 mt-3 flex-wrap text-[11px]">
+          <span class="bg-gray-100 px-2 py-1 rounded-full" data-te="✅ తక్కువ నీరు" data-en="✅ low water">✅ తక్కువ నీరు</span>
+          <span class="bg-gray-100 px-2 py-1 rounded-full" data-te="✅ నేల ఆరోగ్యానికి మంచిది" data-en="✅ good for soil">✅ నేల ఆరోగ్యానికి మంచిది</span>
+        </div>
+      </div>
+
+      <!-- Paddy - GATED -->
+      <div class="bg-white border border-yellow-300 rounded-2xl p-4">
+        <div class="flex justify-between items-start">
+          <div class="flex items-center gap-3"><span class="text-3xl opacity-60">🌾</span><p class="font-bold" data-te="వరి / Paddy" data-en="Paddy">వరి / Paddy</p></div>
+          <span class="bg-yellow-100 text-yellow-700 text-xs font-semibold px-2 py-1 rounded-full" data-te="జాగ్రత్త" data-en="caution">జాగ్రత్త</span>
+        </div>
+        <p class="text-xs text-yellow-800 mt-2" data-te="⚠️ బోరు నీటితో వరి రిస్క్. కాలువ నీరు ఉంటేనే. ప్రభుత్వం కూడా వరి తగ్గించమంటోంది." data-en="⚠️ Paddy is risky on borewell water — only with assured canal water. The state is also asking farmers to reduce paddy.">⚠️ బోరు నీటితో వరి రిస్క్. కాలువ నీరు ఉంటేనే.</p>
+      </div>
+      <p class="text-[11px] text-gray-400 text-center" data-te="నియమాధారిత · ఎందుకో స్పష్టంగా చూపిస్తుంది (బ్లాక్-బాక్స్ కాదు)" data-en="Rule-based · shows WHY (not a black box)">నియమాధారిత · ఎందుకో స్పష్టంగా చూపిస్తుంది</p>
+    </section>
+
+    <!-- ============ GROW (with pest teeth) ============ -->
+    <section id="grow" class="screen p-5 space-y-4">
+      <button onclick="show('crops')" class="text-sm text-indigo-600" data-te="← వెనక్కి" data-en="← Back">← వెనక్కి</button>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3"><span class="text-4xl">🧺</span><div><h2 class="text-xl font-bold" data-te="పత్తి పండించడం" data-en="Growing Cotton">పత్తి పండించడం</h2><p class="text-sm text-gray-500" data-te="ఖరీఫ్ · ~165 రోజులు" data-en="Kharif · ~165 days">ఖరీఫ్ · ~165 రోజులు</p></div></div>
+        <button class="spk text-2xl" onclick="speak()">🔊</button>
+      </div>
+      <div class="space-y-3">
+        <div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm shrink-0">1</div><div><p class="font-semibold" data-te="విత్తనం" data-en="Sowing">విత్తనం</p><p class="text-sm text-gray-600" data-te="జూన్–జూలై, తగినంత తేమ ఉన్నప్పుడు." data-en="June–July, when there's enough moisture.">జూన్–జూలై, తగినంత తేమ ఉన్నప్పుడు.</p></div></div>
+        <div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm shrink-0">2</div><div><p class="font-semibold" data-te="ఎరువులు" data-en="Fertilizer">ఎరువులు</p><p class="text-sm text-gray-600" data-te="ఎర్ర నేల సగటు ప్రకారం (మీ ప్రాంతం బేస్‌లైన్)." data-en="Per red-soil district baseline (SHC not required).">ఎర్ర నేల సగటు ప్రకారం.</p></div></div>
+        <div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm shrink-0">🐛</div><div><p class="font-semibold text-red-700" data-te="గులాబీ పురుగు (ముఖ్యం!)" data-en="Pink bollworm (critical!)">గులాబీ పురుగు (ముఖ్యం!)</p><p class="text-sm text-gray-600" data-te="పూత దశలో ప్రతి వారం పరిశీలించండి. వాతావరణం + దశ ప్రకారం హెచ్చరిక వస్తుంది." data-en="Scout weekly at flowering. You'll get alerts timed to stage + weather.">పూత దశలో ప్రతి వారం పరిశీలించండి.</p></div></div>
+        <div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-green-700 text-white flex items-center justify-center text-sm shrink-0">✓</div><div><p class="font-semibold" data-te="కోత + అమ్మకం" data-en="Harvest & sell">కోత + అమ్మకం</p><button onclick="show('market')" class="text-xs text-indigo-600 mt-1" data-te="మార్కెట్ చూడండి →" data-en="Check market →">మార్కెట్ చూడండి →</button></div></div>
+      </div>
+    </section>
+
+    <!-- ============ MARKET (sell DECISION + MSP) ============ -->
+    <section id="market" class="screen p-5 space-y-4">
+      <div class="flex justify-between items-center">
+        <div><h2 class="text-xl font-bold" data-te="ఎక్కడ అమ్మాలి?" data-en="Where to sell?">ఎక్కడ అమ్మాలి?</h2></div>
+        <button class="spk text-2xl" onclick="speak()">🔊</button>
+      </div>
+
+      <div class="bg-green-600 text-white rounded-2xl p-4">
+        <p class="text-sm opacity-90" data-te="మా సలహా" data-en="Our recommendation">మా సలహా</p>
+        <p class="font-bold text-lg mt-1" data-te="పత్తి → Warangal మార్కెట్" data-en="Cotton → Warangal market">పత్తి → Warangal మార్కెట్</p>
+        <p class="text-sm" data-te="~₹7,521/క్వి · 42 కి.మీ · ఈ వారం అమ్మండి" data-en="~₹7,521/qtl · 42 km · sell this week">~₹7,521/క్వి · 42 కి.మీ · ఈ వారం అమ్మండి</p>
+        <p class="text-xs bg-white/20 rounded px-2 py-1 mt-2 inline-block" data-te="✅ MSP కంటే ఎక్కువ (MSP ₹7,121)" data-en="✅ above MSP (MSP ₹7,121)">✅ MSP కంటే ఎక్కువ</p>
+      </div>
+
+      <div class="bg-white border border-gray-200 rounded-2xl divide-y text-sm">
+        <div class="flex items-center justify-between p-3"><span data-te="పత్తి" data-en="Cotton">పత్తి</span><div class="text-right"><p class="font-bold text-green-600">₹7,521 ▲</p><p class="text-[11px] text-green-600" data-te="MSP పైన" data-en="above MSP">MSP పైన</p></div></div>
+        <div class="flex items-center justify-between p-3"><span data-te="కంది" data-en="Red gram">కంది</span><div class="text-right"><p class="font-bold">₹7,000 —</p><p class="text-[11px] text-gray-400" data-te="MSP దగ్గర" data-en="near MSP">MSP దగ్గర</p></div></div>
+        <div class="flex items-center justify-between p-3"><span data-te="వరి" data-en="Paddy">వరి</span><div class="text-right"><p class="font-bold text-red-500">₹2,150 ▼</p><p class="text-[11px] text-red-500" data-te="⚠️ MSP కంటే తక్కువ!" data-en="⚠️ below MSP!">⚠️ MSP కంటే తక్కువ!</p></div></div>
+      </div>
+      <p class="text-[11px] text-gray-400 text-center" data-te="మూలం: Agmarknet · నివేదిక 13/07 · ₹/క్వింటాల్" data-en="Source: Agmarknet · reported 13/07 · ₹/quintal">మూలం: Agmarknet · నివేదిక 13/07</p>
+    </section>
+
+    <!-- ============ ALERTS ============ -->
+    <section id="alerts" class="screen p-5 space-y-3">
+      <h2 class="text-xl font-bold" data-te="హెచ్చరికలు" data-en="Alerts">హెచ్చరికలు</h2>
+      <div class="bg-white border-l-4 border-sky-500 rounded-r-xl p-3 text-sm"><b data-te="🌧️ రేపు భారీ వర్షం" data-en="🌧️ Heavy rain tomorrow">🌧️ రేపు భారీ వర్షం</b><p class="text-gray-600" data-te="పిచికారీ / నీరు ఆపండి" data-en="Pause spraying / irrigation">పిచికారీ / నీరు ఆపండి</p></div>
+      <div class="bg-white border-l-4 border-green-500 rounded-r-xl p-3 text-sm"><b data-te="🌱 విత్తన సమయం" data-en="🌱 Sowing window open">🌱 విత్తన సమయం</b><p class="text-gray-600" data-te="పత్తికి ఇది మంచి వారం" data-en="Good week for cotton">పత్తికి ఇది మంచి వారం</p></div>
+      <div class="bg-white border-l-4 border-red-500 rounded-r-xl p-3 text-sm"><b data-te="🐛 గులాబీ పురుగు తనిఖీ" data-en="🐛 Pink bollworm scouting due">🐛 గులాబీ పురుగు తనిఖీ</b><p class="text-gray-600" data-te="ఈ వారం పొలం పరిశీలించండి" data-en="Inspect your field this week">ఈ వారం పొలం పరిశీలించండి</p></div>
+      <div class="bg-white border-l-4 border-emerald-600 rounded-r-xl p-3 text-sm"><b data-te="💰 పత్తి ధర MSP దాటింది" data-en="💰 Cotton price crossed MSP">💰 పత్తి ధర MSP దాటింది</b><p class="text-gray-600" data-te="అమ్మడానికి మంచి సమయం" data-en="Good time to sell">అమ్మడానికి మంచి సమయం</p></div>
+      <p class="text-[11px] text-gray-400 text-center" data-te="ముఖ్యమైనవి SMS గా కూడా వస్తాయి (స్మార్ట్‌ఫోన్ అవసరం లేదు)" data-en="Critical ones also sent by SMS (no smartphone needed)">SMS గా కూడా వస్తాయి</p>
+    </section>
+
+  </div>
+
+  <!-- bottom nav -->
+  <div class="bg-white border-t border-gray-200 flex justify-around py-2 text-[11px]">
+    <button onclick="show('home')" data-tab="home" class="tab flex flex-col items-center text-green-700"><span class="text-lg">🏠</span><span data-te="హోమ్" data-en="Home">హోమ్</span></button>
+    <button onclick="show('weather')" data-tab="weather" class="tab flex flex-col items-center text-gray-400"><span class="text-lg">🌦️</span><span data-te="వాతావరణం" data-en="Weather">వాతావరణం</span></button>
+    <button onclick="show('crops')" data-tab="crops" class="tab flex flex-col items-center text-gray-400"><span class="text-lg">🌱</span><span data-te="పంటలు" data-en="Crops">పంటలు</span></button>
+    <button onclick="show('market')" data-tab="market" class="tab flex flex-col items-center text-gray-400"><span class="text-lg">💰</span><span data-te="మార్కెట్" data-en="Market">మార్కెట్</span></button>
+    <button onclick="show('alerts')" data-tab="alerts" class="tab flex flex-col items-center text-gray-400"><span class="text-lg">🔔</span><span data-te="హెచ్చరికలు" data-en="Alerts">హెచ్చరికలు</span></button>
+  </div>
+
+  <!-- voice toast -->
+  <div id="toast" class="hidden absolute bottom-20 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs rounded-full px-4 py-2">🔊 Playing Telugu audio…</div>
+</div>
+
+<!-- side notes -->
+<div class="max-w-sm text-sm text-gray-600 space-y-3 pt-4">
+  <h1 class="text-2xl font-bold text-gray-900">Rythu — Prototype v2</h1>
+  <p class="text-gray-500">Research-backed. Bhupalpally · Kharif · Telugu default.</p>
+  <ul class="list-disc pl-5 space-y-1">
+    <li>Tap <b>English</b> (top-right) → whole app switches language (working i18n).</li>
+    <li><b>Onboarding</b> asks <b>water source</b> (the #1 crop input) — no Aadhaar.</li>
+    <li><b>Weather</b> = honest <b>probability</b> + "forecasts can be wrong" + Open-Meteo source (not "hyperlocal").</li>
+    <li><b>Crops</b> = explainable "because" chips; <b>paddy gated</b> behind water; cotton first.</li>
+    <li><b>Market</b> = a <b>sell decision</b> + <b>MSP red-flag</b> (paddy below MSP).</li>
+    <li><b>🔊</b> = tap-to-hear (voice output, v1 non-negotiable).</li>
+    <li>Top chip: <b>"We sell you nothing"</b> — the commission-free wedge.</li>
+  </ul>
+  <p class="text-xs text-gray-400">Live-verified free data: Open-Meteo (weather) + data.gov.in Agmarknet (mandi). Soil-card = blocked → district baseline.</p>
+</div>
+
+<script>
+  let lang='te';
+  function applyLang(){
+    document.querySelectorAll('[data-te]').forEach(el=>{ el.textContent = el.getAttribute('data-'+lang); });
+    document.getElementById('langBtn').textContent = (lang==='te')?'English':'తెలుగు';
+    document.documentElement.lang = lang;
+  }
+  function toggleLang(){ lang=(lang==='te')?'en':'te'; applyLang(); }
+  function show(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.getElementById('scroller').scrollTop=0;
+    const tab=(id==='grow')?'crops':(id==='onboard')?'home':id;
+    document.querySelectorAll('.tab').forEach(t=>{ const on=t.dataset.tab===tab;
+      t.classList.toggle('text-green-700',on); t.classList.toggle('text-gray-400',!on); });
+  }
+  function pickWater(btn,v){ document.querySelectorAll('.water').forEach(b=>b.classList.remove('border-green-600','bg-green-50'));
+    btn.classList.add('border-green-600','bg-green-50'); }
+  function speak(){ const t=document.getElementById('toast'); t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),1400); }
+  applyLang();
+</script>
+</body>
+</html>

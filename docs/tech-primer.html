@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rythu — Tech Primer (know this before you build)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 leading-relaxed">
+<div class="max-w-3xl mx-auto px-6 py-10">
+
+  <h1 class="text-3xl font-bold text-gray-900">Rythu — Technical Primer</h1>
+  <p class="text-gray-600 mt-2">Every concept you should understand <em>before</em> writing code — plain English + <b>why it matters for this app</b>. Curated to industry best-practice. Don't memorize; understand the mechanism.</p>
+  <p class="text-sm text-gray-400 mt-1">Stack we're targeting: React + TypeScript (Next.js) frontend · Python serverless backend on AWS · rule-based advisory engine.</p>
+
+  <!-- template section -->
+  <div class="space-y-8 mt-8">
+
+  <section>
+    <h2 class="text-xl font-bold text-indigo-700 border-b pb-1">1 · Architecture & how the pieces talk</h2>
+    <dl class="mt-3 space-y-3">
+      <div><dt class="font-semibold">Client–Server</dt><dd class="text-sm text-gray-600">The phone app (client) asks a server for data over the internet. Rythu's app is the client; our AWS backend is the server.</dd></div>
+      <div><dt class="font-semibold">REST API / endpoint</dt><dd class="text-sm text-gray-600">A defined URL the app calls to get/send data (e.g. <code>GET /weather?district=bhupalpally</code>). Each such URL = an "endpoint". The contract between frontend & backend.</dd></div>
+      <div><dt class="font-semibold">JSON</dt><dd class="text-sm text-gray-600">The text format APIs speak. <code>{"tempC":29,"rain":false}</code>. Both React and Python parse it natively.</dd></div>
+      <div><dt class="font-semibold">Hexagonal / Ports & Adapters</dt><dd class="text-sm text-gray-600">Backend design where your core logic doesn't know about DBs or external APIs — it talks to "ports" (interfaces), and "adapters" plug in the real thing. Lets you swap OpenWeather→IMD without touching logic. (Your backend already uses this.)</dd></div>
+      <div><dt class="font-semibold">Monorepo</dt><dd class="text-sm text-gray-600">One repo holding <code>web/</code> + <code>backend/</code> + <code>infra/</code>. Simpler for a 2-person team than juggling repos.</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-bold text-indigo-700 border-b pb-1">2 · Frontend (React + TypeScript)</h2>
+    <dl class="mt-3 space-y-3">
+      <div><dt class="font-semibold">React</dt><dd class="text-sm text-gray-600">A library for building UIs out of reusable <b>components</b> (a WeatherCard, a CropCard). You describe what the UI should look like for given data; React updates the screen.</dd></div>
+      <div><dt class="font-semibold">Component</dt><dd class="text-sm text-gray-600">A self-contained piece of UI (function returning markup). You compose small ones into screens.</dd></div>
+      <div><dt class="font-semibold">Props & State</dt><dd class="text-sm text-gray-600"><b>Props</b> = data passed into a component. <b>State</b> = data that changes over time (e.g. selected crop) and re-renders the UI when it changes.</dd></div>
+      <div><dt class="font-semibold">Hooks (useState, useEffect)</dt><dd class="text-sm text-gray-600">Functions that add state/side-effects to components. <code>useEffect</code> runs code on load (e.g. fetch weather).</dd></div>
+      <div><dt class="font-semibold">TypeScript</dt><dd class="text-sm text-gray-600">JavaScript + types. Catches bugs before runtime (e.g. "temp is a number, not a string"). Industry standard; also what closes your React gap.</dd></div>
+      <div><dt class="font-semibold">Next.js</dt><dd class="text-sm text-gray-600">A React framework: routing, server-rendering, easy deploy. Gives structure so you don't wire everything by hand.</dd></div>
+      <div><dt class="font-semibold">Tailwind CSS + shadcn/ui</dt><dd class="text-sm text-gray-600">Utility CSS + ready-made accessible components. How you get a polished UI/UX without being a designer (this prototype uses Tailwind).</dd></div>
+      <div><dt class="font-semibold">TanStack Query</dt><dd class="text-sm text-gray-600">Handles fetching/caching API data (loading states, refetch, stale data). Don't hand-roll this.</dd></div>
+      <div><dt class="font-semibold">Responsive / mobile-first</dt><dd class="text-sm text-gray-600">UI that works on a small cheap phone first. Farmers aren't on desktops.</dd></div>
+      <div><dt class="font-semibold">i18n / localization</dt><dd class="text-sm text-gray-600">Building the app so all text can switch language. Telugu strings live in files, not hard-coded — critical for this app.</dd></div>
+      <div><dt class="font-semibold">PWA / offline-first</dt><dd class="text-sm text-gray-600">A web app that installs like a native app + works with poor/no connectivity by caching. Big deal for rural users.</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-bold text-indigo-700 border-b pb-1">3 · Backend & cloud (AWS serverless)</h2>
+    <dl class="mt-3 space-y-3">
+      <div><dt class="font-semibold">Serverless / AWS Lambda</dt><dd class="text-sm text-gray-600">Your code runs on-demand without you managing servers; you pay per request. Cheap for a pilot.</dd></div>
+      <div><dt class="font-semibold">API Gateway</dt><dd class="text-sm text-gray-600">The front door that receives the app's HTTP calls and routes them to your Lambdas.</dd></div>
+      <div><dt class="font-semibold">DynamoDB (NoSQL)</dt><dd class="text-sm text-gray-600">A fast key-value/document database. You design around access patterns, not tables-with-joins. Stores users, saved crops, cached data.</dd></div>
+      <div><dt class="font-semibold">Auth / Cognito / JWT</dt><dd class="text-sm text-gray-600">How a farmer logs in and the backend knows who they are. Cognito manages users; it issues a <b>JWT</b> (signed token) the app sends with each request.</dd></div>
+      <div><dt class="font-semibold">Caching & staleness</dt><dd class="text-sm text-gray-600">Store weather/price data briefly so you don't hammer external APIs and it loads fast. Always show "last updated".</dd></div>
+      <div><dt class="font-semibold">Cron / scheduled job (EventBridge)</dt><dd class="text-sm text-gray-600">Runs code on a timer — e.g. pull mandi prices every morning.</dd></div>
+      <div><dt class="font-semibold">Rate limiting</dt><dd class="text-sm text-gray-600">Cap how often a client can call, so one user/bug can't overload it (and to respect free-tier API limits).</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-bold text-indigo-700 border-b pb-1">4 · Data & integrations (the app's fuel)</h2>
+    <dl class="mt-3 space-y-3">
+      <div><dt class="font-semibold">Third-party API</dt><dd class="text-sm text-gray-600">Someone else's data service you call. Weather → <b>IMD / OpenWeather</b>; prices → <b>Agmarknet / e-NAM</b>; soil → <b>Soil Health Card</b>.</dd></div>
+      <div><dt class="font-semibold">API key & secrets</dt><dd class="text-sm text-gray-600">A password for an API. NEVER put it in frontend/GitHub — store in AWS Secrets Manager, use from the backend only.</dd></div>
+      <div><dt class="font-semibold">Geocoding / lat-long</dt><dd class="text-sm text-gray-600">Turning "Bhupalpally" into coordinates that weather APIs need.</dd></div>
+      <div><dt class="font-semibold">Data pipeline / ETL</dt><dd class="text-sm text-gray-600">Fetch → clean → store external data on a schedule so the app reads *your* fast, reliable copy.</dd></div>
+      <div><dt class="font-semibold">Rule-based engine</dt><dd class="text-sm text-gray-600">The crop-recommendation "brain" for v1: explicit <code>if season/soil/rainfall then crops[]</code> rules. Explainable + trustworthy + no ML data needed.</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-bold text-indigo-700 border-b pb-1">5 · Quality, DevOps & shipping</h2>
+    <dl class="mt-3 space-y-3">
+      <div><dt class="font-semibold">Git / branch / PR</dt><dd class="text-sm text-gray-600">Version control. You + brother work on branches, open Pull Requests, review each other before merging to <code>main</code>.</dd></div>
+      <div><dt class="font-semibold">CI/CD (GitHub Actions)</dt><dd class="text-sm text-gray-600">On every push: automatically run tests/lint (CI) and deploy (CD). Keeps <code>main</code> always working.</dd></div>
+      <div><dt class="font-semibold">Testing: unit / integration / e2e</dt><dd class="text-sm text-gray-600">Unit = one function; integration = pieces together (API+DB); e2e = whole flow like a user. Ship with tests, not "it worked once".</dd></div>
+      <div><dt class="font-semibold">Linting / formatting / types</dt><dd class="text-sm text-gray-600">ruff+mypy (Python), ESLint+TypeScript (web). Catches mistakes + keeps code consistent across two people.</dd></div>
+      <div><dt class="font-semibold">Infrastructure as Code (AWS CDK)</dt><dd class="text-sm text-gray-600">Your cloud setup written as code, versioned + repeatable. No clicking in the AWS console.</dd></div>
+      <div><dt class="font-semibold">Environments (dev / prod)</dt><dd class="text-sm text-gray-600">A safe sandbox vs the real thing farmers use. Never test on prod.</dd></div>
+      <div><dt class="font-semibold">Observability (logs / metrics / alarms)</dt><dd class="text-sm text-gray-600">CloudWatch logs + alarms so you know when something breaks in the pilot.</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-bold text-indigo-700 border-b pb-1">6 · Product & UX</h2>
+    <dl class="mt-3 space-y-3">
+      <div><dt class="font-semibold">Wireframe → Prototype → MVP</dt><dd class="text-sm text-gray-600">Sketch → clickable fake-data mockup (what you have now) → smallest real version that helps one farmer.</dd></div>
+      <div><dt class="font-semibold">Accessibility & literacy-first</dt><dd class="text-sm text-gray-600">Big tap targets, icons, minimal text, high contrast, maybe voice. Assume low literacy + Telugu.</dd></div>
+      <div><dt class="font-semibold">Low-bandwidth design</dt><dd class="text-sm text-gray-600">Small payloads, cache aggressively, degrade gracefully offline.</dd></div>
+    </dl>
+  </section>
+
+  <section>
+    <h2 class="text-xl font-bold text-indigo-700 border-b pb-1">7 · Domain terms (agriculture / Telangana)</h2>
+    <dl class="mt-3 space-y-3">
+      <div><dt class="font-semibold">Kharif / Rabi</dt><dd class="text-sm text-gray-600">India's two main cropping seasons — Kharif (monsoon, ~Jun–Oct), Rabi (winter, ~Nov–Mar). Recommendations are season-specific.</dd></div>
+      <div><dt class="font-semibold">Mandi & quintal</dt><dd class="text-sm text-gray-600">Mandi = govt-regulated wholesale market where crops sell. Quintal = 100 kg; prices quoted ₹/quintal.</dd></div>
+      <div><dt class="font-semibold">Agmarknet / e-NAM</dt><dd class="text-sm text-gray-600">Govt platforms publishing daily mandi prices — our market-data source.</dd></div>
+      <div><dt class="font-semibold">IMD</dt><dd class="text-sm text-gray-600">India Meteorological Department — official weather + forecasts.</dd></div>
+      <div><dt class="font-semibold">Soil Health Card</dt><dd class="text-sm text-gray-600">Govt scheme with a farmer's soil nutrient data — feeds crop + fertilizer advice.</dd></div>
+      <div><dt class="font-semibold">Black (regur) soil</dt><dd class="text-sm text-gray-600">Common in Telangana; good for cotton, paddy, gram — factors into recommendations.</dd></div>
+    </dl>
+  </section>
+
+  </div>
+
+  <p class="text-sm text-gray-500 mt-10 border-t pt-4">Learn-by-reverse-engineering path: build the prototype's Weather screen for real first (fetch → cache → display) — it touches API keys, caching, TS types, and a React component end to end. Master that one slice, the rest rhymes.</p>
+</div>
+</body>
+</html>
