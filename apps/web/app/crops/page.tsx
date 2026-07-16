@@ -1,5 +1,7 @@
 import { CROP_GUIDES } from "@/lib/crops";
 import FertilizerCalculator from "@/components/FertilizerCalculator";
+import PestGuide from "@/components/PestGuide";
+import ExpertBridge from "@/components/ExpertBridge";
 
 export const metadata = { title: "పంటలు · Crops — Rythu" };
 
@@ -13,6 +15,8 @@ export default function CropsPage() {
 
       <div className="space-y-3 p-4 pt-6">
         <FertilizerCalculator />
+        <PestGuide />
+        <ExpertBridge />
         <h2 className="px-1 pt-2 text-lg font-bold tracking-tight text-stone-800">పంటల వివరాలు · Crop guide</h2>
         {CROP_GUIDES.map((c) => (
           <details key={c.key} className="card p-4" open={c.key === "paddy"}>
@@ -48,7 +52,7 @@ export default function CropsPage() {
               </ul>
             </div>
 
-            <p className="mt-3 text-xs text-stone-400">
+            <p className="mt-3 text-xs text-stone-500">
               సరైన తేదీలు, మోతాదుల కోసం మీ వ్యవసాయ అధికారి (AEO)ని సంప్రదించండి ·{" "}
               <a href={c.source} target="_blank" rel="noopener noreferrer" className="text-green-700 underline">
                 Source: PJTSAU

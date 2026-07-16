@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Noto_Sans_Telugu } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
 import Welcome from "@/components/Welcome";
+import ServiceWorker from "@/components/ServiceWorker";
+import OfflineBanner from "@/components/OfflineBanner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,13 +39,15 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="te"
       className={`${geistSans.variable} ${notoTelugu.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}
         <BottomNav />
         <Welcome />
+        <OfflineBanner />
+        <ServiceWorker />
       </body>
     </html>
   );
