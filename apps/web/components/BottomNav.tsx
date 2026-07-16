@@ -9,6 +9,7 @@ const TABS = [
   { href: "/", icon: "🌦️", te: "వాతావరణం" },
   { href: "/crops", icon: "🌱", te: "పంటలు" },
   { href: "/schemes", icon: "🏛️", te: "పథకాలు" },
+  { href: "/account", icon: "👤", te: "ఖాతా" },
 ] as const;
 
 export default function BottomNav() {
