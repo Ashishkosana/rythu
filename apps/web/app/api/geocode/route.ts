@@ -34,7 +34,9 @@ async function fromOpenMeteo(q: string): Promise<GeoResult[]> {
 
 export async function GET(request: Request): Promise<Response> {
   const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
-  if (q.length < 2) return Response.json({ results: [] });
+  // Village names are short — bound the query so this can't be abused as an open,
+  // unbounded proxy to Nominatim/Open-Meteo.
+  if (q.length < 2 || q.length > 60) return Response.json({ results: [] });
 
   let results: GeoResult[] = [];
   try {
@@ -50,8 +52,10 @@ export async function GET(request: Request): Promise<Response> {
     }
   }
 
-  return Response.json(
-    { results },
-    { headers: { "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800" } },
-  );
+  // Only cache real hits — don't let empty/garbage queries pin an empty result set.
+  const cacheControl =
+    results.length > 0
+      ? "public, max-age=86400, stale-while-revalidate=604800"
+      : "no-store";
+  return Response.json({ results }, { headers: { "Cache-Control": cacheControl } });
 }

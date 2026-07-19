@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CROP_DOSES, computeForArea, fertilizerFor } from "./agronomy";
+import { BAG_KG, CROP_DOSES, UREA_BAG_KG, computeForArea, fertilizerFor } from "./agronomy";
 
 describe("fertilizerFor — NPK kg → Urea/DAP/MOP", () => {
   it("matches the verified paddy worked example (per acre 48.6:24.3:16.2)", () => {
@@ -34,6 +34,14 @@ describe("fertilizerFor — NPK kg → Urea/DAP/MOP", () => {
     expect(r.ureaKg).toBe(0);
     expect(r.dapKg).toBe(0);
     expect(r.mopKg).toBe(0);
+  });
+
+  it("sizes urea in 45 kg bags and DAP/MOP in 50 kg bags (Indian bag sizes)", () => {
+    expect(UREA_BAG_KG).toBe(45);
+    expect(BAG_KG).toBe(50);
+    const r = fertilizerFor(48.6, 24.3, 16.2);
+    expect(r.ureaBags).toBeCloseTo(Math.round((r.ureaKg / 45) * 10) / 10, 1);
+    expect(r.dapBags).toBeCloseTo(Math.round((r.dapKg / 50) * 10) / 10, 1);
   });
 });
 

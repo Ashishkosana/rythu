@@ -3,8 +3,9 @@
 // cache-first for static assets. Only ok/same-origin responses are cached, and old
 // cache versions are cleaned on activate. Bump CACHE to invalidate everything.
 
-const CACHE = "rythu-v2";
-const APP_SHELL = ["/", "/crops", "/schemes", "/manifest.webmanifest", "/icon-192.png"];
+const CACHE = "rythu-v3";
+const APP_SHELL = ["/", "/crops", "/schemes", "/account", "/offline", "/manifest.webmanifest", "/icon-192.png"];
+const NAV_TIMEOUT_MS = 3500; // don't leave a farmer on a blank screen when the network stalls
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -40,12 +41,33 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // leave cross-origin alone
 
-  // Pages: network-first, fall back to cache, then to the home shell.
+  // Pages: network-first WITH A TIMEOUT (a stalled socket is the common rural case —
+  // fall back to the cached page fast instead of a blank screen). Fallback order:
+  // cached exact page → static /offline → a synthesized offline HTML (always resolves).
   if (req.mode === "navigate") {
     event.respondWith(
-      fetch(req)
-        .then((res) => cachePut(req, res))
-        .catch(() => caches.match(req).then((r) => r || caches.match("/"))),
+      (async () => {
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), NAV_TIMEOUT_MS);
+          try {
+            return cachePut(req, await fetch(req, { signal: ctrl.signal }));
+          } finally {
+            clearTimeout(timer);
+          }
+        } catch {
+          return (
+            (await caches.match(req)) ||
+            (await caches.match("/offline")) ||
+            new Response(
+              "<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>" +
+                "<body style='font-family:system-ui,sans-serif;text-align:center;padding:2rem;color:#1c1917'>" +
+                "📴 మీరు ఆఫ్‌లైన్‌లో ఉన్నారు · You are offline</body>",
+              { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } },
+            )
+          );
+        }
+      })(),
     );
     return;
   }

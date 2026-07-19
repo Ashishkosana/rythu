@@ -36,7 +36,7 @@ export const CROP_DOSES: readonly CropDose[] = [
     splits_te: "P, K మొత్తం దుక్కిలో (basal). N ను 3 సమ భాగాలుగా — నాట్లు, పిలకల దశ (25–30 రోజులు), కంకి దశ (55–60 రోజులు).",
     confidence: "high",
     needsVerification: false,
-    source: "https://www.pjtau.edu.in",
+    source: "https://pjtsau.edu.in",
   },
   {
     key: "cotton",
@@ -104,7 +104,8 @@ const UREA_N = 0.46;
 const DAP_N = 0.18;
 const DAP_P = 0.46;
 const MOP_K = 0.6;
-export const BAG_KG = 50;
+export const UREA_BAG_KG = 45; // Indian urea bags = 45 kg (neem-coated, since 2018)
+export const BAG_KG = 50; // DAP / MOP remain 50 kg
 export const GUNTHA_PER_ACRE = 40;
 
 export interface FertResult {
@@ -130,7 +131,7 @@ export function fertilizerFor(n: number, p: number, k: number): FertResult {
   const nFromDap = dapKg * DAP_N;
   const ureaKg = Math.max(0, n - nFromDap) / UREA_N;
   const round = (x: number) => Math.round(x * 10) / 10;
-  const bags = (x: number) => Math.round((x / BAG_KG) * 10) / 10;
+  const bags = (x: number, bagKg: number) => Math.round((x / bagKg) * 10) / 10;
   return {
     n: round(n),
     p: round(p),
@@ -138,9 +139,9 @@ export function fertilizerFor(n: number, p: number, k: number): FertResult {
     ureaKg: round(ureaKg),
     dapKg: round(dapKg),
     mopKg: round(mopKg),
-    ureaBags: bags(ureaKg),
-    dapBags: bags(dapKg),
-    mopBags: bags(mopKg),
+    ureaBags: bags(ureaKg, UREA_BAG_KG),
+    dapBags: bags(dapKg, BAG_KG),
+    mopBags: bags(mopKg, BAG_KG),
   };
 }
 

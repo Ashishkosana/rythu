@@ -99,6 +99,8 @@ async def handle_request(event: dict[str, Any], provider: WeatherProvider) -> di
     except ProviderError as exc:
         # No cache to fall back on → honest degraded 200, never a raw 500.
         return _response(200, degraded_contract(point, ctx, reason=str(exc)))
+    except Exception as exc:
+        return _response(200, degraded_contract(point, ctx, reason=str(exc)))
 
 
 def build_provider() -> WeatherProvider:

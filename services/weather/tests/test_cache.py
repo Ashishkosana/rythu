@@ -77,3 +77,48 @@ async def test_upstream_failure_without_cache_raises():
     provider = CachedProvider(FailingProvider(), InMemoryCacheStore(), clock=lambda: now)
     with pytest.raises(ProviderError):
         await provider.fetch(POINT)
+
+
+class BrokenStore:
+    """Simulates a DynamoDB store whose reads/writes raise (throttle, AccessDenied, …)."""
+
+    def __init__(self, *, fail_get: bool = False, fail_put: bool = False) -> None:
+        self.fail_get = fail_get
+        self.fail_put = fail_put
+
+    async def get(self, key):
+        if self.fail_get:
+            raise RuntimeError("dynamo throttled")
+        return None
+
+    async def put(self, key, value):
+        if self.fail_put:
+            raise RuntimeError("dynamo write throttled")
+
+
+async def test_store_read_failure_falls_through_to_upstream():
+    now = at(2026, 7, 15, 12)
+    upstream = CountingProvider(_sample(now))
+    provider = CachedProvider(upstream, BrokenStore(fail_get=True), clock=lambda: now)
+    fc = await provider.fetch(POINT)  # get() raises → miss → upstream, no crash
+    assert upstream.calls == 1
+    assert fc.reliability.is_offline_cache is False
+
+
+async def test_store_write_failure_still_returns_fresh_forecast():
+    now = at(2026, 7, 15, 12)
+    upstream = CountingProvider(_sample(now))
+    provider = CachedProvider(upstream, BrokenStore(fail_put=True), clock=lambda: now)
+    fc = await provider.fetch(POINT)  # put() raises but the forecast is already fetched
+    assert fc == _sample(now)
+
+
+async def test_malformed_cache_item_is_treated_as_miss():
+    now = at(2026, 7, 15, 12)
+    store = InMemoryCacheStore()
+    await store.put(cache_key(POINT), {"garbage": True})  # not a valid forecast blob
+    upstream = CountingProvider(_sample(now))
+    provider = CachedProvider(upstream, store, clock=lambda: now)
+    fc = await provider.fetch(POINT)  # deserialize fails → miss → upstream
+    assert upstream.calls == 1
+    assert fc == _sample(now)

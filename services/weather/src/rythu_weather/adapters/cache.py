@@ -69,24 +69,42 @@ class CachedProvider:
 
     async def fetch(self, point: GeoPoint) -> Forecast:
         key = cache_key(point)
-        cached = await self._store.get(key)
+        cached = await self._safe_get(key)  # Forecast | None; a broken cache is just a miss
 
-        if cached is not None:
-            fc = forecast_from_cache(cached)
-            if self._clock() - fc.upstream_fetched_at < self._ttl:
-                return fc  # fresh enough — serve without hitting upstream
+        if cached is not None and self._clock() - cached.upstream_fetched_at < self._ttl:
+            return cached  # fresh enough — serve without hitting upstream
 
         try:
             fresh = await self._upstream.fetch(point)
         except ProviderError:
             if cached is not None:
                 # Upstream down but we have a saved forecast — serve it, honestly flagged.
-                stale = forecast_from_cache(cached)
-                return replace(stale, reliability=replace(stale.reliability, is_offline_cache=True))
+                return replace(cached, reliability=replace(cached.reliability, is_offline_cache=True))
             raise
 
-        await self._store.put(key, forecast_to_cache(fresh))
+        await self._safe_put(key, fresh)
         return fresh
+
+    async def _safe_get(self, key: str) -> Forecast | None:
+        """Read + deserialize the cache. ANY failure (DynamoDB throttle/error, or a
+        malformed/legacy item) is treated as a cache miss — never a 500."""
+        try:
+            item = await self._store.get(key)
+        except Exception:
+            return None
+        if item is None:
+            return None
+        try:
+            return forecast_from_cache(item)
+        except (KeyError, IndexError, TypeError, ValueError):
+            return None
+
+    async def _safe_put(self, key: str, fresh: Forecast) -> None:
+        """Best-effort write — a cache write failure must not fail the request."""
+        try:
+            await self._store.put(key, forecast_to_cache(fresh))
+        except Exception:
+            return
 
 
 @dataclass(frozen=True, slots=True)

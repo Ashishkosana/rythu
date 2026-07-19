@@ -39,10 +39,13 @@ def _water_in_scope(spec: RuleSpec, ctx: FarmerContext) -> bool:
 def _in_season(window: SeasonWindow | None, today: date) -> bool:
     if window is None:
         return True
-    (sm, sd), (em, ed) = window
-    start = date(today.year, sm, sd)
-    end = date(today.year, em, ed)
-    return start <= today <= end
+    # Compare (month, day) tuples directly — avoids Feb-29 date-construction errors and
+    # correctly handles a window that wraps the new year (e.g. Nov→Feb).
+    start, end = window
+    cur = (today.month, today.day)
+    if start <= end:
+        return start <= cur <= end
+    return cur >= start or cur <= end
 
 
 def _build_read(spec: RuleSpec, fired: Fired) -> FarmingRead:

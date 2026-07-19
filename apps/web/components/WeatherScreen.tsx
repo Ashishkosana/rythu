@@ -219,7 +219,10 @@ export default function WeatherScreen({
                           style={{ height: `${Math.max(4, (p / maxProb) * 100)}%` }}
                           title={`${p}%`}
                         />
-                        <span className="text-[11px] text-stone-400">{new Date(h.time_local).getHours()}</span>
+                        {/* Parse the hour from the ISO string (YYYY-MM-DDTHH:..) — using
+                            new Date().getHours() would render the server's UTC hour on SSR
+                            and the device's local hour on the client → hydration mismatch. */}
+                        <span className="text-[11px] text-stone-400">{Number(h.time_local.slice(11, 13))}</span>
                       </div>
                     );
                   })}
