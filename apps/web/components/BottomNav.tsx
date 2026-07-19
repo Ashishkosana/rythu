@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLang } from "@/lib/lang";
 
-// Telugu-first bottom tab bar. Big tap targets + icons for low-literacy users,
-// safe-area padding so it clears the phone's home indicator when installed.
+// Bottom tab bar. Big tap targets + icons for low-literacy users, safe-area padding
+// so it clears the phone's home indicator when installed. Labels follow the app language.
 const TABS = [
-  { href: "/", icon: "🌦️", te: "వాతావరణం" },
-  { href: "/crops", icon: "🌱", te: "పంటలు" },
-  { href: "/schemes", icon: "🏛️", te: "పథకాలు" },
-  { href: "/account", icon: "👤", te: "ఖాతా" },
+  { href: "/", icon: "🌦️", te: "వాతావరణం", en: "Weather" },
+  { href: "/crops", icon: "🌱", te: "పంటలు", en: "Crops" },
+  { href: "/schemes", icon: "🏛️", te: "పథకాలు", en: "Schemes" },
+  { href: "/account", icon: "👤", te: "ఖాతా", en: "Account" },
 ] as const;
 
 export default function BottomNav() {
   const pathname = usePathname();
+  const { lang } = useLang();
   return (
     <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md justify-around border-t border-stone-200/80 bg-white/85 backdrop-blur-xl">
       {TABS.map((t) => {
@@ -34,7 +36,7 @@ export default function BottomNav() {
               {t.icon}
             </span>
             <span className={`text-[13px] ${active ? "font-bold text-green-800" : "text-stone-500"}`}>
-              {t.te}
+              {lang === "te" ? t.te : t.en}
             </span>
           </Link>
         );

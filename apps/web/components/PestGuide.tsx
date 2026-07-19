@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PESTS, type Pest } from "@/lib/pests";
+import { pick, useLang } from "@/lib/lang";
 
 const CROP_FILTERS = [
   { key: "all", te: "అన్నీ" },
@@ -68,6 +69,7 @@ function Field({ label, body, tint }: { label: string; body: string; tint?: stri
 }
 
 export default function PestGuide() {
+  const { lang } = useLang();
   const [crop, setCrop] = useState<string>("all");
   const shown = PESTS.filter((p) => crop === "all" || p.cropKey === crop);
 
@@ -76,8 +78,8 @@ export default function PestGuide() {
       <div className="flex items-center gap-2">
         <span className="text-2xl" aria-hidden>🐛</span>
         <div>
-          <h2 className="text-lg font-bold leading-tight">పురుగులు & తెగుళ్లు</h2>
-          <p className="text-xs text-stone-500">Pest guide · గుర్తించి, జాగ్రత్తగా చర్య</p>
+          <h2 className="text-lg font-bold leading-tight">{pick(lang, "పురుగులు & తెగుళ్లు", "Pests & diseases")}</h2>
+          <p className="text-xs text-stone-500">{pick(lang, "గుర్తించి, జాగ్రత్తగా చర్య", "Identify, then act carefully")}</p>
         </div>
       </div>
 

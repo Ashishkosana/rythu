@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { CROP_DOSES, GUNTHA_PER_ACRE, computeForArea } from "@/lib/agronomy";
 import { speak } from "@/lib/speak";
+import { pick, useLang } from "@/lib/lang";
 
 // Fertilizer calculator: pick crop + area → exact Urea/DAP/MOP bags, from cited
 // PJTSAU/ICAR norms (never company formulas). Deterministic + offline. Honest:
@@ -11,6 +12,7 @@ import { speak } from "@/lib/speak";
 type Unit = "acre" | "guntha";
 
 export default function FertilizerCalculator() {
+  const { lang } = useLang();
   const [cropKey, setCropKey] = useState(CROP_DOSES[0].key);
   const [amount, setAmount] = useState("1");
   const [unit, setUnit] = useState<Unit>("acre");
@@ -37,8 +39,8 @@ export default function FertilizerCalculator() {
       <div className="flex items-center gap-2">
         <span className="text-2xl" aria-hidden>🧮</span>
         <div>
-          <h2 className="text-lg font-bold leading-tight">ఎరువుల లెక్క</h2>
-          <p className="text-xs text-stone-500">Fertilizer calculator · ఎంత వేయాలి?</p>
+          <h2 className="text-lg font-bold leading-tight">{pick(lang, "ఎరువుల లెక్క", "Fertilizer calculator")}</h2>
+          <p className="text-xs text-stone-500">{pick(lang, "ఎంత వేయాలి?", "How much to apply?")}</p>
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import BottomNav from "@/components/BottomNav";
 import Welcome from "@/components/Welcome";
 import ServiceWorker from "@/components/ServiceWorker";
 import OfflineBanner from "@/components/OfflineBanner";
+import { LanguageProvider } from "@/lib/lang";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -43,8 +44,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${notoTelugu.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <BottomNav />
+        <LanguageProvider>
+          {children}
+          <BottomNav />
+        </LanguageProvider>
         <Welcome />
         <OfflineBanner />
         <ServiceWorker />

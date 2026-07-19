@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { FarmingRead, WeatherContract } from "@/lib/types";
 import { speak, weatherSpeech } from "@/lib/speak";
-import { loadLang, saveLang } from "@/lib/prefs";
+import { useLang } from "@/lib/lang";
+import LangToggle from "@/components/LangToggle";
 import { skyTheme } from "@/lib/sky";
 
 type Lang = "te" | "en";
@@ -116,13 +117,7 @@ export default function WeatherScreen({
   locationQuery: string;
   children?: ReactNode;
 }) {
-  const savedLang = useSyncExternalStore(
-    () => () => {},
-    () => loadLang(),
-    () => null,
-  );
-  const [override, setOverride] = useState<Lang | null>(null);
-  const lang: Lang = override ?? savedLang ?? "te";
+  const { lang } = useLang(); // app-wide language
   const t = L[lang];
 
   const today = data.daily[0];
@@ -148,16 +143,7 @@ export default function WeatherScreen({
             <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${sky.chip}`}>
               ✓ {t.sellNothing}
             </span>
-            <button
-              onClick={() => {
-                const next: Lang = lang === "te" ? "en" : "te";
-                saveLang(next);
-                setOverride(next);
-              }}
-              className="h-8 w-8 rounded-full bg-white text-sm font-bold text-green-800"
-            >
-              {lang === "te" ? "A" : "అ"}
-            </button>
+            <LangToggle light />
           </div>
         </div>
 

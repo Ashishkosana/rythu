@@ -1,20 +1,29 @@
+"use client";
+
 // The human fallback: when the app can't help, a farmer should reach a real,
 // FREE expert by voice. Kisan Call Centre (1800-180-1551) + the local Rythu
 // Vedika / AEO. No funnel, no charge — on-brand ("we sell you nothing").
 
+import { pick, useLang } from "@/lib/lang";
+
 export default function ExpertBridge() {
+  const { lang } = useLang();
   return (
     <div className="card p-4">
       <div className="flex items-center gap-2">
         <span className="text-2xl" aria-hidden>👨‍🌾</span>
         <div>
-          <h2 className="text-lg font-bold leading-tight">నిపుణుడితో మాట్లాడండి</h2>
-          <p className="text-xs text-stone-500">Talk to a real expert · ఉచితం</p>
+          <h2 className="text-lg font-bold leading-tight">{pick(lang, "నిపుణుడితో మాట్లాడండి", "Talk to a real expert")}</h2>
+          <p className="text-xs text-stone-500">{pick(lang, "ఉచితం", "Free")}</p>
         </div>
       </div>
 
       <p className="mt-2 text-sm text-stone-600">
-        యాప్‌లో సమాధానం దొరకకపోతే, ఉచిత కిసాన్ కాల్ సెంటర్‌కు ఫోన్ చేయండి — తెలుగులో మాట్లాడవచ్చు.
+        {pick(
+          lang,
+          "యాప్‌లో సమాధానం దొరకకపోతే, ఉచిత కిసాన్ కాల్ సెంటర్‌కు ఫోన్ చేయండి — తెలుగులో మాట్లాడవచ్చు.",
+          "If the app can't help, call the free Kisan Call Centre — you can speak in Telugu.",
+        )}
       </p>
 
       <a
@@ -25,8 +34,11 @@ export default function ExpertBridge() {
       </a>
 
       <p className="mt-3 text-xs leading-relaxed text-stone-500">
-        లేదా మీ గ్రామ వ్యవసాయ విస్తరణ అధికారి (AEO) / రైతు వేదికను సంప్రదించండి. పురుగు కనిపిస్తే{" "}
-        <span className="font-medium text-stone-700">ఫోటో తీసి</span> వారికి చూపించండి.
+        {pick(
+          lang,
+          "లేదా మీ గ్రామ వ్యవసాయ విస్తరణ అధికారి (AEO) / రైతు వేదికను సంప్రదించండి. పురుగు కనిపిస్తే ఫోటో తీసి వారికి చూపించండి.",
+          "Or contact your village Agriculture Officer (AEO) / Rythu Vedika. If you see a pest, take a photo and show them.",
+        )}
       </p>
     </div>
   );
