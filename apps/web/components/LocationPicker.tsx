@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { PILOT_MANDALS } from "@/lib/locations";
 import { formatPlaceLabel, roundCoord, searchPlaces, type GeoResult } from "@/lib/geocode";
 import { savePlace } from "@/lib/prefs";
+import { pick, useLang } from "@/lib/lang";
 
 // Telugu-first location chooser. Three honest paths to a real coordinate:
 //   1. GPS  → the farmer's exact spot (one tap, no typing — best for low literacy)
@@ -14,6 +15,7 @@ import { savePlace } from "@/lib/prefs";
 // server component re-fetches weather for that point.
 
 export default function LocationPicker({ currentPlace }: { currentPlace: string }) {
+  const { lang } = useLang();
   const router = useRouter();
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -37,7 +39,7 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
 
   function useGps() {
     if (!("geolocation" in navigator)) {
-      setMsg("ఈ ఫోన్‌లో GPS అందుబాటులో లేదు · GPS not available");
+      setMsg(pick(lang, "ఈ ఫోన్‌లో GPS అందుబాటులో లేదు", "GPS not available on this phone"));
       return;
     }
     setGpsBusy(true);
@@ -45,11 +47,11 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setGpsBusy(false);
-        go(pos.coords.latitude, pos.coords.longitude, "నా ప్రాంతం · My location");
+        go(pos.coords.latitude, pos.coords.longitude, pick(lang, "నా ప్రాంతం", "My location"));
       },
       () => {
         setGpsBusy(false);
-        setMsg("ప్రాంతం అనుమతి ఇవ్వలేదు · Location permission denied");
+        setMsg(pick(lang, "ప్రాంతం అనుమతి ఇవ్వలేదు", "Location permission denied"));
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     );
@@ -89,7 +91,9 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
           <span aria-hidden>📍</span>
           <span className="truncate font-semibold text-stone-800">{currentPlace}</span>
         </span>
-        <span className="shrink-0 text-sm font-medium text-green-700">{open ? "మూసివేయి" : "మార్చు"}</span>
+        <span className="shrink-0 text-sm font-medium text-green-700">
+          {open ? pick(lang, "మూసివేయి", "Close") : pick(lang, "మార్చు", "Change")}
+        </span>
       </button>
 
       {open && (
@@ -100,20 +104,22 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 font-semibold text-white disabled:opacity-60"
           >
             <span aria-hidden>🧭</span>
-            {gpsBusy ? "వెతుకుతోంది… · Locating…" : "నా ప్రాంతం వాడు · Use my location"}
+            {gpsBusy ? pick(lang, "వెతుకుతోంది…", "Locating…") : pick(lang, "నా ప్రాంతం వాడు", "Use my location")}
           </button>
           {msg && <p className="text-center text-sm text-amber-700">{msg}</p>}
 
           <div>
-            <p className="mb-1 text-xs font-medium text-stone-500">భూపాలపల్లి జిల్లా · Quick pick</p>
+            <p className="mb-1 text-xs font-medium text-stone-500">
+              {pick(lang, "భూపాలపల్లి జిల్లా", "Bhupalpally district")}
+            </p>
             <div className="flex flex-wrap gap-2">
               {PILOT_MANDALS.map((m) => (
                 <button
                   key={m.name_en}
-                  onClick={() => go(m.lat, m.lon, `${m.name_te} · ${m.name_en}`)}
+                  onClick={() => go(m.lat, m.lon, pick(lang, m.name_te, m.name_en))}
                   className="rounded-full border border-green-600 px-3 py-1.5 text-sm text-green-800"
                 >
-                  {m.name_te}
+                  {pick(lang, m.name_te, m.name_en)}
                 </button>
               ))}
             </div>
@@ -123,10 +129,10 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="మీ ఊరు వెతకండి · Search your village"
+              placeholder={pick(lang, "మీ ఊరు వెతకండి", "Search your village")}
               className="w-full rounded-xl border border-stone-300 px-4 py-2.5 outline-none focus:border-green-600"
             />
-            {searching && <p className="mt-1 text-xs text-stone-400">వెతుకుతోంది…</p>}
+            {searching && <p className="mt-1 text-xs text-stone-400">{pick(lang, "వెతుకుతోంది…", "Searching…")}</p>}
             {results.length > 0 && (
               <ul className="mt-1 max-h-56 overflow-auto rounded-xl border border-stone-200">
                 {results.map((r) => (
@@ -145,7 +151,7 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
               </ul>
             )}
             {!searching && query.trim().length >= 2 && results.length === 0 && (
-              <p className="mt-1 text-xs text-stone-400">ఫలితాలు లేవు · No results</p>
+              <p className="mt-1 text-xs text-stone-400">{pick(lang, "ఫలితాలు లేవు", "No results")}</p>
             )}
           </div>
         </div>
