@@ -39,6 +39,9 @@ def _read_json(read: FarmingRead) -> dict[str, Any]:
         "headline_en": read.headline_en,
         "detail_en": read.detail_en,
         "caveat_en": read.caveat_en,
+        "headline_te": read.headline_te,
+        "detail_te": read.detail_te,
+        "caveat_te": read.caveat_te,
         "window_note": read.window_note,
         "sources": list(read.sources),
     }

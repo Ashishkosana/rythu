@@ -30,7 +30,6 @@ const L = {
     adviceFor: "సలహా",
     noAdvice: "ఇప్పుడు ప్రత్యేక హెచ్చరిక ఏమీ లేదు.",
     week: "7 రోజుల వాతావరణం",
-    adviceEnglishNote: "సలహా ప్రస్తుతం ఇంగ్లీష్‌లో (తెలుగు త్వరలో)",
     why: "ఎందుకు?",
     offline: "ఆఫ్‌లైన్ — సేవ్ చేసిన సమాచారం",
     degraded: "వాతావరణ సమాచారం అందుబాటులో లేదు — కాసేపటి తర్వాత చూడండి.",
@@ -46,7 +45,6 @@ const L = {
     adviceFor: "advice",
     noAdvice: "No specific warning right now.",
     week: "7-day outlook",
-    adviceEnglishNote: "Advice is in English for now (Telugu coming)",
     why: "Why?",
     offline: "Offline — showing saved forecast",
     degraded: "Weather data unavailable — please check again shortly.",
@@ -72,6 +70,11 @@ const ACTION_ICON: Record<string, string> = {
 function ReadCard({ read, lang }: { read: FarmingRead; lang: Lang }) {
   const [open, setOpen] = useState(false);
   const sev = SEV_STYLES[read.severity] ?? SEV_STYLES.info;
+  // Show Telugu when the app is in Telugu AND the backend supplied it; else English.
+  const te = (teVal: string | undefined, enVal: string) => (lang === "te" && teVal ? teVal : enVal);
+  const headline = te(read.headline_te, read.headline_en);
+  const detail = te(read.detail_te, read.detail_en);
+  const caveat = te(read.caveat_te, read.caveat_en);
   return (
     <div className="card flex overflow-hidden">
       <div className={`w-1.5 shrink-0 ${sev.bar}`} aria-hidden />
@@ -80,9 +83,9 @@ function ReadCard({ read, lang }: { read: FarmingRead; lang: Lang }) {
           <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg ${sev.tint}`}>
             {ACTION_ICON[read.action] ?? "•"}
           </span>
-          <p className="font-semibold leading-snug text-stone-900">{read.headline_en}</p>
+          <p className="font-semibold leading-snug text-stone-900">{headline}</p>
         </div>
-        {read.detail_en && <p className="mt-2 text-sm leading-relaxed text-stone-500">{read.detail_en}</p>}
+        {detail && <p className="mt-2 text-sm leading-relaxed text-stone-500">{detail}</p>}
         <button
           onClick={() => setOpen((v) => !v)}
           className="mt-2.5 text-sm font-semibold text-green-700"
@@ -91,7 +94,7 @@ function ReadCard({ read, lang }: { read: FarmingRead; lang: Lang }) {
         </button>
         {open && (
           <div className="mt-2 space-y-1.5 rounded-xl bg-stone-50 p-3 text-sm text-stone-600">
-            <p>⚠️ {read.caveat_en}</p>
+            <p>⚠️ {caveat}</p>
             {read.window_note && <p className="text-stone-400">🕑 {read.window_note}</p>}
           </div>
         )}
@@ -245,9 +248,6 @@ export default function WeatherScreen({
               ))}
             </div>
             <div className="space-y-3">
-              {lang === "te" && data.farming_read.length > 0 && (
-                <p className="px-1 text-[11px] text-stone-400">ℹ️ {t.adviceEnglishNote}</p>
-              )}
               {data.farming_read.length === 0 ? (
                 <p className="card p-4 text-sm text-stone-500">✅ {t.noAdvice}</p>
               ) : (

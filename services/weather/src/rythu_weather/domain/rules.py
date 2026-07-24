@@ -136,6 +136,26 @@ def _join_reasons(reasons: list[str]) -> str:
     return text[0].upper() + text[1:]
 
 
+# --- Telugu text helpers (farmer's language; numbers stay in Arabic numerals) --------------
+
+_WEEKDAYS_TE = ("సోమవారం", "మంగళవారం", "బుధవారం", "గురువారం", "శుక్రవారం", "శనివారం", "ఆదివారం")
+
+
+def _rel_day_te(target: date, today: date) -> str:
+    delta = (target - today).days
+    if delta <= 0:
+        return "ఈరోజు"
+    if delta == 1:
+        return "రేపు"
+    return f"{_WEEKDAYS_TE[target.weekday()]} నాడు"
+
+
+def _join_reasons_te(reasons: list[str]) -> str:
+    if len(reasons) <= 2:
+        return " మరియు ".join(reasons)
+    return ", ".join(reasons[:-1]) + f" మరియు {reasons[-1]}"
+
+
 # --- predicates ---------------------------------------------------------------------------
 
 
@@ -154,6 +174,7 @@ def _spray_rain_washoff(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
         return None
     pct = max_present(probs)
     chance = f"{pct}% chance" if pct is not None else "rain likely"
+    chance_te = f"{pct}% అవకాశం" if pct is not None else "వర్షం రావచ్చు"
     return Fired(
         headline_en=(
             f"Rain possible in the next few hours ({chance}) — better to wait so your spray does not wash off."
@@ -161,6 +182,13 @@ def _spray_rain_washoff(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
         detail_en=(
             "Most contact sprays need 2–6 dry hours to bind (systemic up to ~24 h). "
             "Spraying just before rain wastes the chemical and your money."
+        ),
+        headline_te=(
+            f"రాబోయే కొన్ని గంటల్లో వర్షం రావచ్చు ({chance_te}) — పిచికారీ కొట్టుకుపోకుండా కొంచెం ఆగడం మంచిది."
+        ),
+        detail_te=(
+            "చాలా మందులు (contact) బంధించడానికి 2–6 గంటలు పొడి వాతావరణం అవసరం (systemic ~24 గంటల వరకు). "
+            "వర్షానికి ముందు పిచికారీ చేస్తే మందూ, డబ్బూ వృథా."
         ),
         window_note="checked now..now+6h (systemic sprays also need ~24h dry — not verified in v0)",
     )
@@ -180,6 +208,8 @@ def _spray_wind_drift(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
     peak = max_present(winds)
     when = "this morning" if day == ctx.now.date() else "tomorrow morning"
     peak_txt = f" (~{round(peak)} km/h)" if peak is not None else ""
+    when_te = "ఈ ఉదయం" if day == ctx.now.date() else "రేపు ఉదయం"
+    peak_txt_te = f" (~{round(peak)} కి.మీ/గం)" if peak is not None else ""
     return Fired(
         headline_en=(
             f"Too windy {when}{peak_txt} to spray — wait for calm, still air "
@@ -187,6 +217,13 @@ def _spray_wind_drift(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
         ),
         detail_en=(
             "Strong wind blows spray off-target: poor coverage, wasted chemical, and drift onto you or nearby crops."
+        ),
+        headline_te=(
+            f"{when_te}{peak_txt_te} పిచికారీకి గాలి ఎక్కువ — గాలి తగ్గి ప్రశాంతంగా ఉన్నప్పుడు, "
+            "గాలి మీ వెనుక ఉండేలా ఉదయాన్నే కొట్టండి."
+        ),
+        detail_te=(
+            "బలమైన గాలి పిచికారీని లక్ష్యం తప్పిస్తుంది: సరిగా అందదు, మందు వృథా, మీ మీదకో పక్క పంటల మీదకో పడుతుంది."
         ),
         window_note=f"checked 06:00–10:00 on {day.isoformat()}",
     )
@@ -198,12 +235,18 @@ def _irrigate_skip(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
         p = d.precipitation_probability_max
         if s is not None and p is not None and s >= IRRIGATE_SUM_MM and p >= IRRIGATE_PROB:
             when = _rel_day(d.day, ctx.now.date())
+            when_te = _rel_day_te(d.day, ctx.now.date())
             return Fired(
                 headline_en=(
                     f"Good rain likely {when} (≈{round(s)} mm, {p}% chance) — "
                     "you can probably skip watering today and save water and power."
                 ),
                 detail_en="Light rain does not replace a full watering, so this is only for a genuinely good rain.",
+                headline_te=(
+                    f"{when_te} మంచి వర్షం రావచ్చు (≈{round(s)} మి.మీ, {p}% అవకాశం) — "
+                    "ఈరోజు నీరు పెట్టడం మానేసి నీరు, కరెంటు ఆదా చేసుకోవచ్చు."
+                ),
+                detail_te="తక్కువ వర్షం పూర్తి తడికి సరిపోదు, కాబట్టి ఇది నిజంగా మంచి వర్షానికి మాత్రమే.",
                 window_note="checked today and tomorrow (amount AND probability, same day)",
             )
     return None
@@ -224,6 +267,7 @@ def _sow_need_moisture(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
         return None
     pct = max_present(probs)
     pct_txt = f"up to {pct}% chance" if pct is not None else "a low chance"
+    pct_txt_te = f"{pct}% అవకాశం వరకు" if pct is not None else "తక్కువ అవకాశం"
     return Fired(
         headline_en=(
             f"Only light rain expected so far ({pct_txt}) — it may not be enough to sow on. "
@@ -232,6 +276,14 @@ def _sow_need_moisture(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
         detail_en=(
             "Sowing on a false start can fail if seeds dry out; wait for a genuine good rain — "
             "but do not delay past your usual sowing time."
+        ),
+        headline_te=(
+            f"ఇప్పటివరకు తక్కువ వర్షమే కనిపిస్తోంది ({pct_txt_te}) — విత్తడానికి సరిపోకపోవచ్చు. "
+            "నిర్ణయించే ముందు మీ పొలం చూసుకోండి."
+        ),
+        detail_te=(
+            "తడి సరిపోకుండా విత్తితే విత్తనం మొలవక పోవచ్చు; నిజమైన మంచి వర్షం కోసం ఆగండి — "
+            "కానీ మీ మామూలు విత్తే సమయాన్ని దాటవద్దు."
         ),
         window_note="checked next 3 days (largest single day)",
     )
@@ -242,6 +294,7 @@ def _sow_avoid_washout(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
         s = d.precipitation_sum_mm
         if s is not None and s >= SOW_WASHOUT_MM:
             when = _rel_day(d.day, ctx.now.date())
+            when_te = _rel_day_te(d.day, ctx.now.date())
             return Fired(
                 headline_en=(
                     f"Very heavy rain possible {when} (≈{round(s)} mm) — "
@@ -250,6 +303,14 @@ def _sow_avoid_washout(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
                 detail_en=(
                     "Fresh seed can wash out or waterlog. Moderate rain is good for sowing; "
                     "this warns only about very heavy rain."
+                ),
+                headline_te=(
+                    f"{when_te} చాలా భారీ వర్షం రావచ్చు (≈{round(s)} మి.మీ) — "
+                    "అది వెళ్ళి పొలం ఇంకిన తర్వాత విత్తడం సురక్షితం కావచ్చు."
+                ),
+                detail_te=(
+                    "కొత్త విత్తనం కొట్టుకుపోవచ్చు లేదా నీట మునగవచ్చు. మధ్యస్థ వర్షం విత్తడానికి మంచిది; "
+                    "ఇది చాలా భారీ వర్షం గురించి మాత్రమే హెచ్చరిక."
                 ),
                 window_note="checked next 3 days (amount only)",
             )
@@ -269,12 +330,19 @@ def _harvest_paddy(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
         return None
     pct = max_present(d.precipitation_probability_max for d in days)
     chance = f"{pct}% chance" if pct is not None else "rain likely"
+    chance_te = f"{pct}% అవకాశం" if pct is not None else "వర్షం రావచ్చు"
     return Fired(
         headline_en=(
             f"Rain expected soon ({chance}) — if your paddy is already mature, harvest it now and keep the grain dry."
         ),
         detail_en=(
             "Rain on ripe paddy causes shattering, sprouting and mould; harvest on a dry day and keep grain covered."
+        ),
+        headline_te=(
+            f"త్వరలో వర్షం రావచ్చు ({chance_te}) — మీ వరి పండి ఉంటే ఇప్పుడే కోసి, ధాన్యాన్ని పొడిగా ఉంచండి."
+        ),
+        detail_te=(
+            "పండిన వరిపై వర్షం పడితే గింజ రాలడం, మొలకెత్తడం, బూజు వస్తాయి; పొడి రోజున కోసి ధాన్యాన్ని కప్పి ఉంచండి."
         ),
         window_note="checked next 3 days",
     )
@@ -293,12 +361,16 @@ def _fieldwork_storm(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
     if not (storm or rain or gale):
         return None
     reasons: list[str] = []
+    reasons_te: list[str] = []
     if storm:
         reasons.append("thunderstorms")
+        reasons_te.append("ఉరుములు")
     if rain:
         reasons.append("rain")
+        reasons_te.append("వర్షం")
     if gale:
         reasons.append("strong wind")
+        reasons_te.append("బలమైన గాలి")
     return Fired(
         headline_en=(
             f"{_join_reasons(reasons)} possible in the next few hours — "
@@ -306,6 +378,12 @@ def _fieldwork_storm(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
             "if a crop is ready, harvest or secure it and clear drains first."
         ),
         detail_en="Working wet soil compacts it, and open-field lightning is a real danger in the monsoon.",
+        headline_te=(
+            f"రాబోయే కొన్ని గంటల్లో {_join_reasons_te(reasons_te)} రావచ్చు — "
+            "పిచికారీ, దుక్కి వాయిదా వేసి, బయలు పొలాల్లోకి వెళ్లవద్దు; "
+            "పంట సిద్ధంగా ఉంటే కోసి/భద్రపరచి, ముందు కాలువలు శుభ్రం చేయండి."
+        ),
+        detail_te="తడి నేలలో పని చేస్తే అది గట్టిపడుతుంది, రుతుపవనాల్లో బయలు పొలంలో పిడుగు నిజమైన ప్రమాదం.",
         window_note="checked now..now+6h",
     )
 
@@ -320,12 +398,19 @@ def _drainage_heavy_rain(forecast: Forecast, ctx: FarmerContext) -> Fired | None
         rather = p is not None and s >= DRAINAGE_MM_SOFT and p >= DRAINAGE_PROB
         if heavy or rather:
             when = _rel_day(d.day, ctx.now.date())
+            when_te = _rel_day_te(d.day, ctx.now.date())
             chance = f", {p}% chance" if p is not None else ""
+            chance_te = f", {p}% అవకాశం" if p is not None else ""
             return Fired(
                 headline_en=(
                     f"Heavy rain possible {when} (up to ≈{round(s)} mm{chance}) — "
                     "clearing your field drains now is cheap insurance; "
                     "maize and red gram are hurt by even a few hours of standing water."
+                ),
+                headline_te=(
+                    f"{when_te} భారీ వర్షం రావచ్చు (≈{round(s)} మి.మీ వరకు{chance_te}) — "
+                    "ఇప్పుడే పొలం కాలువలు శుభ్రం చేయడం చౌక రక్షణ; "
+                    "మొక్కజొన్న, కందికి కొన్ని గంటల నీరు నిలిచినా నష్టం."
                 ),
                 window_note="checked next 3 days",
             )
@@ -345,7 +430,9 @@ def _chilli_drainage(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
         soft = p is not None and s >= CHILLI_DRAIN_MM_SOFT and p >= CHILLI_DRAIN_PROB
         if hard or soft:
             when = _rel_day(d.day, ctx.now.date())
+            when_te = _rel_day_te(d.day, ctx.now.date())
             chance = f", {p}% chance" if p is not None else ""
+            chance_te = f", {p}% అవకాశం" if p is not None else ""
             return Fired(
                 headline_en=(
                     f"Heavy rain possible {when} (up to ≈{round(s)} mm{chance}) — clear and deepen "
@@ -354,6 +441,14 @@ def _chilli_drainage(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
                 detail_en=(
                     "Chilli is very waterlogging-sensitive. Open drains and low-spot channels, ridge/bed the "
                     "crop, and hold back irrigation before the rain. Low-regret field prep — no spraying."
+                ),
+                headline_te=(
+                    f"{when_te} భారీ వర్షం రావచ్చు (≈{round(s)} మి.మీ వరకు{chance_te}) — ఇప్పుడే పొలం కాలువలు "
+                    "శుభ్రం చేసి లోతు చేయండి; మిర్చి వేర్లు, మొదలు కొన్ని గంటల నీరు నిలిస్తేనే కుళ్ళిపోతాయి."
+                ),
+                detail_te=(
+                    "మిర్చి నీటి నిల్వను తట్టుకోలేదు. కాలువలు, పల్లపు ప్రాంతాల్లో నీటి మార్గాలు తెరిచి, పంటను "
+                    "బోదెలు/మడులపై పెంచి, వర్షానికి ముందు నీరు పెట్టడం ఆపండి. తక్కువ నష్టం ఉన్న పొలం పని — పిచికారీ కాదు."
                 ),
                 window_note="checked next 3 days",
             )
@@ -375,6 +470,7 @@ def _chilli_heat_flowerdrop(forecast: Forecast, ctx: FarmerContext) -> Fired | N
             continue  # rain will cool/wet the field — don't push irrigation into a wet window
         peak = max(ta, tb)
         lead = "Extreme heat" if peak >= CHILLI_HEAT_TMAX_SEVERE else "A hot spell"
+        lead_te = "తీవ్రమైన వేడి" if peak >= CHILLI_HEAT_TMAX_SEVERE else "వేడి రోజులు"
         return Fired(
             headline_en=(
                 f"If your chilli is flowering or setting fruit: {lead.lower()} (~{round(peak)}°C for 2+ days) "
@@ -384,6 +480,15 @@ def _chilli_heat_flowerdrop(forecast: Forecast, ctx: FarmerContext) -> Fired | N
                 "Days above ~35°C (worse with warm nights) shed chilli flowers and young fruit. Water lightly "
                 "at the cooler hours and mulch to keep roots cool. Do NOT flood or water daily — soggy soil "
                 "also drops flowers and rots roots. Heat drop usually recovers on cooling; no spray is needed."
+            ),
+            headline_te=(
+                f"మీ మిర్చి పూత/కాయ దశలో ఉంటే: {lead_te} (~{round(peak)}°C, 2+ రోజులు) రావచ్చు, కొన్ని పూలు "
+                "రాలవచ్చు — ఉదయాన్నే లేదా సాయంత్రం తేలికగా, సమానంగా నీరు పెట్టండి."
+            ),
+            detail_te=(
+                "~35°C పైన రోజులు (వెచ్చని రాత్రులతో మరింత) మిర్చి పూలు, లేత కాయలు రాలుస్తాయి. చల్లని గంటల్లో "
+                "తేలికగా నీరు పెట్టి, వేర్లు చల్లగా ఉంచేలా మల్చ్ వేయండి. రోజూ ముంచెత్తవద్దు — నీరు నిలిచినా పూలు "
+                "రాలి వేర్లు కుళ్ళుతాయి. వేడి తగ్గాక సాధారణంగా కోలుకుంటుంది; పిచికారీ అవసరం లేదు."
             ),
             window_note="checked next 7 days (2+ consecutive hot days)",
         )
@@ -402,6 +507,7 @@ def _chilli_harvest_drying(forecast: Forecast, ctx: FarmerContext) -> Fired | No
         return None
     pct = max_present(d.precipitation_probability_max for d in days)
     chance = f"{pct}% chance" if pct is not None else "rain likely"
+    chance_te = f"{pct}% అవకాశం" if pct is not None else "వర్షం రావచ్చు"
     return Fired(
         headline_en=(
             f"Rain possible in the next 3 days ({chance}) — ONLY if your chilli is already red-ripe and ready, "
@@ -411,6 +517,15 @@ def _chilli_harvest_drying(forecast: Forecast, ctx: FarmerContext) -> Fired | No
             "Telangana chilli is mostly sold sun-dried; rain on ripe fruit and drying stock causes rot, mould "
             "and price loss. Do NOT strip green fruit early — chilli is picked in several rounds. If nothing is "
             "ripe yet, just cover harvested/drying stock."
+        ),
+        headline_te=(
+            f"రాబోయే 3 రోజుల్లో వర్షం రావచ్చు ({chance_te}) — మీ మిర్చి ఎర్రగా పండి సిద్ధంగా ఉంటే మాత్రమే ఇప్పుడు "
+            "కోయండి, కోసిన/ఆరబెట్టిన మిర్చిని కప్పి కుళ్ళు, బూజు రాకుండా చూడండి."
+        ),
+        detail_te=(
+            "తెలంగాణ మిర్చి ఎక్కువగా ఎండబెట్టి అమ్ముతారు; పండిన కాయపై, ఆరబెట్టిన సరుకుపై వర్షం కుళ్ళు, బూజు, ధర "
+            "నష్టం తెస్తుంది. పచ్చి కాయను ముందుగా తీయవద్దు — మిర్చిని కొన్ని సార్లు కోస్తారు. ఏదీ పండకపోతే "
+            "కోసిన/ఆరబెట్టిన సరుకును కప్పి ఉంచండి."
         ),
         window_note="checked next 3 days",
     )
@@ -449,6 +564,15 @@ def _chilli_anthracnose(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
             "Remove and carry away any fruit with sunken dark or water-soaked spots, avoid overhead watering, "
             "and keep good spacing so plants dry faster. This is a reminder to LOOK, not to spray."
         ),
+        headline_te=(
+            "మీ మిర్చి కాయలు కాస్తూ లేదా ఎర్రబడుతుంటే: రాబోయే 1–2 రోజుల్లో వెచ్చని, తేమతో కూడిన తడి వాతావరణం "
+            "రావచ్చు, అది కాయకుళ్ళు (ఆంత్రాక్నోస్) ప్రమాదం పెంచుతుంది — పొలంలో తిరిగి కాయలను పరిశీలించండి."
+        ),
+        detail_te=(
+            "వెచ్చదనం + తేమ + కాయపై తడి కలిసి కాయకుళ్ళు (ఆంత్రాక్నోస్, Colletotrichum) తెస్తాయి. నల్లని లేదా "
+            "నీటిమచ్చల గుంటలున్న కాయలను తీసి దూరంగా పారేయండి, పైనుంచి నీరు పోయడం మానండి, మొక్కల మధ్య దూరం ఉంచి "
+            "త్వరగా ఆరేలా చూడండి. ఇది చూడమని గుర్తు, పిచికారీ కాదు."
+        ),
         window_note="checked next 48h (humid-wet run)",
     )
 
@@ -486,6 +610,14 @@ def _chilli_thrips(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
             "Thrips build up in dry warm weather and curl new growth. Turn over young leaves and check growing "
             "tips. Spraying blind wastes money, breeds resistance and can flare mites — scout first."
         ),
+        headline_te=(
+            "రాబోయే 3 రోజులు వేడి, పొడి, వర్షం లేని వాతావరణం ఉండవచ్చు, ఇది తామర పురుగు ఆకుముడత (మురడ)కు "
+            "అనుకూలం — కొత్త ఆకులు, ముడుచుకున్న చిగుళ్లను చూడండి; ఊహతో పిచికారీ చేయవద్దు."
+        ),
+        detail_te=(
+            "తామర పురుగు పొడి వెచ్చని వాతావరణంలో పెరిగి కొత్త చిగుళ్లను ముడుస్తుంది. లేత ఆకుల కింద, చిగుళ్లను "
+            "పరిశీలించండి. చూడకుండా పిచికారీ చేస్తే డబ్బు వృథా, పురుగు నిరోధకత పెరుగుతుంది, నల్లి పెరగవచ్చు — ముందు పరిశీలించండి."
+        ),
         window_note="checked next 3 days",
     )
 
@@ -505,6 +637,11 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "is NOT a guarantee of dry weather. Watch the sky and let contact sprays dry 2–6 hours "
             "(systemic up to 24 h) before any rain."
         ),
+        caveat_te=(
+            "వర్ష అవకాశం ~11 కి.మీ విస్తీర్ణ ఫోర్‌కాస్ట్ (Open-Meteo) నుండి — ఇది తప్పు కావచ్చు, స్థానిక రుతుపవన "
+            "జల్లులను తరచూ మిస్ అవుతుంది: హెచ్చరిక ఒక అవకాశం, ఖచ్చితం కాదు; హెచ్చరిక లేకపోవడం పొడి వాతావరణానికి "
+            "హామీ కాదు. ఆకాశం చూస్తూ contact మందులు 2–6 గంటలు (systemic 24 గంటల వరకు) ఆరనివ్వండి."
+        ),
         sources=(
             "https://sprayers101.com/rainfastness-pesticide/",
             "https://mausam.imd.gov.in/responsive/servicesMetAgriculture.php",
@@ -523,6 +660,11 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "~11 km forecast can miss local gusts, so also look at your field: if leaves and branches "
             "move a lot, it is too windy. (Wind limit to be confirmed with the district agriculture office.)"
         ),
+        caveat_te=(
+            "ఇది గాలిని మాత్రమే చూస్తుంది; 'గాలి ఓకే' అంటే 'పిచికారీ సురక్షితం' కాదు — కొన్ని గంటల్లో వర్షం "
+            "వచ్చే అవకాశం ఉంటే కొట్టవద్దు, మధ్యాహ్నపు వేడి తప్పించండి, మందు లేబుల్ పాటించండి. ~11 కి.మీ ఫోర్‌కాస్ట్ "
+            "స్థానిక గాలులను మిస్ కావచ్చు — ఆకులు, కొమ్మలు బాగా ఊగితే గాలి ఎక్కువ. (గాలి పరిమితిని జిల్లా వ్యవసాయ శాఖతో నిర్ధారించాలి.)"
+        ),
         sources=("https://mausam.imd.gov.in/responsive/servicesMetAgriculture.php",),
         predicate=_spray_wind_drift,
     ),
@@ -537,6 +679,10 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "One-day skip only. The ~11 km forecast can be wrong and often over- or under-calls local "
             "showers. Check the top ~5 cm of soil before your next watering, and water anyway at a "
             "sensitive stage (flowering, boll-fill, grain-fill) or if the crop wilts."
+        ),
+        caveat_te=(
+            "ఒక్క రోజు మాత్రమే మానేయండి. ~11 కి.మీ ఫోర్‌కాస్ట్ తప్పు కావచ్చు, స్థానిక జల్లులను ఎక్కువ/తక్కువ "
+            "చూపవచ్చు. తర్వాతి తడికి ముందు నేల పై ~5 సెం.మీ చూసుకోండి; పూత, కాయ, గింజ నింపే దశలో లేదా పంట వాడిపోతే నీరు పెట్టండి."
         ),
         sources=("https://extension.colostate.edu/resource/irrigation-scheduling-the-water-balance-approach/",),
         predicate=_irrigate_skip,
@@ -553,6 +699,11 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "Forecasts can be wrong; this ~11 km area model often MISSES local monsoon showers, so real "
             "rain may exceed what is shown — treat as a chance, not a promise. Check your own field: if "
             "soil is moist to a hand's depth you may be able to sow. Do NOT delay past your usual sowing time."
+        ),
+        caveat_te=(
+            "ఫోర్‌కాస్ట్‌లు తప్పు కావచ్చు; ఈ ~11 కి.మీ నమూనా స్థానిక రుతుపవన జల్లులను తరచూ మిస్ అవుతుంది, "
+            "కాబట్టి చూపిన దానికంటే ఎక్కువ వర్షం కురవచ్చు — దీన్ని అవకాశంగా చూడండి, హామీగా కాదు. మీ పొలం చూసుకోండి: "
+            "చేయి లోతు వరకు నేల తడిగా ఉంటే విత్తవచ్చు. మీ మామూలు విత్తే సమయాన్ని దాటవద్దు."
         ),
         sources=(
             "https://www.siasat.com/telangana-pjtsau-advises-farmers-to-utilise-rains-for-sowing-dry-crops-2688339/",
@@ -574,6 +725,11 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "heavy rain that could wash out fresh seed. Do NOT delay past the monsoon-moisture window on "
             "this alone — sowing on ridges/furrows for drainage is often better than waiting."
         ),
+        caveat_te=(
+            "సూచనగా కాదు, జాగ్రత్తగా చూపండి. ~11 కి.మీ ఫోర్‌కాస్ట్ స్థానిక జల్లులను మిస్ కావచ్చు — ఇది అవకాశం, "
+            "ఖచ్చితం కాదు. మధ్యస్థ వర్షం విత్తడానికి మంచిది; ఇది కొత్త విత్తనాన్ని కొట్టుకుపోయేంత చాలా భారీ వర్షం "
+            "గురించి మాత్రమే. దీని ఆధారంగా రుతుపవన తేమ సమయాన్ని దాటవద్దు — బోదెలు/సాళ్లలో విత్తడం ఆగడం కంటే మేలు."
+        ),
         sources=(
             "https://www.siasat.com/telangana-pjtsau-advises-farmers-to-utilise-rains-for-sowing-dry-crops-2688339/",
         ),
@@ -593,6 +749,11 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "it lowers yield and cracks grain in milling. Rain chance is from a ~11 km model that can miss "
             "or over-call local showers."
         ),
+        caveat_te=(
+            "మీ వరి పండి కోతకు సిద్ధంగా ఉంటేనే — గింజ గట్టిపడి, కంకిలో ~80% పసుపు/గడ్డి రంగుకు మారి (~20–25% తేమ). "
+            "ఇంకా పచ్చిగా/పాలుగా ఉంటే ముందుగా కోయవద్దు: దిగుబడి తగ్గి, మిల్లింగ్‌లో గింజ పగులుతుంది. వర్ష అవకాశం "
+            "~11 కి.మీ నమూనా — స్థానిక జల్లులను మిస్/ఎక్కువ చూపవచ్చు."
+        ),
         sources=(
             "http://www.knowledgebank.irri.org/step-by-step-production/postharvest/harvesting",
             "http://www.knowledgebank.irri.org/training/fact-sheets/item/when-to-harvest-fact-sheet",
@@ -611,6 +772,12 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "stop work and take shelter immediately; do not stand under a lone tree or near metal. The "
             "'delay' applies to postponable operations — a harvest-ready crop should be secured, not left."
         ),
+        caveat_te=(
+            "ఇది విస్తీర్ణ (~11 కి.మీ) ఫోర్‌కాస్ట్ నుండి వచ్చే అవకాశం — అకస్మాత్ స్థానిక తుఫానులను మిస్ కావచ్చు; "
+            "హెచ్చరిక లేకపోవడం సురక్షితానికి హామీ కాదు. నల్లని మేఘాలు కనిపిస్తే లేదా ఉరుము వినిపిస్తే వెంటనే పని ఆపి "
+            "ఆశ్రయం తీసుకోండి; ఒంటరి చెట్టు కింద లేదా లోహం దగ్గర నిలబడవద్దు. 'వాయిదా' వాయిదా వేయగలిగే పనులకే — "
+            "కోతకు సిద్ధమైన పంటను భద్రపరచాలి, వదిలేయకూడదు."
+        ),
         sources=("https://mausam.imd.gov.in/responsive/servicesMetAgriculture.php",),
         predicate=_fieldwork_storm,
     ),
@@ -625,6 +792,10 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "Rain is a probability, not a certainty. Source: Open-Meteo (~11 km); forecasts can be wrong "
             "and may miss local showers, so also watch the sky. Clearing drains is low-cost insurance even "
             "if the rain turns out lighter than forecast."
+        ),
+        caveat_te=(
+            "వర్షం ఒక అవకాశం, ఖచ్చితం కాదు. మూలం: Open-Meteo (~11 కి.మీ); ఫోర్‌కాస్ట్‌లు తప్పు కావచ్చు, స్థానిక "
+            "జల్లులను మిస్ కావచ్చు, కాబట్టి ఆకాశం కూడా చూడండి. వర్షం తక్కువైనా కాలువలు శుభ్రం చేయడం చౌక రక్షణ."
         ),
         sources=(
             "https://www.siasat.com/telangana-pjtsau-advises-farmers-to-utilise-rains-for-sowing-dry-crops-2688339/",
@@ -643,6 +814,11 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "Rain is a CHANCE from a ~11 km model (Open-Meteo) that can be wrong and often MISSES local "
             "downpours — a warning is a probability, not a promise, and NO warning is not a guarantee of dry "
             "weather, so watch your own field and low spots. This is a drainage/field-prep alert, not a spray order."
+        ),
+        caveat_te=(
+            "వర్షం ~11 కి.మీ నమూనా (Open-Meteo) నుండి వచ్చే అవకాశం — తప్పు కావచ్చు, స్థానిక భారీ వర్షాలను తరచూ "
+            "మిస్ అవుతుంది; హెచ్చరిక అవకాశమే, హెచ్చరిక లేకపోవడం పొడి వాతావరణానికి హామీ కాదు, కాబట్టి మీ పొలం, పల్లపు "
+            "ప్రాంతాలు చూసుకోండి. ఇది పారుదల/పొలం సిద్ధం చేసే హెచ్చరిక, పిచికారీ ఆదేశం కాదు."
         ),
         sources=(
             "https://pnwhandbooks.org/plantdisease/host-disease/pepper-capsicum-spp-phytophthora-blight-root-crown-rot",
@@ -663,6 +839,11 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "wrong; a 'no-rain' forecast can miss local showers, so check the topsoil before watering and do NOT "
             "over-irrigate. Heat cutoffs (35/40°C) to be vetted with the Bhupalpally agri office / PJTSAU."
         ),
+        caveat_te=(
+            "పంట పూత/కాయ దశలో ఉంటేనే వర్తిస్తుంది. ఉష్ణోగ్రతలు ~11 కి.మీ నమూనా నుండి — తప్పు కావచ్చు; 'వర్షం లేదు' "
+            "అనే ఫోర్‌కాస్ట్ స్థానిక జల్లులను మిస్ కావచ్చు, కాబట్టి నీరు పెట్టే ముందు నేల పై పొర చూసుకోండి, అతిగా నీరు "
+            "పెట్టవద్దు. వేడి పరిమితులు (35/40°C) భూపాలపల్లి వ్యవసాయ శాఖ/PJTSAUతో నిర్ధారించాలి."
+        ),
         sources=(
             "https://data.longpaddock.qld.gov.au/static/dcap/DCAP3/DCAP%203__3%20Capsicum%20CTT%20Final.pdf",
             "https://agritech.tnau.ac.in/horticulture/horti_vegetables_chilli.html",
@@ -681,6 +862,11 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "Only helps if fruit is actually mature — do not harvest immature fruit on a forecast. Rain chance is "
             "from a ~11 km model (no leaf-wetness sensor) that can over- or under-call local showers. Watch the "
             "sky and keep drying chillies covered whenever rain threatens."
+        ),
+        caveat_te=(
+            "కాయ నిజంగా పండి ఉంటేనే ఉపయోగం — ఫోర్‌కాస్ట్ చూసి పచ్చి కాయ కోయవద్దు. వర్ష అవకాశం ~11 కి.మీ నమూనా "
+            "(ఆకు-తడి సెన్సార్ లేదు) — స్థానిక జల్లులను ఎక్కువ/తక్కువ చూపవచ్చు. ఆకాశం చూస్తూ, వర్షం వచ్చే ప్రమాదం "
+            "ఉన్నప్పుడల్లా ఆరబెట్టిన మిర్చిని కప్పి ఉంచండి."
         ),
         sources=(
             "https://agritech.tnau.ac.in/crop_protection/chilli_diseases_2.html",
@@ -702,6 +888,11 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "forecast is NOT a guarantee of dry leaves. Decide by what you see, and ask your KVK/agri officer before "
             "any treatment."
         ),
+        caveat_te=(
+            "పంట కాస్తూ/పండుతున్నప్పుడే వర్తిస్తుంది. మేము ఆకు తడిని కొలవలేము, మీ మొక్కలను చూడలేము; తేమ, వర్షం "
+            "~11 కి.మీ నమూనా నుండి — తప్పు కావచ్చు, స్థానిక జల్లులను తరచూ మిస్ అవుతుంది, కాబట్టి నిశ్శబ్ద ఫోర్‌కాస్ట్ "
+            "పొడి ఆకులకు హామీ కాదు. మీరు చూసిన దాన్ని బట్టి నిర్ణయించండి, ఏ మందుకైనా ముందు మీ KVK/వ్యవసాయ అధికారిని అడగండి."
+        ),
         sources=(
             "https://pmc.ncbi.nlm.nih.gov/articles/PMC5044472/",
             "https://agritech.tnau.ac.in/crop_protection/chilli_diseases_2.html",
@@ -721,6 +912,12 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "black thrips also spreads in HUMID/RAINY weather, so NO alert here does NOT mean your crop is safe — "
             "keep checking in wet weather too. Curl can be thrips, mites or virus; take a leaf to your KVK officer "
             "before using any product."
+        ),
+        caveat_te=(
+            "ఇది ~11 కి.మీ నమూనా నుండి పరిశీలన (SCOUT) సూచన (స్థానిక జల్లులను మిస్ చేస్తుంది), పిచికారీ ఆదేశం లేదా "
+            "రోగనిర్ధారణ కాదు. స్థానిక నల్ల తామర పురుగు తేమ/వర్ష వాతావరణంలోనూ వ్యాపిస్తుంది, కాబట్టి ఇక్కడ హెచ్చరిక "
+            "లేకపోవడం మీ పంట సురక్షితమని కాదు — తడి వాతావరణంలోనూ చూస్తూ ఉండండి. ముడత తామర, నల్లి లేదా వైరస్ కావచ్చు; "
+            "ఏ మందు వాడే ముందు ఆకును KVK అధికారికి చూపించండి."
         ),
         sources=(
             "https://agritech.tnau.ac.in/crop_protection/crop_prot_crop_insect-veg_chillies_pest&disease.html",

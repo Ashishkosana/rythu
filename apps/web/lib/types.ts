@@ -12,6 +12,9 @@ export interface FarmingRead {
   headline_en: string;
   detail_en: string;
   caveat_en: string;
+  headline_te?: string;
+  detail_te?: string;
+  caveat_te?: string;
   window_note: string | null;
   sources: string[];
 }

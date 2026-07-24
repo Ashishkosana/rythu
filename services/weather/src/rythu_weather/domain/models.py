@@ -162,6 +162,10 @@ class FarmingRead:
     headline_en: str
     caveat_en: str
     detail_en: str = ""
+    # Telugu translations (farmer's language). Empty = fall back to the English above.
+    headline_te: str = ""
+    caveat_te: str = ""
+    detail_te: str = ""
     window_note: str | None = None
     sources: tuple[str, ...] = ()
     rule_confidence: str = "medium"
@@ -210,6 +214,8 @@ class Fired:
 
     headline_en: str
     detail_en: str = ""
+    headline_te: str = ""  # empty = frontend falls back to headline_en
+    detail_te: str = ""
     window_note: str | None = None
 
 
@@ -237,6 +243,7 @@ class RuleSpec:
     caveat_en: str
     sources: tuple[str, ...]
     predicate: Predicate
+    caveat_te: str = ""  # empty = frontend falls back to caveat_en
     applies_to_crops: frozenset[Crop] | None = None
     excludes_crops: frozenset[Crop] = field(default_factory=frozenset)
     applies_to_water_sources: frozenset[WaterSource] | None = None
