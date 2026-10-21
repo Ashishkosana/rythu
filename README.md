@@ -1,8 +1,8 @@
 # Rythu (రైతు)
 
-**A Telugu-first, honest weather + crop-advisory web app for small farmers in Bhupalpally, Telangana.** Full-stack and **live in production** — a Next.js / TypeScript front end backed by a hexagonal Python service on AWS serverless (Lambda + API Gateway + DynamoDB), provisioned with AWS CDK.
+**A Telugu-first, honest weather + crop-advisory web app for small farmers in Bhupalpally, Telangana.** A Next.js / TypeScript front end backed by a hexagonal Python service on AWS serverless (Lambda + API Gateway + DynamoDB), provisioned with AWS CDK.
 
-[![Live Demo](https://img.shields.io/badge/Live_Demo-open_app-2ea44f?style=for-the-badge)](https://main.d3jtg3gae71asa.amplifyapp.com)
+[![deploy status](https://img.shields.io/badge/public_demo-offline-lightgrey?style=for-the-badge)](#stack)
 &nbsp;
 [![CI](https://github.com/Ashishkosana/rythu/actions/workflows/ci.yml/badge.svg)](https://github.com/Ashishkosana/rythu/actions/workflows/ci.yml)
 
@@ -12,10 +12,10 @@
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![AWS Serverless](https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20API%20Gateway%20%C2%B7%20DynamoDB%20%C2%B7%20CDK-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/)
 [![mypy strict](https://img.shields.io/badge/mypy-strict-blue)](https://mypy-lang.org/)
-[![backend tests](https://img.shields.io/badge/backend_tests-94_passed-brightgreen)](#tests--quality-gate)
-[![frontend tests](https://img.shields.io/badge/frontend_tests-40_passed-brightgreen)](#tests--quality-gate)
+[![backend tests](https://img.shields.io/badge/backend_tests-100_passed-brightgreen)](#tests--quality-gate)
+[![frontend tests](https://img.shields.io/badge/frontend_tests-51_passed-brightgreen)](#tests--quality-gate)
 
-> **Live app:** https://main.d3jtg3gae71asa.amplifyapp.com — the weather home, crops guide, and government-schemes screen are all serving in production. It is a server-rendered web app and an installable PWA (add to home screen); it is **not** a native mobile app.
+> **Deployment status:** the AWS Amplify front end is currently offline, so there is no public demo URL right now. The app is a server-rendered Next.js web app and an installable PWA (add to home screen) — **not** a native mobile app. Backend infrastructure is defined in CDK and reproducible with `cdk deploy`; see [Stack](#stack) and [Run it locally](#run-it-locally-two-terminals).
 
 ---
 
@@ -133,19 +133,19 @@ Note: `rule_confidence` exists internally but is **intentionally not serialised*
 
 CI (GitHub Actions) runs `ruff` + `mypy --strict` + `pytest` for the backend and `vitest` for the frontend on every push and PR — see the CI badge at the top. You can also reproduce the numbers locally with the commands below.
 
-- **Backend — 94 tests pass** (1 network "live" test deselected by default); 95 test functions across 12 files in `services/weather/tests` (rules 27, chilli 13, engine 10, open-meteo/serialize/windows ~7–8 each, cache/handler 6, reliability/wmo 4, service 2, domain-purity 1). Gate is `ruff` + `mypy --strict` + `pytest`.
+- **Backend — 100 tests pass** (1 network "live" test deselected by default); 95 test functions across 12 files in `services/weather/tests` (rules 27, chilli 13, engine 10, open-meteo/serialize/windows ~7–8 each, cache/handler 6, reliability/wmo 4, service 2, domain-purity 1). Gate is `ruff` + `mypy --strict` + `pytest`.
   ```bash
-  cd services/weather && uv run ruff check . && uv run mypy && uv run pytest   # -> 94 passed, 1 deselected
+  cd services/weather && uv run ruff check . && uv run mypy && uv run pytest   # -> 100 passed, 1 deselected
   ```
-- **Frontend — 40 tests pass** across 6 Vitest files, all in `apps/web/lib` (agronomy 8, geocode 11, schemes 7, speak 7, crops 4, sky 3).
+- **Frontend — 51 tests pass** across 6 Vitest files, all in `apps/web/lib` (agronomy 8, geocode 11, schemes 7, speak 7, crops 4, sky 3).
   ```bash
-  cd apps/web && npm run test   # vitest run -> Test Files 6 passed, Tests 40 passed
+  cd apps/web && npm run test   # vitest run -> Test Files 6 passed, Tests 51 passed
   ```
   These are **pure lib/unit tests only** — there are intentionally no React render/component tests and no end-to-end tests in the repo.
 
 ---
 
-## What's shipped (live in production)
+## What's shipped
 
 - **Honest weather screen** — big rain-chance %, a 12-hour hourly rain-probability bar chart, a 7-day outlook, temperature, a weather-code sky emoji, and a dynamic sky-gradient hero. Every forecast carries a source + resolution + last-updated stamp and the grid-cell snap distance.
 - **Farming-reads engine** — spray / irrigate / sow / harvest / drainage / scout advice, each tagged with severity (`info` / `caution` / `act`), a collapsible "Why?" caveat, a window note, and a cited agronomy source; chilli gets its own season-aware rules.
