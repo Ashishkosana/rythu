@@ -36,7 +36,7 @@
 | **Frontend** | Next.js 16 (App Router, SSR, `force-dynamic`), React 19, TypeScript 5, Tailwind CSS v4, Vitest for unit tests. Deployed on **AWS Amplify** (SSR hosting). |
 | **Backend** | Python 3.12 `rythu-weather` service in **hexagonal / ports-and-adapters** layout (`domain` / `adapters` / `app`). Single runtime dependency: `httpx`. Weather data from [Open-Meteo](https://open-meteo.com) (free, no API key). Packaged with `uv` + `hatchling`. |
 | **Infra** | **AWS CDK** (Python): API Gateway v2 **HTTP API → Lambda** (`rythu_weather.app.handler`, 256 MB, 15 s, reserved concurrency 10) **→ DynamoDB** forecast cache (`PAY_PER_REQUEST`, TTL auto-expire). |
-| **Quality gate** | Backend: `ruff` + `mypy --strict` + `pytest`. Frontend: `vitest`. |
+| **Quality gate** | Backend: `ruff` + `mypy --strict` + `pytest`. Frontend: `eslint` + `tsc` + `vitest` + `next build` + production `npm audit`. |
 
 The front end reaches the backend through a `WEATHER_API` value inlined at build time in `next.config.ts` (a workaround for Amplify not exposing env vars to the SSR runtime), with a `http://127.0.0.1:8001` fallback for local dev.
 
@@ -131,7 +131,7 @@ Note: `rule_confidence` exists internally but is **intentionally not serialised*
 
 ## Tests & quality gate
 
-CI (GitHub Actions) runs `ruff` + `mypy --strict` + `pytest` for the backend and `vitest` for the frontend on every push and PR — see the CI badge at the top. You can also reproduce the numbers locally with the commands below.
+CI (GitHub Actions) runs `ruff` + `mypy --strict` + `pytest` for the backend and `eslint` + `tsc` + `vitest` + `next build` + a production-dependency `npm audit` for the frontend on every push and PR — see the CI badge at the top. You can also reproduce the numbers locally with the commands below.
 
 - **Backend — 100 tests pass** (1 network "live" test deselected by default); 95 test functions across 12 files in `services/weather/tests` (rules 27, chilli 13, engine 10, open-meteo/serialize/windows ~7–8 each, cache/handler 6, reliability/wmo 4, service 2, domain-purity 1). Gate is `ruff` + `mypy --strict` + `pytest`.
   ```bash
@@ -181,7 +181,7 @@ uv sync --extra dev
 uv run python -m rythu_weather.app.local_server 8001      # http://127.0.0.1:8001/weather
 ```
 
-**2. Frontend** (Node 20+):
+**2. Frontend** (Node 22+; CI uses 22). If `npm install` of a *new* dependency fails with `Cannot read properties of null (reading 'edgesOut')`, that is an npm 10 peer-resolution bug — run it once with `npx npm@11 install`.
 
 ```bash
 cd apps/web

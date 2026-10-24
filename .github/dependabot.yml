@@ -1,10 +1,26 @@
 version: 2
+# One entry per manifest location: Dependabot only looks in the exact `directory`
+# given, so a root-level entry never sees services/weather, infra or apps/web.
 updates:
-  - package-ecosystem: "pip"
-    directory: "/"
+  - package-ecosystem: "uv" # services/weather is managed by uv (pyproject.toml + uv.lock)
+    directory: "/services/weather"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+  - package-ecosystem: "pip" # CDK app — pyproject.toml only, no lockfile
+    directory: "/infra"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+  - package-ecosystem: "npm"
+    directory: "/apps/web"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # Next and its ESLint config must move together (versions are pinned in lockstep).
+      next:
+        patterns: ["next", "eslint-config-next"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
