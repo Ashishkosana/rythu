@@ -7,6 +7,8 @@ import type { WeatherContract } from "@/lib/types";
 
 // The Python weather backend. Server-side fetch, so the phone only ever talks to Next.
 const API = process.env.WEATHER_API ?? "http://127.0.0.1:8001";
+// Cap the wait on the backend (Lambda allows 15 s). Past this, the honest fallback is better than a hang.
+const WEATHER_TIMEOUT_MS = 10_000;
 const CROPS = new Set(["chilli", "cotton", "paddy", "red_gram", "maize"]);
 // Mirror the backend WaterSource enum — validate so we never emit a self-inflicted 400.
 const WATERS = new Set(["canal_lift", "tank", "borewell", "rainfed"]);
@@ -45,20 +47,28 @@ export default async function Page({
   const locationQuery = loc.toString();
 
   let data: WeatherContract | null = null;
+  // Sent to the backend, which echoes it as X-Request-Id and stamps it on its own log lines,
+  // so one id finds this failure on both sides.
+  const requestId = crypto.randomUUID();
   try {
     const params = new URLSearchParams({ crop, water });
     if (hasCoords) {
       params.set("lat", String(lat));
       params.set("lon", String(lon));
     }
-    const res = await fetch(`${API}/weather?${params.toString()}`, { cache: "no-store" });
+    const res = await fetch(`${API}/weather?${params.toString()}`, {
+      cache: "no-store",
+      headers: { "X-Request-Id": requestId },
+      signal: AbortSignal.timeout(WEATHER_TIMEOUT_MS),
+    });
     // Any HTTP error (400/429/5xx) must route to the honest fallback, NOT render as a
     // forecast — otherwise the error body slips past and crashes the weather screen.
     if (!res.ok) throw new Error(`weather API ${res.status}`);
     const body = (await res.json()) as WeatherContract;
     if (!Array.isArray(body?.daily)) throw new Error("malformed weather response");
     data = body;
-  } catch {
+  } catch (err) {
+    console.error(JSON.stringify({ event: "weather.fetch_failed", request_id: requestId, error: String(err) }));
     data = null;
   }
 

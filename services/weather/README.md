@@ -43,6 +43,25 @@ uv run ruff check . && uv run mypy && uv run pytest
 uv run pytest -m live       # the one network test (hits Open-Meteo)
 ```
 
+## Configuration & logs
+
+All settings are environment variables, parsed and validated once at startup in
+`app/settings.py` (a bad value fails the cold start, naming the variable):
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `RYTHU_CACHE_TABLE` | unset (no cache) | DynamoDB forecast-cache table |
+| `RYTHU_OPEN_METEO_TIMEOUT_S` | `4` | total deadline for one Open-Meteo fetch, (0, 60] |
+| `RYTHU_LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
+
+Logs are one JSON object per line on stdout (`rythu_weather/observability.py`). Every request
+gets a correlation id — the caller's `X-Request-Id` if it is safe, else API Gateway's request id,
+else a new one — stamped on every line and returned as the `X-Request-Id` response header.
+Events: `weather.request` (one summary per request: status, outcome, latency, ~11 km cell),
+`weather.degraded`, `weather.unhandled_error` (with traceback), `upstream.open_meteo`,
+`cache.result` (`hit` / `miss` / `refreshed` / `stale_served` / `miss_upstream_failed`), and
+`cache.read_failed` / `cache.write_failed` / `cache.item_malformed`. Raw coordinates are never logged.
+
 ## Status
 
 v0 slice complete: domain + rules + live Open-Meteo adapter, verified end-to-end.

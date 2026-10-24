@@ -15,6 +15,8 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from rythu_weather.app.handler import build_provider, handle_request
+from rythu_weather.app.settings import get_settings
+from rythu_weather.observability import configure_logging
 
 
 class _WeatherRequestHandler(BaseHTTPRequestHandler):
@@ -26,7 +28,7 @@ class _WeatherRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(b'{"error":"not found"}')
             return
         query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
-        event: dict[str, Any] = {"queryStringParameters": query}
+        event: dict[str, Any] = {"queryStringParameters": query, "headers": dict(self.headers.items())}
         resp = asyncio.run(handle_request(event, build_provider()))
         body = str(resp["body"]).encode("utf-8")
         self.send_response(int(resp["statusCode"]))
@@ -36,10 +38,11 @@ class _WeatherRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def log_message(self, format: str, *args: Any) -> None:
-        pass  # keep the console quiet
+        pass  # access lines are replaced by the structured weather.request log
 
 
 def main(host: str = "127.0.0.1", port: int = 8001) -> None:
+    configure_logging(get_settings().log_level)
     print(f"Rythu weather dev server → http://{host}:{port}/weather?crop=cotton&water=rainfed")
     ThreadingHTTPServer((host, port), _WeatherRequestHandler).serve_forever()
 
