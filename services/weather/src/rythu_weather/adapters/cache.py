@@ -7,6 +7,10 @@ Two jobs:
 
 The cache stores the RAW provider forecast (pre rule-engine), so one entry serves all crops.
 Storage is behind a small ``CacheStore`` port: an in-memory fake for tests, DynamoDB in prod.
+
+Entries are per 0.1° cell (~11 km, the model's own resolution), fetched at the cell centre, so
+upstream calls scale with the number of cells farmers are in — not with the number of farmers.
+The per-farmer pin and snap distance are re-applied per request in ``app.service``.
 """
 
 from __future__ import annotations
@@ -25,9 +29,15 @@ from rythu_weather.observability import log_event
 _log = logging.getLogger(__name__)
 
 
+def cell_center(point: GeoPoint) -> GeoPoint:
+    """Centre of the 0.1° (~11 km) cell containing ``point``."""
+    return GeoPoint(round(point.lat, 1), round(point.lon, 1))
+
+
 def cache_key(point: GeoPoint) -> str:
-    """Grid-rounded key so nearby pins share a cache entry (the model is ~11 km anyway)."""
-    return f"{round(point.lat, 2)},{round(point.lon, 2)}"
+    """Cell key, e.g. ``"18.4,79.9"`` — every pin in the same ~11 km cell shares one entry."""
+    c = cell_center(point)
+    return f"{c.lat:.1f},{c.lon:.1f}"
 
 
 class CacheStore(Protocol):
@@ -94,7 +104,8 @@ class CachedProvider:
                 cached = None  # too old to show even offline — behave exactly like a miss
 
         try:
-            fresh = await self._upstream.fetch(point)
+            # Ask for the cell centre, not this farmer's pin: the entry is shared by the whole cell.
+            fresh = await self._upstream.fetch(cell_center(point))
         except ProviderError:
             if cached is not None:
                 # Upstream down but we have a saved forecast — serve it, honestly flagged.

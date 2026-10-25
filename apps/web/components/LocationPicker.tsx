@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { PILOT_MANDALS } from "@/lib/locations";
 import { formatPlaceLabel, roundCoord, searchPlaces, type GeoResult } from "@/lib/geocode";
 import { savePlace } from "@/lib/prefs";
+import { COVERAGE_MESSAGE, inCoverage } from "@/lib/coverage";
 import { pick, useLang } from "@/lib/lang";
 
 // Telugu-first location chooser. Three honest paths to a real coordinate:
@@ -47,7 +48,13 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setGpsBusy(false);
-        go(pos.coords.latitude, pos.coords.longitude, pick(lang, "నా ప్రాంతం", "My location"));
+        const { latitude, longitude } = pos.coords;
+        if (!inCoverage(latitude, longitude)) {
+          // Don't navigate or save: the saved village stays usable for when they're back home.
+          setMsg(pick(lang, COVERAGE_MESSAGE.te, COVERAGE_MESSAGE.en));
+          return;
+        }
+        go(latitude, longitude, pick(lang, "నా ప్రాంతం", "My location"));
       },
       () => {
         setGpsBusy(false);

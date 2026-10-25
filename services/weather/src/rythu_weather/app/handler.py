@@ -53,8 +53,18 @@ _CACHEABLE = "public, max-age=300"
 _NOT_CACHEABLE = "no-store"
 
 
+# Rythu's rules, crop doses and schemes are Telangana-specific, so the API serves Telangana plus a
+# border margin. Keep in sync with apps/web/lib/coverage.ts.
+COVERAGE_LAT = (15.7, 20.0)
+COVERAGE_LON = (77.1, 81.5)
+
+
 class BadRequest(ValueError):
-    """A malformed client request → HTTP 400."""
+    """A client request we won't serve → HTTP 400 with a stable machine-readable ``code``."""
+
+    def __init__(self, message: str, code: str = "bad_request") -> None:
+        super().__init__(message)
+        self.code = code
 
 
 def _query(event: dict[str, Any]) -> dict[str, str]:
@@ -89,6 +99,8 @@ def _parse_point(q: dict[str, str]) -> GeoPoint:
         raise BadRequest("lat and lon must be numbers") from exc
     if not (-90.0 <= point.lat <= 90.0 and -180.0 <= point.lon <= 180.0):
         raise BadRequest("lat/lon out of range")
+    if not (COVERAGE_LAT[0] <= point.lat <= COVERAGE_LAT[1] and COVERAGE_LON[0] <= point.lon <= COVERAGE_LON[1]):
+        raise BadRequest("Rythu currently covers Telangana only", code="outside_coverage")
     return point
 
 
@@ -139,8 +151,9 @@ async def _handle(
         point = _parse_point(q)
         ctx = _parse_context(q, now)
     except BadRequest as exc:
-        return _response(400, {"error": str(exc)}, request_id=request_id, cacheable=True), {
-            "outcome": "bad_request",
+        body = {"error": str(exc), "code": exc.code}
+        return _response(400, body, request_id=request_id, cacheable=True), {
+            "outcome": exc.code,
             "error": str(exc),
         }
 

@@ -165,3 +165,24 @@ def test_build_provider_uses_settings():
     assert plain._timeout == 2.0  # type: ignore[attr-defined]
     cached = build_provider(Settings(cache_table="t"))
     assert type(cached).__name__ == "CachedProvider"
+
+
+# --- S2d: coverage = Telangana + border ------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("lat", "lon"),
+    [("18.44", "79.86"), ("17.385", "78.4867"), ("19.92", "78.53"), ("15.85", "78.0"), ("16.5", "80.6")],
+)
+async def test_points_in_telangana_and_its_border_are_served(lat, lon):
+    resp = await handle_request({"queryStringParameters": {"lat": lat, "lon": lon}}, FakeProvider(_FC))
+    assert resp["statusCode"] == 200
+
+
+@pytest.mark.parametrize(("lat", "lon"), [("40.71", "-74.0"), ("13.08", "80.27"), ("19.07", "72.88"), ("21.0", "79.0")])
+async def test_points_outside_coverage_get_a_clear_400(lat, lon):
+    resp = await handle_request({"queryStringParameters": {"lat": lat, "lon": lon}}, FakeProvider(_FC))
+    assert resp["statusCode"] == 400
+    body = _body(resp)
+    assert body["code"] == "outside_coverage"
+    assert "Telangana" in body["error"]

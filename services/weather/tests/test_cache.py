@@ -245,3 +245,27 @@ async def test_expired_copy_is_replaced_when_upstream_is_up(caplog):
     assert upstream.calls == 1 and fc.upstream_fetched_at == now
     [expired] = [r for r in caplog.records if r.getMessage() == "cache.expired"]
     assert expired.fields["age_s"] == 2 * 86400
+
+
+# --- S2d: ~11 km cells, fetched at the cell centre --------------------------------------------
+
+
+def test_cache_cell_matches_the_models_resolution():
+    a, b = GeoPoint(18.4412, 79.8629), GeoPoint(18.4489, 79.8571)  # ~1 km apart
+    assert cache_key(a) == cache_key(b) == "18.4,79.9"
+    assert cache_key(GeoPoint(18.0, 80.0)) == "18.0,80.0"  # stable formatting
+    assert cache_key(GeoPoint(18.56, 79.86)) != cache_key(a)  # next cell north
+
+
+async def test_upstream_is_asked_for_the_cell_centre_not_the_first_farmers_pin():
+    now = at(2026, 7, 15, 12)
+    seen: list[GeoPoint] = []
+
+    class Recording(CountingProvider):
+        async def fetch(self, point):
+            seen.append(point)
+            return await super().fetch(point)
+
+    store = InMemoryCacheStore()
+    await CachedProvider(Recording(_sample(now)), store, clock=lambda: now).fetch(GeoPoint(18.4412, 79.8629))
+    assert seen == [GeoPoint(18.4, 79.9)]

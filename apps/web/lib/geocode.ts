@@ -4,6 +4,8 @@
 // to Open-Meteo. The pure normalizers + helpers here are unit-tested in
 // geocode.test.ts; only the tiny fetch wrapper touches the network.
 
+import { inCoverage } from "./coverage";
+
 export interface GeoResult {
   id: number;
   name: string;
@@ -27,6 +29,11 @@ export function isValidCoord(lat: number, lon: number): boolean {
     lon >= -180 &&
     lon <= 180
   );
+}
+
+/** Drop places outside Rythu's coverage, so a farmer can't pick a village we'd refuse. */
+export function withinCoverage<T extends Pick<GeoResult, "lat" | "lon">>(results: T[]): T[] {
+  return results.filter((r) => inCoverage(r.lat, r.lon));
 }
 
 /** "Regonda, Bhupalpally" — name + district when the district differs from the name. */
