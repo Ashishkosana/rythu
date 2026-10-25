@@ -208,7 +208,7 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | ⭐ S2a–d | Truthfulness: future-only "today" · drop past days · enforce cache expiry · 0.1° cells + Telangana bbox | yes — hero = next-12-h max; saved copy ≤ 6 h; coverage lat 15.7–20.0 / lon 77.1–81.5 | **done** |
 | S3 | FastAPI transport + `/v1/weather`, `/healthz` (golden test vs. old serializer) | none (dev server now FastAPI; `/docs`) | **done** |
 | S4 | OpenAPI → generated TS types + CI drift check | none | **done** |
-| S5 | Repository ports + Table Storage adapter, Azurite contract tests | none | planned |
+| S5 | Repository ports + Table Storage adapter, Azurite contract tests | none (AWS still on DynamoDB) | **done** |
 | ⭐ S6 | Azure foundation: Bicep, Function App, App Insights, Key Vault, budget, OIDC, deploy to dev | none (AWS live) | planned — needs allowed regions |
 | ⭐ S7 | Pre-warm timer, cell registry, global upstream budget | faster; ≤ 30 min staleness | planned |
 | ⭐ S8a | Client data layer behind a flag (TanStack Query, IndexedDB, on-device age) | none while off | planned |

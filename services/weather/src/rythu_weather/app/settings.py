@@ -6,16 +6,23 @@ Adapters receive plain values from here; they never read ``os.environ`` themselv
 
 Variables (all optional):
 
-* ``RYTHU_CACHE_TABLE`` — DynamoDB table for the forecast cache; unset = no cache.
+* ``RYTHU_CACHE_TABLE`` — DynamoDB table for the forecast cache (AWS).
+* ``RYTHU_AZURE_TABLES_CONNECTION_STRING`` — Azure Table Storage connection string for the forecast
+  cache (Azure; Azurite locally). SECRET: never logged, never in ``repr``. In Azure it comes from a
+  Key Vault reference (S6).
+* ``RYTHU_AZURE_FORECAST_TABLE`` — table name for the Azure forecast cache (default ``forecast``).
 * ``RYTHU_OPEN_METEO_TIMEOUT_S`` — total deadline for one Open-Meteo fetch (default 4).
 * ``RYTHU_LOG_LEVEL`` — ``DEBUG`` / ``INFO`` / ``WARNING`` / ``ERROR`` (default ``INFO``).
+
+At most one cache backend may be configured; neither means no cache.
 """
 
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 
 _LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR"})
@@ -23,11 +30,17 @@ _LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR"})
 # (Next.js server, then the phone) has its own budget on top of this.
 DEFAULT_OPEN_METEO_TIMEOUT_S = 4.0
 DEFAULT_LOG_LEVEL = "INFO"
+DEFAULT_AZURE_FORECAST_TABLE = "forecast"
+# Azure table names: 3–63 alphanumerics, starting with a letter.
+_AZURE_TABLE_NAME = re.compile(r"[A-Za-z][A-Za-z0-9]{2,62}")
 
 
 @dataclass(frozen=True, slots=True)
 class Settings:
     cache_table: str | None = None
+    # repr=False: a connection string carries the account key and must never reach a log line.
+    azure_tables_connection_string: str | None = field(default=None, repr=False)
+    azure_forecast_table: str = DEFAULT_AZURE_FORECAST_TABLE
     open_meteo_timeout_s: float = DEFAULT_OPEN_METEO_TIMEOUT_S
     log_level: str = DEFAULT_LOG_LEVEL
 
@@ -39,8 +52,19 @@ class Settings:
         level = e.get("RYTHU_LOG_LEVEL", DEFAULT_LOG_LEVEL).strip().upper()
         if level not in _LOG_LEVELS:
             raise ValueError(f"RYTHU_LOG_LEVEL must be one of {sorted(_LOG_LEVELS)}, got {level!r}")
+        dynamo = e.get("RYTHU_CACHE_TABLE") or None
+        azure = (e.get("RYTHU_AZURE_TABLES_CONNECTION_STRING") or "").strip() or None
+        if dynamo and azure:
+            raise ValueError("set RYTHU_CACHE_TABLE (DynamoDB) or RYTHU_AZURE_TABLES_CONNECTION_STRING, not both")
+        table = (e.get("RYTHU_AZURE_FORECAST_TABLE") or DEFAULT_AZURE_FORECAST_TABLE).strip()
+        if not _AZURE_TABLE_NAME.fullmatch(table):
+            raise ValueError(
+                f"RYTHU_AZURE_FORECAST_TABLE must be 3-63 letters/digits starting with a letter, got {table!r}"
+            )
         return cls(
-            cache_table=e.get("RYTHU_CACHE_TABLE") or None,
+            cache_table=dynamo,
+            azure_tables_connection_string=azure,
+            azure_forecast_table=table,
             open_meteo_timeout_s=timeout,
             log_level=level,
         )

@@ -5,6 +5,8 @@ description = "Rythu weather service — honest Open-Meteo forecast + farming-re
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "aiohttp>=3.14.5",
+    "azure-data-tables>=12.7.0",
     "fastapi>=0.143.0",
     "httpx>=0.27",
 ]

@@ -44,6 +44,9 @@ uv run python -m rythu_weather.app.local_server 8001
 # Quality gate:
 uv run ruff check . && uv run mypy && uv run pytest
 uv run pytest -m live       # the one network test (hits Open-Meteo)
+
+# Table Storage tests run against Azurite (skipped if it isn't running; CI requires it):
+npx azurite@3.37.0 azurite-table --inMemoryPersistence --tableHost 127.0.0.1 --tablePort 10002
 ```
 
 ## Layers
@@ -53,7 +56,7 @@ api/          FastAPI transport — /v1/weather, /healthz, OpenAPI; Pydantic sch
 app/          handler.py (Lambda transport) · weather_request.py (shared parse → validate → answer → log)
               service.py (use case) · serialize.py (THE wire shape) · composition.py (wiring) · settings.py
 domain/       pure rules, windows, models — no I/O, no clock, no logging (enforced by test_domain_purity)
-adapters/     Open-Meteo HTTP, read-through cache (DynamoDB), fakes
+adapters/     Open-Meteo HTTP, read-through cache (DynamoDB · Azure Table Storage), fakes
 ```
 
 Both transports are thin adapters over `app.weather_request.answer_weather`, so they cannot drift;
@@ -68,9 +71,13 @@ All settings are environment variables, parsed and validated once at startup in
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `RYTHU_CACHE_TABLE` | unset (no cache) | DynamoDB forecast-cache table |
+| `RYTHU_CACHE_TABLE` | unset | DynamoDB forecast-cache table (AWS) |
+| `RYTHU_AZURE_TABLES_CONNECTION_STRING` | unset | Azure Table Storage forecast cache (Azure / Azurite). **Secret** — never logged or in `repr` |
+| `RYTHU_AZURE_FORECAST_TABLE` | `forecast` | table name for the Azure cache |
 | `RYTHU_OPEN_METEO_TIMEOUT_S` | `4` | total deadline for one Open-Meteo fetch, (0, 60] |
 | `RYTHU_LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
+
+At most one cache backend may be set (both = startup error); neither = no cache.
 
 Logs are one JSON object per line on stdout (`rythu_weather/observability.py`). Every request
 gets a correlation id — the caller's `X-Request-Id` if it is safe, else API Gateway's request id,

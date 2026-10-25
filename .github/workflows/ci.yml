@@ -12,6 +12,15 @@ jobs:
     defaults:
       run:
         working-directory: services/weather
+    # Azurite = Microsoft's Storage emulator, so the Table Storage cache adapter is tested against
+    # the real protocol. Pinned to the same version the tests document for local runs.
+    services:
+      azurite:
+        image: mcr.microsoft.com/azure-storage/azurite:3.37.0
+        ports:
+          - 10002:10002
+    env:
+      RYTHU_REQUIRE_AZURITE: "1" # missing emulator = failed build, never a silent skip
     steps:
       - uses: actions/checkout@v4
       - name: Install uv

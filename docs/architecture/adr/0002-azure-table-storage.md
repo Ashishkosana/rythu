@@ -19,6 +19,8 @@ enforced in code (`expiresAt`) plus a cleanup job; optimistic concurrency via ET
 ## Consequences
 - ➕ Near-zero cost; no extra region risk; emulated locally and in CI by Azurite.
 - ➖ No secondary indexes, no native TTL, transactions only within one partition.
+- ➖ 64 KiB per property: the forecast payload is stored gzip-compressed as binary (7-day ≈ 37 KiB as a
+  UTF-16 string, 16-day ≈ 84 KiB — over the limit; compressed ≈ 1–2 KiB). Measured in S5.
 - Revisit (Postgres) when cross-user queries are needed — e.g. an extension-officer dashboard or analytics.
 
 References: Kleppmann, *Designing Data-Intensive Applications* ch. 2–3 (model by access pattern); DeCandia et al., *Dynamo* and Chang et al., *Bigtable* (partition + sort-key design).
