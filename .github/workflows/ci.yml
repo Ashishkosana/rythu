@@ -36,6 +36,18 @@ jobs:
       - name: Tests (pytest)
         run: uv run pytest
 
+  infra:
+    name: infra · bicep build + lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The runner image ships the Azure CLI; `az bicep` fetches the Bicep compiler on first use.
+      # Compiles and lints only — no Azure login, nothing is deployed.
+      - name: Build (compile to ARM)
+        run: az bicep build --file infra/azure/main.bicep --stdout > /dev/null
+      - name: Lint
+        run: az bicep lint --file infra/azure/main.bicep
+
   frontend:
     name: frontend · lint + tsc + vitest + build
     runs-on: ubuntu-latest
