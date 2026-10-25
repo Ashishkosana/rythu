@@ -1,0 +1,750 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Rythu API",
+    "description": "Honest weather + farming advice for Telangana farmers.",
+    "version": "1"
+  },
+  "paths": {
+    "/v1/weather": {
+      "get": {
+        "tags": [
+          "weather"
+        ],
+        "summary": "Forecast and farming reads for a point",
+        "operationId": "weather_v1_weather_get",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Decimal degrees. Give lat and lon together, or neither (defaults to Bhupalpally). Telangana + border only.",
+              "title": "Lat"
+            },
+            "description": "Decimal degrees. Give lat and lon together, or neither (defaults to Bhupalpally). Telangana + border only."
+          },
+          {
+            "name": "lon",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Decimal degrees. See lat.",
+              "title": "Lon"
+            },
+            "description": "Decimal degrees. See lat."
+          },
+          {
+            "name": "crop",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One of: cotton, paddy, red_gram, maize, chilli. Omit for crop-independent reads only.",
+              "title": "Crop"
+            },
+            "description": "One of: cotton, paddy, red_gram, maize, chilli. Omit for crop-independent reads only."
+          },
+          {
+            "name": "water",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One of: canal_lift, tank, borewell, rainfed. Default rainfed.",
+              "title": "Water"
+            },
+            "description": "One of: canal_lift, tank, borewell, rainfed. Default rainfed."
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128}).",
+              "title": "X-Request-Id"
+            },
+            "description": "Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128})."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Forecast + farming reads, or an honest degraded answer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherContract"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed request, or outside coverage (code=outside_coverage).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "tags": [
+          "ops"
+        ],
+        "summary": "Liveness: the process is up",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Coords": {
+        "properties": {
+          "requested": {
+            "$ref": "#/components/schemas/LatLon",
+            "description": "The farmer's pin."
+          },
+          "returned": {
+            "$ref": "#/components/schemas/LatLon",
+            "description": "The model grid point that answered."
+          },
+          "elevation_m": {
+            "type": "number",
+            "title": "Elevation M"
+          },
+          "snap_distance_km": {
+            "type": "number",
+            "title": "Snap Distance Km",
+            "description": "Distance from the farmer's pin to the grid point."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "requested",
+          "returned",
+          "elevation_m",
+          "snap_distance_km"
+        ],
+        "title": "Coords"
+      },
+      "Crop": {
+        "type": "string",
+        "enum": [
+          "cotton",
+          "paddy",
+          "red_gram",
+          "maize",
+          "chilli"
+        ],
+        "title": "Crop",
+        "description": "The pilot crop set for Bhupalpally Kharif."
+      },
+      "DailyOut": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date",
+            "description": "Local calendar date, YYYY-MM-DD. Never earlier than today."
+          },
+          "precipitation_probability_max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precipitation Probability Max"
+          },
+          "precipitation_sum_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precipitation Sum Mm"
+          },
+          "temperature_max_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature Max C"
+          },
+          "temperature_min_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature Min C"
+          },
+          "wind_speed_max_kmh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wind Speed Max Kmh"
+          },
+          "weather_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weather Code"
+          },
+          "category": {
+            "$ref": "#/components/schemas/WMOCategory"
+          },
+          "emoji": {
+            "type": "string",
+            "title": "Emoji"
+          },
+          "farm_note": {
+            "type": "string",
+            "title": "Farm Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "precipitation_probability_max",
+          "precipitation_sum_mm",
+          "temperature_max_c",
+          "temperature_min_c",
+          "wind_speed_max_kmh",
+          "weather_code",
+          "category",
+          "emoji",
+          "farm_note"
+        ],
+        "title": "DailyOut"
+      },
+      "ErrorBody": {
+        "properties": {
+          "error": {
+            "type": "string",
+            "title": "Error"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "bad_request",
+              "outside_coverage"
+            ],
+            "title": "Code"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error",
+          "code"
+        ],
+        "title": "ErrorBody",
+        "description": "400 body. ``code`` is stable and machine-readable; ``error`` is for humans/logs."
+      },
+      "FarmAction": {
+        "type": "string",
+        "enum": [
+          "spray",
+          "irrigate",
+          "sow",
+          "harvest",
+          "fieldwork",
+          "scout"
+        ],
+        "title": "FarmAction",
+        "description": "The farm operation a rule advises on. Lets the UI group reads by activity."
+      },
+      "FarmerContextOut": {
+        "properties": {
+          "crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Crop"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "water_source": {
+            "$ref": "#/components/schemas/WaterSource"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "crop",
+          "water_source"
+        ],
+        "title": "FarmerContextOut"
+      },
+      "FarmingReadOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "action": {
+            "$ref": "#/components/schemas/FarmAction"
+          },
+          "crop": {
+            "type": "string",
+            "title": "Crop",
+            "description": "'any' or a crop id."
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity",
+            "description": "UI emphasis, NOT a certainty claim."
+          },
+          "triggered": {
+            "type": "boolean",
+            "title": "Triggered"
+          },
+          "headline_en": {
+            "type": "string",
+            "title": "Headline En"
+          },
+          "detail_en": {
+            "type": "string",
+            "title": "Detail En"
+          },
+          "caveat_en": {
+            "type": "string",
+            "title": "Caveat En"
+          },
+          "headline_te": {
+            "type": "string",
+            "title": "Headline Te",
+            "description": "Empty string = fall back to the English field."
+          },
+          "detail_te": {
+            "type": "string",
+            "title": "Detail Te"
+          },
+          "caveat_te": {
+            "type": "string",
+            "title": "Caveat Te"
+          },
+          "window_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Note"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "action",
+          "crop",
+          "severity",
+          "triggered",
+          "headline_en",
+          "detail_en",
+          "caveat_en",
+          "headline_te",
+          "detail_te",
+          "caveat_te",
+          "window_note",
+          "sources"
+        ],
+        "title": "FarmingReadOut"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "Health"
+      },
+      "HourlyRainOut": {
+        "properties": {
+          "time_local": {
+            "type": "string",
+            "title": "Time Local"
+          },
+          "precipitation_probability": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precipitation Probability",
+            "description": "Percent; null = unknown, never zero."
+          },
+          "precipitation_mm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precipitation Mm"
+          },
+          "temperature_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature C"
+          },
+          "relative_humidity": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative Humidity"
+          },
+          "wind_speed_kmh": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wind Speed Kmh"
+          },
+          "weather_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weather Code"
+          },
+          "category": {
+            "$ref": "#/components/schemas/WMOCategory"
+          },
+          "emoji": {
+            "type": "string",
+            "title": "Emoji"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "time_local",
+          "precipitation_probability",
+          "precipitation_mm",
+          "temperature_c",
+          "relative_humidity",
+          "wind_speed_kmh",
+          "weather_code",
+          "category",
+          "emoji"
+        ],
+        "title": "HourlyRainOut"
+      },
+      "LatLon": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "title": "LatLon"
+      },
+      "Reliability": {
+        "properties": {
+          "show_confidence_rating": {
+            "type": "boolean",
+            "const": false,
+            "title": "Show Confidence Rating",
+            "description": "Always false: a deterministic model has no honest confidence to show."
+          },
+          "resolution_km": {
+            "type": "integer",
+            "title": "Resolution Km"
+          },
+          "disclaimer_en": {
+            "type": "string",
+            "title": "Disclaimer En"
+          },
+          "source_stamp_en": {
+            "type": "string",
+            "title": "Source Stamp En",
+            "description": "Source, resolution and data age, e.g. 'updated 8 min ago'."
+          },
+          "is_offline_cache": {
+            "type": "boolean",
+            "title": "Is Offline Cache",
+            "description": "True when serving a saved copy because upstream is down."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "show_confidence_rating",
+          "resolution_km",
+          "disclaimer_en",
+          "source_stamp_en",
+          "is_offline_cache"
+        ],
+        "title": "Reliability"
+      },
+      "Severity": {
+        "type": "string",
+        "enum": [
+          "info",
+          "caution",
+          "act"
+        ],
+        "title": "Severity",
+        "description": "UI emphasis for a read — NOT a certainty claim about the weather."
+      },
+      "WMOCategory": {
+        "type": "string",
+        "enum": [
+          "clear",
+          "cloud",
+          "fog",
+          "drizzle",
+          "rain",
+          "showers",
+          "thunderstorm"
+        ],
+        "title": "WMOCategory",
+        "description": "Coarse bucket for a WMO ``weather_code`` (icon/colour grouping + storm guard)."
+      },
+      "WaterSource": {
+        "type": "string",
+        "enum": [
+          "canal_lift",
+          "tank",
+          "borewell",
+          "rainfed"
+        ],
+        "title": "WaterSource",
+        "description": "Farmer's water source — the #1 crop-advice input. Scopes rules as data, not code."
+      },
+      "WeatherContract": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "model_note": {
+            "type": "string",
+            "title": "Model Note"
+          },
+          "resolution_km": {
+            "type": "integer",
+            "title": "Resolution Km"
+          },
+          "timezone": {
+            "type": "string",
+            "title": "Timezone"
+          },
+          "coords": {
+            "$ref": "#/components/schemas/Coords"
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          },
+          "upstream_fetched_at": {
+            "type": "string",
+            "title": "Upstream Fetched At"
+          },
+          "reliability": {
+            "$ref": "#/components/schemas/Reliability"
+          },
+          "farmer_context": {
+            "$ref": "#/components/schemas/FarmerContextOut"
+          },
+          "farming_read": {
+            "items": {
+              "$ref": "#/components/schemas/FarmingReadOut"
+            },
+            "type": "array",
+            "title": "Farming Read"
+          },
+          "hourly_rain": {
+            "items": {
+              "$ref": "#/components/schemas/HourlyRainOut"
+            },
+            "type": "array",
+            "title": "Hourly Rain",
+            "description": "From the current hour forward, up to 48 rows."
+          },
+          "daily": {
+            "items": {
+              "$ref": "#/components/schemas/DailyOut"
+            },
+            "type": "array",
+            "title": "Daily"
+          },
+          "degraded": {
+            "anyOf": [
+              {
+                "type": "boolean",
+                "const": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degraded"
+          },
+          "note_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note En"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "model_note",
+          "resolution_km",
+          "timezone",
+          "coords",
+          "generated_at",
+          "upstream_fetched_at",
+          "reliability",
+          "farmer_context",
+          "farming_read",
+          "hourly_rain",
+          "daily"
+        ],
+        "title": "WeatherContract",
+        "description": "``GET /v1/weather`` 200 body — a forecast, or an honest degraded answer (``degraded: true``)."
+      }
+    }
+  }
+}

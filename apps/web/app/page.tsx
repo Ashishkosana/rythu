@@ -4,15 +4,12 @@ import RestoreLocation from "@/components/RestoreLocation";
 import { DEFAULT_PLACE } from "@/lib/locations";
 import { isValidCoord } from "@/lib/geocode";
 import { COVERAGE_MESSAGE, inCoverage } from "@/lib/coverage";
-import type { WeatherContract } from "@/lib/types";
+import { isCrop, isWaterSource, type Crop, type WaterSource, type WeatherContract } from "@/lib/types";
 
 // The Python weather backend. Server-side fetch, so the phone only ever talks to Next.
 const API = process.env.WEATHER_API ?? "http://127.0.0.1:8001";
 // Cap the wait on the backend (Lambda allows 15 s). Past this, the honest fallback is better than a hang.
 const WEATHER_TIMEOUT_MS = 10_000;
-const CROPS = new Set(["chilli", "cotton", "paddy", "red_gram", "maize"]);
-// Mirror the backend WaterSource enum — validate so we never emit a self-inflicted 400.
-const WATERS = new Set(["canal_lift", "tank", "borewell", "rainfed"]);
 
 export const dynamic = "force-dynamic"; // always fetch a fresh forecast
 
@@ -27,9 +24,10 @@ export default async function Page({
 }) {
   const sp = await searchParams;
   const rawCrop = first(sp.crop);
-  const crop = CROPS.has(rawCrop ?? "") ? (rawCrop as string) : "chilli"; // mirchi = main local crop
+  // Validated against the backend's enums (generated types) so we never emit a self-inflicted 400.
+  const crop: Crop = isCrop(rawCrop) ? rawCrop : "chilli"; // mirchi = main local crop
   const rawWater = first(sp.water);
-  const water = WATERS.has(rawWater ?? "") ? (rawWater as string) : "rainfed";
+  const water: WaterSource = isWaterSource(rawWater) ? rawWater : "rainfed";
 
   // Location: honor ?lat&lon when valid, else fall back to the district HQ.
   const lat = Number(first(sp.lat));

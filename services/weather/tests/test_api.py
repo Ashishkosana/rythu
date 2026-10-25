@@ -101,3 +101,13 @@ def test_lambda_does_not_import_fastapi_or_pydantic():
     )
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
     assert out.stdout.strip() == "[]"
+
+
+async def test_openapi_documents_only_responses_that_can_happen():
+    """Validation answers 400 (shared core); FastAPI's automatic 422 can never occur, so it isn't documented."""
+    doc = (await _api(FakeProvider(_FC), "/openapi.json", {})).json()
+    assert set(doc["paths"]["/v1/weather"]["get"]["responses"]) == {"200", "400"}
+    assert "HTTPValidationError" not in doc["components"]["schemas"]
+    # …and garbage input really does get the documented 400, not a 422.
+    resp = await _api(FakeProvider(_FC), "/v1/weather", {"lat": "x", "lon": "y", "crop": "?" * 500})
+    assert resp.status_code == 400

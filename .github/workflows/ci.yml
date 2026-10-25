@@ -45,6 +45,10 @@ jobs:
         run: npm ci
       - name: Lint (eslint)
         run: npm run lint
+      # lib/api.gen.ts must be generated from services/weather/openapi.json (whose own freshness
+      # is checked by the backend's pytest). Fails if someone changed the contract without regenerating.
+      - name: API types up to date (openapi-typescript --check)
+        run: npm run check:api
       - name: Types (tsc)
         run: npx tsc --noEmit
       - name: Tests (vitest)

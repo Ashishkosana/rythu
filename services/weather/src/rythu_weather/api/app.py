@@ -11,7 +11,7 @@ in S6 — this app is plain ASGI, so it is portable.
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import FastAPI, Header, Query
 from fastapi.responses import JSONResponse
@@ -75,4 +75,28 @@ def create_app(provider: WeatherProvider | None = None) -> FastAPI:
         # No dependencies checked on purpose: liveness must not fail because Open-Meteo is down.
         return JSONResponse({"status": "ok"}, headers={"Cache-Control": "no-store"})
 
+    _document_only_real_responses(app)
     return app
+
+
+def _document_only_real_responses(app: FastAPI) -> None:
+    """Drop FastAPI's automatic 422 from the OpenAPI document.
+
+    Every parameter is an optional string and validation answers 400 (shared core), so 422 can
+    never be returned. Documenting it would put an impossible error into the generated client types.
+    """
+    original = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        if app.openapi_schema is None:
+            schema = original()
+            for path in schema.get("paths", {}).values():
+                for op in path.values():
+                    op.get("responses", {}).pop("422", None)
+            schemas = schema.get("components", {}).get("schemas", {})
+            for name in ("HTTPValidationError", "ValidationError"):
+                schemas.pop(name, None)
+            app.openapi_schema = schema
+        return app.openapi_schema
+
+    app.openapi = openapi  # type: ignore[method-assign]

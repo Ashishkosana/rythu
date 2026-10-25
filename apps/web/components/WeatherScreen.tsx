@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import type { FarmingRead, WeatherContract } from "@/lib/types";
+import { CROPS, type Crop, type FarmAction, type FarmingRead, type Severity, type WeatherContract } from "@/lib/types";
 import { speak, weatherSpeech } from "@/lib/speak";
 import { useLang } from "@/lib/lang";
 import LangToggle from "@/components/LangToggle";
@@ -10,9 +10,8 @@ import { HERO_HOURS, nextHoursChance } from "@/lib/hero";
 
 type Lang = "te" | "en";
 
-const CROPS = ["chilli", "cotton", "paddy", "red_gram", "maize"] as const;
-
-const CROP_LABEL: Record<string, { te: string; en: string; emoji: string }> = {
+// Keyed by the backend's Crop enum: a crop added on the backend without a label won't compile.
+const CROP_LABEL: Record<Crop, { te: string; en: string; emoji: string }> = {
   chilli: { te: "మిర్చి", en: "Chilli", emoji: "🌶️" },
   cotton: { te: "పత్తి", en: "Cotton", emoji: "🧺" },
   paddy: { te: "వరి", en: "Paddy", emoji: "🌾" },
@@ -53,13 +52,13 @@ const L = {
   },
 } as const;
 
-const SEV_STYLES: Record<string, { bar: string; tint: string }> = {
+const SEV_STYLES: Record<Severity, { bar: string; tint: string }> = {
   info: { bar: "bg-sky-500", tint: "bg-sky-50" },
   caution: { bar: "bg-amber-500", tint: "bg-amber-50" },
   act: { bar: "bg-red-500", tint: "bg-red-50" },
 };
 
-const ACTION_ICON: Record<string, string> = {
+const ACTION_ICON: Record<FarmAction, string> = {
   spray: "💦",
   irrigate: "🚿",
   sow: "🌱",
@@ -116,7 +115,7 @@ export default function WeatherScreen({
   children,
 }: {
   data: WeatherContract;
-  crop: string;
+  crop: Crop;
   place: string;
   locationQuery: string;
   children?: ReactNode;
@@ -229,7 +228,7 @@ export default function WeatherScreen({
           {/* advice for a crop */}
           <section>
             <SectionTitle>
-              {CROP_LABEL[crop]?.emoji} {CROP_LABEL[crop]?.[lang]} {t.adviceFor}
+              {CROP_LABEL[crop].emoji} {CROP_LABEL[crop][lang]} {t.adviceFor}
             </SectionTitle>
             {/* crop selector */}
             <div className="mb-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

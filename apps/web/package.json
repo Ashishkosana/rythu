@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "gen:api": "openapi-typescript ../../services/weather/openapi.json -o lib/api.gen.ts",
+    "check:api": "openapi-typescript ../../services/weather/openapi.json -o lib/api.gen.ts --check"
   },
   "dependencies": {
     "amazon-cognito-identity-js": "^6.3.20",
@@ -22,6 +24,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
+    "openapi-typescript": "7.13.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.12"
