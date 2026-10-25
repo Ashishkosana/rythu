@@ -178,7 +178,7 @@ This is a tool for farmers, so honesty is encoded in the code and enforced as gu
 ```bash
 cd services/weather
 uv sync --extra dev
-uv run python -m rythu_weather.app.local_server 8001      # http://127.0.0.1:8001/weather
+uv run python -m rythu_weather.app.local_server 8001      # http://127.0.0.1:8001/v1/weather · API docs at /docs
 ```
 
 **2. Frontend** (Node 22+; CI uses 22). If `npm install` of a *new* dependency fails with `Cannot read properties of null (reading 'edgesOut')`, that is an npm 10 peer-resolution bug — run it once with `npx npm@11 install`.

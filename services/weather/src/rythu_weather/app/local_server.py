@@ -1,50 +1,30 @@
-"""Tiny stdlib HTTP server that exposes the weather handler for local / LAN development.
+"""Local / LAN development server: the FastAPI app under uvicorn.
 
-This is a DEV convenience, not the production path (that's AWS Lambda via ``handler.handler``).
-It reuses ``handle_request`` verbatim, so it exercises the real engine.
+This is a DEV convenience, not a production path (today that is AWS Lambda via ``handler.handler``;
+after S6 it is the same FastAPI app on Azure Functions). It serves the real app, so it exercises
+the real engine, the ``/v1`` contract and the interactive docs:
 
     uv run python -m rythu_weather.app.local_server 8001
+    # http://127.0.0.1:8001/v1/weather?crop=cotton   (and the legacy /weather the web app calls)
+    # http://127.0.0.1:8001/docs                     (try the API in the browser)
 """
 
 from __future__ import annotations
 
-import asyncio
 import sys
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import Any
-from urllib.parse import parse_qs, urlparse
 
-from rythu_weather.app.handler import build_provider, handle_request
+import uvicorn
+
+from rythu_weather.api.app import create_app
 from rythu_weather.app.settings import get_settings
 from rythu_weather.observability import configure_logging
 
 
-class _WeatherRequestHandler(BaseHTTPRequestHandler):
-    def do_GET(self) -> None:
-        parsed = urlparse(self.path)
-        if parsed.path.rstrip("/") not in ("", "/weather"):
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b'{"error":"not found"}')
-            return
-        query = {k: v[0] for k, v in parse_qs(parsed.query).items()}
-        event: dict[str, Any] = {"queryStringParameters": query, "headers": dict(self.headers.items())}
-        resp = asyncio.run(handle_request(event, build_provider()))
-        body = str(resp["body"]).encode("utf-8")
-        self.send_response(int(resp["statusCode"]))
-        for key, value in dict(resp["headers"]).items():
-            self.send_header(str(key), str(value))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def log_message(self, format: str, *args: Any) -> None:
-        pass  # access lines are replaced by the structured weather.request log
-
-
 def main(host: str = "127.0.0.1", port: int = 8001) -> None:
     configure_logging(get_settings().log_level)
-    print(f"Rythu weather dev server → http://{host}:{port}/weather?crop=cotton&water=rainfed")
-    ThreadingHTTPServer((host, port), _WeatherRequestHandler).serve_forever()
+    print(f"Rythu API dev server → http://{host}:{port}/v1/weather?crop=cotton · docs: http://{host}:{port}/docs")
+    # Access lines are replaced by the structured weather.request log.
+    uvicorn.run(create_app(), host=host, port=port, access_log=False, log_level="warning")
 
 
 if __name__ == "__main__":

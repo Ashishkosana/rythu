@@ -38,10 +38,28 @@ uv sync --extra dev
 # Live end-to-end against the real API (no key needed):
 uv run python -m rythu_weather.app.demo --crop cotton --water rainfed
 
+# The HTTP API (FastAPI) on http://127.0.0.1:8001 — /v1/weather, /healthz, interactive docs at /docs:
+uv run python -m rythu_weather.app.local_server 8001
+
 # Quality gate:
 uv run ruff check . && uv run mypy && uv run pytest
 uv run pytest -m live       # the one network test (hits Open-Meteo)
 ```
+
+## Layers
+
+```
+api/          FastAPI transport — /v1/weather, /healthz, OpenAPI; Pydantic schemas describe the contract
+app/          handler.py (Lambda transport) · weather_request.py (shared parse → validate → answer → log)
+              service.py (use case) · serialize.py (THE wire shape) · composition.py (wiring) · settings.py
+domain/       pure rules, windows, models — no I/O, no clock, no logging (enforced by test_domain_purity)
+adapters/     Open-Meteo HTTP, read-through cache (DynamoDB), fakes
+```
+
+Both transports are thin adapters over `app.weather_request.answer_weather`, so they cannot drift;
+`tests/test_api.py` checks they return identical status, headers and JSON. The Lambda path never
+imports FastAPI/Pydantic (also tested), so its bundle is still just `httpx`.
+`tests/test_contract_schema.py` (the golden test) proves `api/schemas.py` matches the serializer exactly.
 
 ## Configuration & logs
 

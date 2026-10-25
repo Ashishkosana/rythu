@@ -9,7 +9,7 @@ Usage::
 
     log_event(_log, logging.INFO, "cache.result", result="hit", key=key)
 
-Privacy: never log raw coordinates — log a coarse cell (see ``handler._cell``).
+Privacy: never log raw coordinates — log a coarse cell (see ``app.weather_request.cell``).
 """
 
 from __future__ import annotations
