@@ -53,6 +53,7 @@ npx azurite@3.37.0 azurite-table --inMemoryPersistence --tableHost 127.0.0.1 --t
 
 ```
 api/          FastAPI transport — /v1/weather, /healthz, OpenAPI; Pydantic schemas describe the contract
+function_app.py  Azure Functions entry point: the same FastAPI app on Flex Consumption (logs → host → App Insights)
 app/          handler.py (Lambda transport) · weather_request.py (shared parse → validate → answer → log)
               service.py (use case) · serialize.py (THE wire shape) · composition.py (wiring) · settings.py
 domain/       pure rules, windows, models — no I/O, no clock, no logging (enforced by test_domain_purity)
@@ -64,6 +65,13 @@ Both transports are thin adapters over `app.weather_request.answer_weather`, so 
 imports FastAPI/Pydantic (also tested), so its bundle is still just `httpx`.
 `tests/test_contract_schema.py` (the golden test) proves `api/schemas.py` matches the serializer exactly.
 
+## Deploying to Azure Functions
+
+`./scripts/package_functions.sh` stages `dist/functions/` (`function_app.py`, `host.json`,
+`rythu_weather/`, and a `requirements.txt` exported from `uv.lock` without dev tools). Flex Consumption
+installs the requirements with a remote build on Azure. `tests/test_function_app.py` drives real requests
+through the Functions ASGI adapter. Infrastructure and the deploy workflow: see `infra/azure/`.
+
 ## Configuration & logs
 
 All settings are environment variables, parsed and validated once at startup in
@@ -72,12 +80,13 @@ All settings are environment variables, parsed and validated once at startup in
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `RYTHU_CACHE_TABLE` | unset | DynamoDB forecast-cache table (AWS) |
-| `RYTHU_AZURE_TABLES_CONNECTION_STRING` | unset | Azure Table Storage forecast cache (Azure / Azurite). **Secret** — never logged or in `repr` |
+| `RYTHU_AZURE_TABLES_ENDPOINT` | unset | Azure Table Storage forecast cache via the app's **managed identity** — no secret (how Azure runs) |
+| `RYTHU_AZURE_TABLES_CONNECTION_STRING` | unset | same cache via a connection string — for local Azurite. **Secret**: never logged or in `repr` |
 | `RYTHU_AZURE_FORECAST_TABLE` | `forecast` | table name for the Azure cache |
 | `RYTHU_OPEN_METEO_TIMEOUT_S` | `4` | total deadline for one Open-Meteo fetch, (0, 60] |
 | `RYTHU_LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 
-At most one cache backend may be set (both = startup error); neither = no cache.
+At most one cache backend may be set (more = startup error); none = no cache.
 
 Logs are one JSON object per line on stdout (`rythu_weather/observability.py`). Every request
 gets a correlation id — the caller's `X-Request-Id` if it is safe, else API Gateway's request id,

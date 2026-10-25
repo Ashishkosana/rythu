@@ -83,19 +83,39 @@ class JsonFormatter(logging.Formatter):
 _HANDLER_MARK = "_rythu_json_handler"
 
 
-def configure_logging(level: str = "INFO") -> None:
+def configure_logging(level: str = "INFO", *, to_host: bool = False) -> None:
     """Send the service's logs to stdout as JSON. Idempotent (warm invocations call it again).
 
     Only the ``rythu_weather`` logger tree is configured, and it does not propagate to the root
-    logger, so the host runtime's own handler (Lambda / Azure Functions) cannot double-log or
-    re-format our lines.
+    logger, so the host runtime's own handler cannot double-log or re-format our lines.
+
+    ``to_host=True`` (Azure Functions): instead of stdout, each record is rendered as the same JSON
+    line and handed to the ROOT logger, where the Functions Python worker listens and forwards to
+    Application Insights (``traces`` table; query with ``parse_json(message)``). A filter on this
+    logger would not work: logger filters don't apply to records from child loggers, handlers do.
     """
     logger = logging.getLogger(ROOT_LOGGER)
     logger.setLevel(level)
     if any(getattr(h, _HANDLER_MARK, False) for h in logger.handlers):
         return
-    handler = logging.StreamHandler(sys.stdout)
+    handler: logging.Handler = _ForwardToRoot() if to_host else logging.StreamHandler(sys.stdout)
     handler.setFormatter(JsonFormatter())
     setattr(handler, _HANDLER_MARK, True)
     logger.addHandler(handler)
     logger.propagate = False
+
+
+class _ForwardToRoot(logging.Handler):
+    """Re-emit a record to the root logger with its message replaced by our JSON line."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            line = self.format(record)
+            forwarded = logging.makeLogRecord(record.__dict__)
+            forwarded.msg, forwarded.args = line, None
+            # The traceback is already inside the JSON line; keep exc_info so App Insights can also
+            # record it as an exception, but drop the cached text so it isn't appended twice.
+            forwarded.exc_text = None
+            logging.getLogger().handle(forwarded)
+        except Exception:
+            self.handleError(record)

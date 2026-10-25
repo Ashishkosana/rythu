@@ -7,9 +7,10 @@ Adapters receive plain values from here; they never read ``os.environ`` themselv
 Variables (all optional):
 
 * ``RYTHU_CACHE_TABLE`` — DynamoDB table for the forecast cache (AWS).
-* ``RYTHU_AZURE_TABLES_CONNECTION_STRING`` — Azure Table Storage connection string for the forecast
-  cache (Azure; Azurite locally). SECRET: never logged, never in ``repr``. In Azure it comes from a
-  Key Vault reference (S6).
+* ``RYTHU_AZURE_TABLES_ENDPOINT`` — Azure Table Storage endpoint (``https://<account>.table.core.windows.net``),
+  authenticated with the app's managed identity — no secret anywhere. This is how Azure runs.
+* ``RYTHU_AZURE_TABLES_CONNECTION_STRING`` — alternative for local dev against Azurite. SECRET: never
+  logged, never in ``repr``.
 * ``RYTHU_AZURE_FORECAST_TABLE`` — table name for the Azure forecast cache (default ``forecast``).
 * ``RYTHU_OPEN_METEO_TIMEOUT_S`` — total deadline for one Open-Meteo fetch (default 4).
 * ``RYTHU_LOG_LEVEL`` — ``DEBUG`` / ``INFO`` / ``WARNING`` / ``ERROR`` (default ``INFO``).
@@ -38,6 +39,7 @@ _AZURE_TABLE_NAME = re.compile(r"[A-Za-z][A-Za-z0-9]{2,62}")
 @dataclass(frozen=True, slots=True)
 class Settings:
     cache_table: str | None = None
+    azure_tables_endpoint: str | None = None
     # repr=False: a connection string carries the account key and must never reach a log line.
     azure_tables_connection_string: str | None = field(default=None, repr=False)
     azure_forecast_table: str = DEFAULT_AZURE_FORECAST_TABLE
@@ -53,9 +55,14 @@ class Settings:
         if level not in _LOG_LEVELS:
             raise ValueError(f"RYTHU_LOG_LEVEL must be one of {sorted(_LOG_LEVELS)}, got {level!r}")
         dynamo = e.get("RYTHU_CACHE_TABLE") or None
+        endpoint = (e.get("RYTHU_AZURE_TABLES_ENDPOINT") or "").strip() or None
         azure = (e.get("RYTHU_AZURE_TABLES_CONNECTION_STRING") or "").strip() or None
-        if dynamo and azure:
-            raise ValueError("set RYTHU_CACHE_TABLE (DynamoDB) or RYTHU_AZURE_TABLES_CONNECTION_STRING, not both")
+        backends = [n for n, v in (("RYTHU_CACHE_TABLE", dynamo), ("RYTHU_AZURE_TABLES_ENDPOINT", endpoint),
+                                   ("RYTHU_AZURE_TABLES_CONNECTION_STRING", azure)) if v]
+        if len(backends) > 1:
+            raise ValueError(f"set at most one cache backend, not both: {' and '.join(backends)}")
+        if endpoint and not endpoint.startswith("https://"):
+            raise ValueError("RYTHU_AZURE_TABLES_ENDPOINT must be an https:// URL")
         table = (e.get("RYTHU_AZURE_FORECAST_TABLE") or DEFAULT_AZURE_FORECAST_TABLE).strip()
         if not _AZURE_TABLE_NAME.fullmatch(table):
             raise ValueError(
@@ -63,6 +70,7 @@ class Settings:
             )
         return cls(
             cache_table=dynamo,
+            azure_tables_endpoint=endpoint,
             azure_tables_connection_string=azure,
             azure_forecast_table=table,
             open_meteo_timeout_s=timeout,

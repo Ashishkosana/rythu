@@ -20,6 +20,7 @@ from rythu_weather.app.settings import Settings
 from test_cache_store_contract import AZURITE, azure_store_or_skip
 
 SECRET = "AccountKey=SuperSecretKey=="
+_EP = "https://a.table.core.windows.net"
 
 
 def test_connection_string_never_appears_in_repr():
@@ -34,7 +35,7 @@ def test_settings_select_the_azure_backend_and_reject_ambiguity():
     store = build_cache_store(s)
     assert isinstance(store, AzureTableCacheStore) and store.table_name == "fc2"
     assert build_cache_store(Settings()) is None
-    with pytest.raises(ValueError, match="not both"):
+    with pytest.raises(ValueError, match="at most one cache backend"):
         Settings.from_env({"RYTHU_CACHE_TABLE": "dyn", "RYTHU_AZURE_TABLES_CONNECTION_STRING": AZURITE})
     with pytest.raises(ValueError, match="RYTHU_AZURE_FORECAST_TABLE"):
         Settings.from_env({"RYTHU_AZURE_TABLES_CONNECTION_STRING": AZURITE, "RYTHU_AZURE_FORECAST_TABLE": "bad-name"})
@@ -88,3 +89,39 @@ def test_lambda_path_never_loads_the_azure_sdk():
     )
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
     assert out.stdout.strip() == "[]"
+
+
+async def test_managed_identity_mode_needs_no_secret():
+    s = Settings.from_env({"RYTHU_AZURE_TABLES_ENDPOINT": "https://rythudev.table.core.windows.net"})
+    store = build_cache_store(s)
+    try:
+        assert isinstance(store, AzureTableCacheStore)
+        assert store.connection_string is None
+        assert store.endpoint == "https://rythudev.table.core.windows.net"
+        assert type(store.credential).__name__ == "DefaultAzureCredential"
+    finally:
+        await store.credential.close()
+
+
+def test_store_requires_exactly_one_auth_mode():
+    with pytest.raises(ValueError, match="OR"):
+        AzureTableCacheStore()
+    with pytest.raises(ValueError, match="OR"):
+        AzureTableCacheStore(AZURITE, endpoint="https://x.table.core.windows.net", credential=object())  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "env",
+    [
+        {"RYTHU_AZURE_TABLES_ENDPOINT": _EP, "RYTHU_AZURE_TABLES_CONNECTION_STRING": AZURITE},
+        {"RYTHU_AZURE_TABLES_ENDPOINT": _EP, "RYTHU_CACHE_TABLE": "dyn"},
+    ],
+)
+def test_only_one_cache_backend_may_be_configured(env):
+    with pytest.raises(ValueError, match="at most one cache backend"):
+        Settings.from_env(env)
+
+
+def test_endpoint_must_be_https():
+    with pytest.raises(ValueError, match="https"):
+        Settings.from_env({"RYTHU_AZURE_TABLES_ENDPOINT": "http://a.table.core.windows.net"})

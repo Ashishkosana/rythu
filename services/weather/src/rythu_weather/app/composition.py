@@ -13,8 +13,17 @@ from rythu_weather.domain.models import WeatherProvider
 
 
 def build_cache_store(s: Settings) -> CacheStore | None:
-    if s.azure_tables_connection_string:
+    if s.azure_tables_endpoint:
         # Imported lazily: the Azure SDK is not part of the AWS Lambda bundle.
+        from azure.identity.aio import DefaultAzureCredential
+
+        from rythu_weather.adapters.azure_table import AzureTableCacheStore
+
+        # In Azure this resolves to the Function App's managed identity; locally to `az login`.
+        return AzureTableCacheStore(
+            table_name=s.azure_forecast_table, endpoint=s.azure_tables_endpoint, credential=DefaultAzureCredential()
+        )
+    if s.azure_tables_connection_string:
         from rythu_weather.adapters.azure_table import AzureTableCacheStore
 
         return AzureTableCacheStore(s.azure_tables_connection_string, s.azure_forecast_table)

@@ -11,6 +11,10 @@ it fits, but a 16-day one (~84 KiB) would not, and caching would silently stop. 
 ~1–2 KiB. Expiry is NOT trusted to the store: ``CachedProvider`` refuses copies older than
 ``MAX_STALE`` itself, exactly as with DynamoDB.
 
+Auth: in Azure, ``endpoint`` + a token ``credential`` (the Function App's managed identity, granted
+"Storage Table Data Contributor" by the Bicep template) — no secret exists. Locally, a
+``connection_string`` (Azurite's public dev account).
+
 The Azure SDK is imported only by this module, and ``app.composition`` imports this module lazily, so
 the AWS Lambda path never loads it.
 """
@@ -26,6 +30,7 @@ from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from azure.core.credentials_async import AsyncTokenCredential
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.data.tables import UpdateMode
 from azure.data.tables.aio import TableClient
@@ -42,26 +47,36 @@ def _ist_now() -> datetime:
     return datetime.now(ZoneInfo("Asia/Kolkata"))
 
 
+# The cache is an optimisation, so a slow store must fall through rather than eat the request — and
+# for a cache a retry buys nothing: a failed read is cheaper to answer from upstream (~0.5–1 s) than to
+# retry (up to 1 s more), and a failed write only means the next request misses. Measured with a hung
+# endpoint: 1 retry → 4.1 s, no retry → ~2 s (get + put).
+_FAIL_FAST: dict[str, Any] = {"connection_timeout": 1, "read_timeout": 1, "retry_total": 0}
+
+
 @dataclass(frozen=True, slots=True)
 class AzureTableCacheStore:
     # repr=False: the connection string carries the account key.
-    connection_string: str = field(repr=False)
+    connection_string: str | None = field(default=None, repr=False)
     table_name: str = "forecast"
     expire_after: timedelta = MAX_STALE
     clock: Callable[[], datetime] = _ist_now
+    endpoint: str | None = None
+    # Shared for the process lifetime so its token cache is reused (a fresh credential per call would
+    # fetch a new token on every request).
+    credential: AsyncTokenCredential | None = field(default=None, repr=False)
+
+    def __post_init__(self) -> None:
+        by_key = self.connection_string is not None
+        by_identity = self.endpoint is not None and self.credential is not None
+        if by_key == by_identity:
+            raise ValueError("AzureTableCacheStore needs a connection_string OR endpoint + credential")
 
     def _client(self) -> TableClient:
-        # The cache is an optimisation, so a slow store must fall through rather than eat the
-        # request — and for a cache a retry buys nothing: a failed read is cheaper to answer from
-        # upstream (~0.5–1 s) than to retry (up to 1 s more), and a failed write only means the next
-        # request misses. Measured with a hung endpoint: 1 retry → 4.1 s, no retry → ~2 s (get + put).
-        return TableClient.from_connection_string(
-            self.connection_string,
-            table_name=self.table_name,
-            connection_timeout=1,
-            read_timeout=1,
-            retry_total=0,
-        )
+        if self.connection_string is not None:
+            return TableClient.from_connection_string(self.connection_string, table_name=self.table_name, **_FAIL_FAST)
+        assert self.endpoint is not None and self.credential is not None  # guaranteed by __post_init__
+        return TableClient(self.endpoint, table_name=self.table_name, credential=self.credential, **_FAIL_FAST)
 
     async def get(self, key: str) -> dict[str, Any] | None:
         async with self._client() as client:
