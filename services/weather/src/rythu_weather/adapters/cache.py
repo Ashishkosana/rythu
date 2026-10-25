@@ -55,6 +55,13 @@ def _ist_now() -> datetime:
     return datetime.now(ZoneInfo("Asia/Kolkata"))
 
 
+# Oldest saved forecast we will ever show, even flagged "offline". Past this, "next few hours"
+# advice is about hours that are gone, so an honest "unavailable" beats a stale answer. The
+# DynamoDB TTL uses the same horizon, but TTL deletion runs lazily (up to ~48 h late), so the
+# limit is enforced here in code rather than trusted to the store.
+MAX_STALE = timedelta(hours=6)
+
+
 class CachedProvider:
     """WeatherProvider decorator implementing read-through + stale-on-failure semantics."""
 
@@ -64,11 +71,13 @@ class CachedProvider:
         store: CacheStore,
         *,
         ttl_minutes: int = 30,
+        max_stale: timedelta = MAX_STALE,
         clock: Callable[[], datetime] = _ist_now,
     ) -> None:
         self._upstream = upstream
         self._store = store
         self._ttl = timedelta(minutes=ttl_minutes)
+        self._max_stale = max_stale
         self._clock = clock
 
     async def fetch(self, point: GeoPoint) -> Forecast:
@@ -80,6 +89,9 @@ class CachedProvider:
             if age < self._ttl:
                 self._result(key, "hit", age)
                 return cached  # fresh enough — serve without hitting upstream
+            if age >= self._max_stale:
+                log_event(_log, logging.INFO, "cache.expired", key=key, age_s=round(age.total_seconds()))
+                cached = None  # too old to show even offline — behave exactly like a miss
 
         try:
             fresh = await self._upstream.fetch(point)
@@ -132,7 +144,7 @@ class DynamoDbCacheStore:
     ``ttl`` attribute enabled as the table's TTL for automatic expiry."""
 
     table_name: str
-    ttl_seconds: int = 6 * 3600
+    ttl_seconds: int = int(MAX_STALE.total_seconds())  # storage cleanup only; expiry is enforced in CachedProvider
     clock: Callable[[], datetime] = _ist_now
 
     def _table(self) -> Any:

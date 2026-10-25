@@ -209,3 +209,39 @@ def test_dynamodb_client_fails_fast(monkeypatch):
     # Worst case get + put must leave room for the 4 s Open-Meteo deadline inside the 15 s Lambda timeout.
     per_call_s = captured["retries"]["max_attempts"] * (captured["connect_timeout"] + captured["read_timeout"])
     assert 2 * per_call_s + 4 < 15
+
+
+# --- S2c: a saved forecast older than 6 h is never served -------------------------------------
+
+
+async def _offline_fetch(age: timedelta):
+    """Upstream down; the store holds a copy fetched `age` ago."""
+    fetched = at(2026, 10, 22, 20)
+    store = InMemoryCacheStore()
+    await store.put(cache_key(POINT), forecast_to_cache(_sample(fetched)))
+    return await CachedProvider(FailingProvider(), store, clock=lambda: fetched + age).fetch(POINT)
+
+
+async def test_offline_copy_under_six_hours_is_served_flagged():
+    fc = await _offline_fetch(timedelta(hours=5, minutes=59))
+    assert fc.reliability.is_offline_cache is True
+
+
+@pytest.mark.parametrize("age", [timedelta(hours=6), timedelta(days=2)])
+async def test_offline_copy_six_hours_or_older_is_not_served(age):
+    """DynamoDB TTL deletes lazily (up to ~48 h late), so expiry is enforced in code."""
+    with pytest.raises(ProviderError):
+        await _offline_fetch(age)
+
+
+async def test_expired_copy_is_replaced_when_upstream_is_up(caplog):
+    caplog.set_level(logging.INFO, logger="rythu_weather")
+    fetched = at(2026, 10, 22, 20)
+    store = InMemoryCacheStore()
+    await store.put(cache_key(POINT), forecast_to_cache(_sample(fetched)))
+    now = fetched + timedelta(days=2)
+    upstream = CountingProvider(_sample(now))
+    fc = await CachedProvider(upstream, store, clock=lambda: now).fetch(POINT)
+    assert upstream.calls == 1 and fc.upstream_fetched_at == now
+    [expired] = [r for r in caplog.records if r.getMessage() == "cache.expired"]
+    assert expired.fields["age_s"] == 2 * 86400
