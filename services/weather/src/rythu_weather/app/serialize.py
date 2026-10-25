@@ -119,5 +119,7 @@ def forecast_to_contract(
         },
         "farming_read": [_read_json(r) for r in forecast.farming_read],
         "hourly_rain": [_hourly_json(h) for h in _hourly_slice(forecast, ctx.now, hourly_hours)],
-        "daily": [_daily_json(d) for d in forecast.daily],
+        # Past days are dropped: a saved copy served after midnight must not show yesterday as
+        # "today". Today's row stays the full-day outlook here; the rules use their own windows.
+        "daily": [_daily_json(d) for d in forecast.daily if d.day >= ctx.now.date()],
     }
