@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from builders import at, day, forecast, hour, hours_from
 from rythu_weather.domain.windows import (
     all_below,
@@ -64,3 +66,59 @@ def test_next_days_from_today_forward():
     fc = forecast(now, daily=ds)
     picked = next_days(fc, now, 3)
     assert [d.day.day for d in picked] == [15, 16, 17]  # yesterday dropped, capped at 3
+
+
+# --- S2a: "today" means the REST of today, not the whole calendar day -------------------------
+
+
+def _wet_morning_forecast(now):
+    """45 mm fell 02:00–05:00 today; dry afterwards. Daily[0] is Open-Meteo's WHOLE-day aggregate."""
+    day0 = at(2026, 7, 14)
+    hourly = [
+        hour(day0 + timedelta(hours=h), pp=90 if 2 <= h <= 5 else 5, precip=11.25 if 2 <= h <= 5 else 0.0,
+             temp=38.0 if h == 14 else 27.0)
+        for h in range(72)
+    ]
+    later = [day(at(2026, 7, 15 + i).date()) for i in range(6)]
+    daily = [day(day0.date(), pp_max=90, precip_sum=45.0, tmax=38.0), *later]
+    return forecast(now, hourly=hourly, daily=daily)
+
+
+def test_today_is_derived_from_remaining_hours_once_rain_has_passed():
+    now = at(2026, 7, 14, 21)
+    today, tomorrow, *_ = next_days(_wet_morning_forecast(now), now, 3)
+    assert today.day == now.date()
+    assert today.precipitation_sum_mm == 0.0  # the morning's 45 mm is in the past
+    assert today.precipitation_probability_max == 5
+    assert today.temperature_max_c == 27.0  # the 14:00 peak has passed too
+    assert tomorrow.day.day == 15  # later days keep Open-Meteo's daily values
+
+
+def test_before_the_rain_today_still_counts_it():
+    now = at(2026, 7, 14, 1)
+    today = next_days(_wet_morning_forecast(now), now, 1)[0]
+    assert today.precipitation_sum_mm == 45.0
+    assert today.precipitation_probability_max == 90
+    assert today.temperature_max_c == 38.0
+
+
+def test_today_is_dropped_when_no_hour_of_it_remains():
+    now = at(2026, 7, 14, 23, 30)  # last row (23:00) is already past
+    picked = next_days(_wet_morning_forecast(now), now, 2)
+    assert [d.day.day for d in picked] == [15, 16]
+
+
+def test_unknown_remaining_rain_makes_todays_amount_unknown_not_zero():
+    now = at(2026, 7, 14, 21)
+    day0 = at(2026, 7, 14)
+    hourly = [hour(day0 + timedelta(hours=h), precip=None if h == 22 else 0.0) for h in range(24)]
+    fc = forecast(now, hourly=hourly, daily=[day(day0.date(), precip_sum=45.0)])
+    assert next_days(fc, now, 1)[0].precipitation_sum_mm is None
+
+
+def test_without_hourly_coverage_for_today_the_daily_row_is_kept():
+    """No hourly rows dated today → we can't separate past from future; keep the daily value."""
+    now = at(2026, 7, 14, 21)
+    fc = forecast(now, daily=[day(at(2026, 7, 14).date(), precip_sum=45.0, pp_max=90)])
+    today = next_days(fc, now, 1)[0]
+    assert today.precipitation_sum_mm == 45.0 and today.precipitation_probability_max == 90

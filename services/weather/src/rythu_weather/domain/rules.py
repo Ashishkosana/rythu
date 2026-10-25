@@ -33,6 +33,7 @@ from rythu_weather.domain.models import (
 from rythu_weather.domain.windows import (
     all_below,
     any_at_or_above,
+    calendar_days,
     choose_morning_day,
     longest_run,
     max_present,
@@ -253,7 +254,9 @@ def _irrigate_skip(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
 
 
 def _sow_need_moisture(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
-    days = next_days(forecast, ctx.now, 3)
+    # Soil moisture is accumulated state: rain that already fell today counts, so this rule reads
+    # whole calendar days (unlike the event warnings, which look forward only).
+    days = calendar_days(forecast, ctx.now, 3)
     if not days:
         return None
     # Conservative on unknowns: if ANY day's rain amount is unknown we do NOT tell a rainfed
