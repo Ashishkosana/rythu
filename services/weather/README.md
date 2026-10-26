@@ -97,6 +97,17 @@ failed, or too many searches queued) the answer is **503 `upstream_unavailable`*
 Served by the FastAPI app (local + Azure) only: the AWS Lambda keeps just `/weather` — its front end
 is offline and AWS retires in S10, so the web app needs a FastAPI backend for search.
 
+## Device accounts (S13, ADR 0004)
+
+No sign-up: a phone registers once (`POST /v1/devices` → random user id + 256-bit device secret; the
+server keeps only the secret's SHA-256) and trades the secret for a one-hour HMAC token
+(`POST /v1/sessions`). `GET/PUT /v1/me/profile` keep the farmer's village, crop, water source and
+language, with ETag preconditions (`If-None-Match: *` to create, `If-Match` to update, else 428), and
+`DELETE /v1/me` erases everything stored for the user. The user on every `/v1/me` route comes only from
+the verified token — `tests/test_accounts_api.py` proves user A cannot read, write or delete user B.
+The signing key lives in Key Vault (a Key Vault reference in the app settings); if it cannot be read,
+accounts answer 503 and weather keeps working. New devices are capped per hour across instances.
+
 ## Configuration & logs
 
 All settings are environment variables, parsed and validated once at startup in

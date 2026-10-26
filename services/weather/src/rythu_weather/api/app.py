@@ -11,15 +11,20 @@ in S6 — this app is plain ASGI, so it is portable.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import FastAPI, Header, Query
+from fastapi import FastAPI, Header, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from rythu_weather.adapters.geocode import Geocoder
+from rythu_weather.api.me import ApiError, accounts_router, error_response
 from rythu_weather.api.schemas import ErrorBody, GeocodeResults, Health, WeatherContract
-from rythu_weather.app.composition import build_geocoder, build_provider
+from rythu_weather.app.accounts import utc_now
+from rythu_weather.app.composition import Accounts, build_accounts, build_geocoder, build_provider
 from rythu_weather.app.geocode_request import MAX_QUERY, MIN_QUERY, answer_geocode
 from rythu_weather.app.weather_request import answer_weather
 from rythu_weather.domain.models import Crop, WaterSource, WeatherProvider
@@ -46,10 +51,19 @@ RequestId = Annotated[
 ]
 
 
-def create_app(provider: WeatherProvider | None = None, geocoder: Geocoder | None = None) -> FastAPI:
+_BUILD: Any = object()  # "build from settings" (accounts may legitimately be None: switched off)
+
+
+def create_app(
+    provider: WeatherProvider | None = None,
+    geocoder: Geocoder | None = None,
+    accounts: Accounts | None = _BUILD,
+    clock: Callable[[], datetime] = utc_now,
+) -> FastAPI:
     """Build the app. Pass fakes in tests; production builds them from settings, once."""
     weather_provider = provider or build_provider()
     place_search = geocoder or build_geocoder()
+    device_accounts = build_accounts() if accounts is _BUILD else accounts
     app = FastAPI(
         title="Rythu API",
         version="1",
@@ -93,6 +107,24 @@ def create_app(provider: WeatherProvider | None = None, geocoder: Geocoder | Non
         summary="Find a village by name (Telangana + border)",
     )
 
+    app.include_router(accounts_router(device_accounts, clock))
+
+    async def on_api_error(_request: Request, exc: Exception) -> JSONResponse:
+        assert isinstance(exc, ApiError)
+        return error_response(exc)
+
+    async def on_invalid_request(_request: Request, exc: Exception) -> JSONResponse:
+        # Same 400 {"error", "code"} shape as every other refusal — never FastAPI's 422 — and only the
+        # field and the reason, never the submitted value.
+        assert isinstance(exc, RequestValidationError)
+        first = exc.errors()[0] if exc.errors() else {}
+        where = ".".join(str(part) for part in first.get("loc", ()) if part != "body")
+        message = f"{where}: {first.get('msg', 'invalid')}" if where else "invalid request"
+        return error_response(ApiError(400, "bad_request", message))
+
+    app.add_exception_handler(ApiError, on_api_error)
+    app.add_exception_handler(RequestValidationError, on_invalid_request)
+
     @app.get("/healthz", response_model=Health, tags=["ops"], summary="Liveness: the process is up")
     async def healthz() -> JSONResponse:
         # No dependencies checked on purpose: liveness must not fail because Open-Meteo is down.
@@ -105,8 +137,8 @@ def create_app(provider: WeatherProvider | None = None, geocoder: Geocoder | Non
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_methods=["GET", "PUT", "POST", "DELETE"],
-        allow_headers=["Authorization", "Content-Type", "If-Match", "X-Request-Id"],
+        allow_methods=["GET", "PUT", "POST", "DELETE"],  # a preflight for the /v1/me writes
+        allow_headers=["Authorization", "Content-Type", "If-Match", "If-None-Match", "X-Request-Id"],
         expose_headers=["ETag", "X-Request-Id"],
         max_age=7200,  # Chromium's ceiling for caching a preflight
     )

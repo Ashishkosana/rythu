@@ -115,7 +115,17 @@ class ErrorBody(_Strict):
     """4xx/5xx body. ``code`` is stable and machine-readable; ``error`` is for humans/logs."""
 
     error: str
-    code: Literal["bad_request", "outside_coverage", "upstream_unavailable"]
+    code: Literal[
+        "bad_request",
+        "outside_coverage",
+        "upstream_unavailable",
+        "unauthorized",
+        "not_found",
+        "precondition_failed",
+        "precondition_required",
+        "rate_limited",
+        "unavailable",
+    ]
 
 
 class Health(_Strict):
@@ -136,3 +146,42 @@ class GeocodeResults(_Strict):
     """``GET /v1/geocode`` 200 body: places inside Rythu's coverage, best match first (may be empty)."""
 
     results: list[PlaceOut]
+
+
+# ── Device accounts (ADR 0004) ──────────────────────────────────────────────────────────────────
+
+
+class DeviceCredentialsOut(_Strict):
+    """``POST /v1/devices`` 201 body. Shown once: the server keeps only a digest of the secret."""
+
+    user_id: str = Field(description="Random 128-bit id, 32 lowercase hex characters.")
+    device_secret: str = Field(description="256-bit secret. Keep on the device; trade it for tokens.")
+
+
+class SessionIn(_Strict):
+    user_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    device_secret: str = Field(min_length=20, max_length=128)
+
+
+class SessionOut(_Strict):
+    token: str = Field(description="Send as `Authorization: Bearer <token>` on /v1/me routes.")
+    expires_at: str = Field(description="ISO-8601; ask for a new token a little before this.")
+
+
+class VillageIO(_Strict):
+    name: str = Field(min_length=1, max_length=80)
+    lat: float = Field(ge=-90, le=90, description="Must be inside coverage (Telangana + border).")
+    lon: float = Field(ge=-180, le=180)
+
+
+class ProfileIn(_Strict):
+    """What the phone saves on the server — only what alerts and the crop calendar need."""
+
+    village: VillageIO | None = None
+    crop: Crop | None = None
+    water: WaterSource = WaterSource.RAINFED
+    lang: Literal["te", "en"] = "te"
+
+
+class ProfileOut(ProfileIn):
+    updated_at: str = Field(description="Server time of the last write, ISO-8601.")

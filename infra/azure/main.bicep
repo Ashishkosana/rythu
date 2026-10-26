@@ -5,6 +5,7 @@
 //        │ logs/requests                                                     ▲
 //        ▼                                                                   │ no keys: shared-key access off
 //   Application Insights ◀── Log Analytics (daily cap)                       │
+//   Key Vault (RBAC) ── the device-token signing key, read by the app's identity only
 //   GitHub Actions ── OIDC (federated credential, no secret) ── deploy identity
 //   Budget alert (email) on the resource group
 //
@@ -50,6 +51,10 @@ param instanceMemoryMB int = 512
 @allowed(['eastasia', 'westeurope', 'eastus2', 'centralus', 'westus2'])
 param webLocation string = 'eastasia'
 
+@description('Device-token signing key (ADR 0004). Leave the default: a fresh random value each deployment rotates the key — tokens live an hour and phones get a new one silently.')
+@secure()
+param tokenSigningKey string = '${newGuid()}${newGuid()}'
+
 var suffix = uniqueString(resourceGroup().id)
 var tags = { app: baseName, env: env }
 var storageName = take('st${baseName}${env}${suffix}', 24)
@@ -59,6 +64,9 @@ var deploymentContainer = 'deployments'
 // Built-in role IDs (verified against learn.microsoft.com built-in roles reference).
 var roleStorageBlobDataOwner = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
 var roleStorageTableDataContributor = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
+// Read secret values only (getSecret + readMetadata). Verified against the built-in roles reference
+// (MicrosoftDocs azure-docs: role-based-access-control/built-in-roles/security.md).
+var roleKeyVaultSecretsUser = '4633458b-17de-408a-b874-0445c86b69e6'
 
 // ── Observability ────────────────────────────────────────────────────────────────────────────
 resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -126,6 +134,11 @@ resource cellsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023
   name: 'cells'
 }
 
+resource usersTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: tableService
+  name: 'users' // device accounts + profiles, one partition per user (ADR 0002/0004)
+}
+
 resource budgetTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
   parent: tableService
   name: 'budget'
@@ -159,6 +172,9 @@ resource api 'Microsoft.Web/sites@2024-04-01' = {
         // Rythu settings (services/weather/src/rythu_weather/app/settings.py).
         { name: 'RYTHU_AZURE_TABLES_ENDPOINT', value: storage.properties.primaryEndpoints.table }
         { name: 'RYTHU_AZURE_FORECAST_TABLE', value: forecastTable }
+        { name: 'RYTHU_AZURE_USERS_TABLE', value: usersTable.name }
+        // Resolved by the platform with the app's identity; the value never appears in config.
+        { name: 'RYTHU_TOKEN_SIGNING_KEY', value: '@Microsoft.KeyVault(SecretUri=${signingKey.properties.secretUri})' }
         { name: 'RYTHU_LOG_LEVEL', value: 'INFO' }
       ]
     }
@@ -199,6 +215,38 @@ resource apiTableContributor 'Microsoft.Authorization/roleAssignments@2022-04-01
     principalId: api.identity.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleStorageTableDataContributor)
+  }
+}
+
+// ── Secrets: one Key Vault, RBAC mode, holding the device-token signing key ─────────────────
+resource vault 'Microsoft.KeyVault/vaults@2023-07-01' = {
+  name: take('kv-${baseName}-${env}-${suffix}', 24)
+  location: location
+  tags: tags
+  properties: {
+    tenantId: subscription().tenantId
+    sku: { family: 'A', name: 'standard' }
+    enableRbacAuthorization: true // access by role assignment, auditable like everything else
+    softDeleteRetentionInDays: 7 // the minimum: a torn-down pilot frees the name within a week
+  }
+}
+
+resource signingKey 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: vault
+  name: 'token-signing-key'
+  properties: {
+    value: tokenSigningKey
+    contentType: 'text/plain'
+  }
+}
+
+resource apiSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(vault.id, api.id, roleKeyVaultSecretsUser)
+  scope: vault
+  properties: {
+    principalId: api.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleKeyVaultSecretsUser)
   }
 }
 
@@ -268,6 +316,7 @@ output functionAppName string = api.name
 output functionAppUrl string = 'https://${api.properties.defaultHostName}'
 output functionAppId string = api.id
 output storageAccountName string = storage.name
+output keyVaultName string = vault.name
 output webAppName string = web.name
 output webAppUrl string = 'https://${web.properties.defaultHostname}'
 output webAppId string = web.id

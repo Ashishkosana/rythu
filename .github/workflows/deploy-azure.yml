@@ -67,6 +67,14 @@ jobs:
           echo "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); assert 'reliability' in d; print('weather OK, degraded =', d.get('degraded', False))"
           code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/v1/weather?lat=13.08&lon=80.27")
           test "$code" = "400" && echo "coverage check OK (400 outside Telangana)"
+          # Device accounts end to end (proves the Key Vault reference resolved), then erase the test user.
+          creds=$(curl -fsS -X POST "$URL/v1/devices")
+          token=$(curl -fsS -X POST "$URL/v1/sessions" -H 'Content-Type: application/json' -d "$creds" \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['token'])")
+          echo "::add-mask::$token"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/v1/me/profile" -H "Authorization: Bearer $token")
+          test "$code" = "404" && echo "accounts OK (fresh device has no profile)"
+          curl -fsS -X DELETE "$URL/v1/me" -H "Authorization: Bearer $token" && echo "test device erased"
 
   deploy-web:
     name: deploy · web (dev)

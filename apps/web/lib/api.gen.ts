@@ -38,6 +38,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register this phone */
+        post: operations["register_device_v1_devices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trade the device secret for a one-hour token */
+        post: operations["start_session_v1_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The profile saved by this device */
+        get: operations["get_profile_v1_me_profile_get"];
+        /** Save the profile (conditional) */
+        put: operations["put_profile_v1_me_profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete everything stored for this user */
+        delete: operations["delete_me_v1_me_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -105,6 +174,22 @@ export interface components {
             farm_note: string;
         };
         /**
+         * DeviceCredentialsOut
+         * @description ``POST /v1/devices`` 201 body. Shown once: the server keeps only a digest of the secret.
+         */
+        DeviceCredentialsOut: {
+            /**
+             * User Id
+             * @description Random 128-bit id, 32 lowercase hex characters.
+             */
+            user_id: string;
+            /**
+             * Device Secret
+             * @description 256-bit secret. Keep on the device; trade it for tokens.
+             */
+            device_secret: string;
+        };
+        /**
          * ErrorBody
          * @description 4xx/5xx body. ``code`` is stable and machine-readable; ``error`` is for humans/logs.
          */
@@ -115,7 +200,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "bad_request" | "outside_coverage" | "upstream_unavailable";
+            code: "bad_request" | "outside_coverage" | "upstream_unavailable" | "unauthorized" | "not_found" | "precondition_failed" | "precondition_required" | "rate_limited" | "unavailable";
         };
         /**
          * FarmAction
@@ -234,6 +319,40 @@ export interface components {
             /** Lon */
             lon: number;
         };
+        /**
+         * ProfileIn
+         * @description What the phone saves on the server — only what alerts and the crop calendar need.
+         */
+        ProfileIn: {
+            village?: components["schemas"]["VillageIO"] | null;
+            crop?: components["schemas"]["Crop"] | null;
+            /** @default rainfed */
+            water: components["schemas"]["WaterSource"];
+            /**
+             * Lang
+             * @default te
+             * @enum {string}
+             */
+            lang: "te" | "en";
+        };
+        /** ProfileOut */
+        ProfileOut: {
+            village?: components["schemas"]["VillageIO"] | null;
+            crop?: components["schemas"]["Crop"] | null;
+            /** @default rainfed */
+            water: components["schemas"]["WaterSource"];
+            /**
+             * Lang
+             * @default te
+             * @enum {string}
+             */
+            lang: "te" | "en";
+            /**
+             * Updated At
+             * @description Server time of the last write, ISO-8601.
+             */
+            updated_at: string;
+        };
         /** Reliability */
         Reliability: {
             /**
@@ -257,12 +376,44 @@ export interface components {
              */
             is_offline_cache: boolean;
         };
+        /** SessionIn */
+        SessionIn: {
+            /** User Id */
+            user_id: string;
+            /** Device Secret */
+            device_secret: string;
+        };
+        /** SessionOut */
+        SessionOut: {
+            /**
+             * Token
+             * @description Send as `Authorization: Bearer <token>` on /v1/me routes.
+             */
+            token: string;
+            /**
+             * Expires At
+             * @description ISO-8601; ask for a new token a little before this.
+             */
+            expires_at: string;
+        };
         /**
          * Severity
          * @description UI emphasis for a read — NOT a certainty claim about the weather.
          * @enum {string}
          */
         Severity: "info" | "caution" | "act";
+        /** VillageIO */
+        VillageIO: {
+            /** Name */
+            name: string;
+            /**
+             * Lat
+             * @description Must be inside coverage (Telangana + border).
+             */
+            lat: number;
+            /** Lon */
+            lon: number;
+        };
         /**
          * WMOCategory
          * @description Coarse bucket for a WMO ``weather_code`` (icon/colour grouping + storm guard).
@@ -394,6 +545,219 @@ export interface operations {
             };
             /** @description No geocoding source could be asked (code=upstream_unavailable). */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    register_device_v1_devices_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceCredentialsOut"];
+                };
+            };
+            /** @description Too many new devices this hour. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Accounts unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    start_session_v1_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Malformed body. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unknown device or wrong secret. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_profile_v1_me_profile_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Missing or expired token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Nothing saved yet. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    put_profile_v1_me_profile_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
+                "if-none-match"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Malformed body, or a village outside coverage (code=outside_coverage). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing or expired token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The saved profile changed since you read it (or one already exists). */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Send If-Match: <etag> to update, or If-None-Match: * to create. */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_me_v1_me_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired token. */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

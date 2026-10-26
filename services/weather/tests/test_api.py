@@ -81,7 +81,9 @@ async def test_healthz_is_dependency_free():
 
 async def test_openapi_documents_v1_and_hides_the_legacy_alias():
     doc = (await _api(FakeProvider(_FC), "/openapi.json", {})).json()
-    assert set(doc["paths"]) == {"/v1/weather", "/v1/geocode", "/healthz"}
+    assert set(doc["paths"]) == {
+        "/v1/weather", "/v1/geocode", "/v1/devices", "/v1/sessions", "/v1/me/profile", "/v1/me", "/healthz",
+    }
     op = doc["paths"]["/v1/weather"]["get"]
     assert {p["name"] for p in op["parameters"]} == {"lat", "lon", "crop", "water", "X-Request-Id"}
     ok = op["responses"]["200"]["content"]["application/json"]["schema"]

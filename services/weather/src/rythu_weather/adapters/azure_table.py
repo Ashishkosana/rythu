@@ -34,12 +34,18 @@ from zoneinfo import ZoneInfo
 
 from azure.core import MatchConditions
 from azure.core.credentials_async import AsyncTokenCredential
-from azure.core.exceptions import ResourceExistsError, ResourceModifiedError, ResourceNotFoundError
+from azure.core.exceptions import (
+    HttpResponseError,
+    ResourceExistsError,
+    ResourceModifiedError,
+    ResourceNotFoundError,
+)
 from azure.data.tables import UpdateMode
 from azure.data.tables.aio import TableClient
 
 from rythu_weather.adapters.budget import BudgetContention
 from rythu_weather.adapters.cache import MAX_STALE
+from rythu_weather.app.accounts import PreconditionFailed
 
 # Bump to orphan every entry at once if the payload format ever changes incompatibly.
 ROW_KEY = "v1"
@@ -220,3 +226,86 @@ class AzureTableUpstreamBudget:
                     await _backoff(attempt)  # someone spent in between — re-read and try again
                     continue
         raise BudgetContention(f"gave up after {self.max_attempts} conflicting updates on {window}")
+
+
+@dataclass(frozen=True, slots=True)
+class AzureTableUserStore:
+    """``UserStore`` on Table Storage — one partition per user (ADR 0002):
+
+        PartitionKey = user id    RowKey = "device"   secretHash, createdAt
+                                  RowKey = "profile"  data (JSON), conditional writes on the row's ETag
+
+    Later rows (fields, push subscriptions) join the same partition, so deleting a user is one query.
+    """
+
+    auth: TableAuth
+    table_name: str = "users"
+
+    async def create_user(self, user_id: str, secret_hash: str, now: datetime) -> None:
+        entity = {"PartitionKey": user_id, "RowKey": "device", "secretHash": secret_hash, "createdAt": now}
+        async with self.auth.client(self.table_name) as client:
+            try:
+                await client.create_entity(entity)
+            except ResourceNotFoundError:
+                await _create_table_quietly(client)
+                await client.create_entity(entity)
+
+    async def secret_hash(self, user_id: str) -> str | None:
+        async with self.auth.client(self.table_name) as client:
+            try:
+                entity = await client.get_entity(user_id, "device")
+            except ResourceNotFoundError:
+                return None
+        return str(entity["secretHash"])
+
+    async def get_profile(self, user_id: str) -> tuple[dict[str, Any], str] | None:
+        async with self.auth.client(self.table_name) as client:
+            try:
+                entity = await client.get_entity(user_id, "profile")
+            except ResourceNotFoundError:
+                return None
+        return json.loads(entity["data"]), str(entity.metadata["etag"])
+
+    async def put_profile(
+        self, user_id: str, profile: dict[str, Any], *, if_match: str | None, create_only: bool
+    ) -> str:
+        entity = {
+            "PartitionKey": user_id,
+            "RowKey": "profile",
+            "data": json.dumps(profile, ensure_ascii=False, separators=(",", ":")),
+        }
+        async with self.auth.client(self.table_name) as client:
+            if create_only:
+                try:
+                    meta = await client.create_entity(entity)
+                except ResourceExistsError as exc:
+                    raise PreconditionFailed from exc
+                except ResourceNotFoundError:
+                    await _create_table_quietly(client)
+                    meta = await client.create_entity(entity)
+                return str(meta["etag"])
+            if if_match is None:
+                raise PreconditionFailed
+            try:
+                meta = await client.update_entity(
+                    entity, mode=UpdateMode.REPLACE, etag=if_match, match_condition=MatchConditions.IfNotModified
+                )
+            except (ResourceModifiedError, ResourceNotFoundError) as exc:
+                raise PreconditionFailed from exc
+            except HttpResponseError as exc:
+                if exc.status_code == 400:  # an ETag that was never ours (garbage in If-Match)
+                    raise PreconditionFailed from exc
+                raise
+        return str(meta["etag"])
+
+    async def delete_user(self, user_id: str) -> int:
+        async with self.auth.client(self.table_name) as client:
+            try:
+                rows = client.query_entities("PartitionKey eq @u", parameters={"u": user_id}, select=["RowKey"])
+                keys = [str(e["RowKey"]) async for e in rows]
+            except ResourceNotFoundError:
+                return 0
+            for row_key in keys:
+                with contextlib.suppress(ResourceNotFoundError):
+                    await client.delete_entity(user_id, row_key)
+        return len(keys)

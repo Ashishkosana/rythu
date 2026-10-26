@@ -13,10 +13,12 @@ and the pre-warm timer refreshes the registry's cells through the raw upstream.
 
 from __future__ import annotations
 
+import logging
+import secrets
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from rythu_weather.adapters.budget import BudgetedProvider
+from rythu_weather.adapters.budget import BudgetedProvider, InMemoryUpstreamBudget, UpstreamBudget
 from rythu_weather.adapters.cache import CachedProvider, CacheStore, DynamoDbCacheStore
 from rythu_weather.adapters.cells import CellRegistry, RegisteringProvider
 from rythu_weather.adapters.geocode import (
@@ -27,8 +29,12 @@ from rythu_weather.adapters.geocode import (
     OpenMeteoGeocoder,
 )
 from rythu_weather.adapters.open_meteo import OpenMeteoHttpProvider
+from rythu_weather.app.accounts import InMemoryUserStore, TokenSigner, UserStore
 from rythu_weather.app.settings import Settings, get_settings
 from rythu_weather.domain.models import WeatherProvider
+from rythu_weather.observability import log_event
+
+_log = logging.getLogger(__name__)
 
 if TYPE_CHECKING:  # types only — the Azure SDK is never imported on the Lambda path
     from azure.core.credentials_async import AsyncTokenCredential
@@ -110,3 +116,36 @@ def _azure_store(s: Settings) -> CacheStore:
 
 def build_geocoder() -> Geocoder:
     return CachedGeocoder(FallbackGeocoder(NominatimGeocoder(), OpenMeteoGeocoder()))
+
+
+@dataclass(frozen=True, slots=True)
+class Accounts:
+    """Device accounts (ADR 0004): where users live, how tokens are signed, how fast devices may join."""
+
+    users: UserStore
+    signer: TokenSigner
+    registrations: UpstreamBudget
+    registrations_per_hour: int
+
+
+def build_accounts(settings: Settings | None = None) -> Accounts | None:
+    """None = accounts switched off (the /v1/me routes answer 503; weather is unaffected)."""
+    s = settings or get_settings()
+    key = s.token_signing_key
+    if s.uses_azure_tables:
+        if key is None:
+            # Several instances must share one key, so a throwaway key would make tokens fail at random.
+            reason = s.token_signing_key_problem or "RYTHU_TOKEN_SIGNING_KEY not set"
+            log_event(_log, logging.ERROR, "accounts.disabled", reason=reason)
+            return None
+        from rythu_weather.adapters.azure_table import AzureTableUpstreamBudget, AzureTableUserStore
+
+        auth = _azure_auth(s)
+        users: UserStore = AzureTableUserStore(auth, s.azure_users_table)
+        registrations: UpstreamBudget = AzureTableUpstreamBudget(auth)
+    else:
+        users, registrations = InMemoryUserStore(), InMemoryUpstreamBudget()
+    if key is None:
+        log_event(_log, logging.WARNING, "accounts.ephemeral_key", note="dev only: tokens die with this process")
+        key = secrets.token_bytes(32)
+    return Accounts(users, TokenSigner(key), registrations, s.device_registrations_per_hour)

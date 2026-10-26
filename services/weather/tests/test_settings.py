@@ -34,3 +34,42 @@ def test_invalid_timeout_fails_fast_naming_the_variable(raw):
 def test_invalid_log_level_fails_fast():
     with pytest.raises(ValueError, match="RYTHU_LOG_LEVEL"):
         Settings.from_env({"RYTHU_LOG_LEVEL": "LOUD"})
+
+
+def test_token_signing_key_is_secret_and_validated():
+    s = Settings.from_env({"RYTHU_TOKEN_SIGNING_KEY": "s" * 40})
+    assert s.token_signing_key == b"s" * 40
+    assert "sss" not in repr(s)
+    assert Settings.from_env({}).token_signing_key is None
+    with pytest.raises(ValueError, match="at least 32"):
+        Settings.from_env({"RYTHU_TOKEN_SIGNING_KEY": "short"})
+
+
+def test_an_unresolved_key_vault_reference_is_never_used_as_a_key():
+    ref = "@Microsoft.KeyVault(SecretUri=https://kv.vault.azure.net/secrets/token-signing-key)"
+    s = Settings.from_env({"RYTHU_TOKEN_SIGNING_KEY": ref})
+    assert s.token_signing_key is None
+    assert s.token_signing_key_problem is not None and "Key Vault Secrets User" in s.token_signing_key_problem
+
+
+def test_users_table_and_registration_limit():
+    s = Settings.from_env({"RYTHU_AZURE_USERS_TABLE": "people", "RYTHU_DEVICE_REGISTRATIONS_PER_HOUR": "5"})
+    assert (s.azure_users_table, s.device_registrations_per_hour) == ("people", 5)
+    assert Settings.from_env({}).azure_users_table == "users"
+    with pytest.raises(ValueError):
+        Settings.from_env({"RYTHU_AZURE_USERS_TABLE": "no-dashes"})
+    with pytest.raises(ValueError):
+        Settings.from_env({"RYTHU_DEVICE_REGISTRATIONS_PER_HOUR": "0"})
+
+
+def test_accounts_switch_off_in_azure_without_a_key_but_weather_is_unaffected(caplog):
+    from rythu_weather.app.composition import build_accounts
+
+    ref = "@Microsoft.KeyVault(SecretUri=https://kv.vault.azure.net/secrets/token-signing-key)"
+    endpoint = "https://x.table.core.windows.net"
+    s = Settings.from_env({"RYTHU_AZURE_TABLES_ENDPOINT": endpoint, "RYTHU_TOKEN_SIGNING_KEY": ref})
+    assert build_accounts(s) is None
+    [record] = [r for r in caplog.records if r.getMessage() == "accounts.disabled"]
+    assert "Key Vault Secrets User" in record.fields["reason"]  # type: ignore[attr-defined]
+    local = build_accounts(Settings.from_env({}))  # local dev: a throwaway key, in-memory users
+    assert local is not None

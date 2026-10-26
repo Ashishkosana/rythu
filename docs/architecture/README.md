@@ -222,7 +222,8 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | S11d | Accessibility: axe-core 4.14 audit of every screen ×2 languages → 0 violations (was: lang fixed at te, no main/h1, opacity-dimmed schemes failing contrast); 48 px targets; disclosures with aria-expanded; chart → screen-reader table; SVG chrome icons (Lucide subset); 🫛 → 🌿; dialog semantics; visible focus | visual | **done** |
 | S11e | Primitives (Button, Chip, Card, Disclosure…) + `/dev/ui` gallery — extracted when the new screens (S15–S17) give each pattern a second user, not speculatively | none | with S15–S17 |
 | ⭐ S12 | Android TWA → Play internal testing → father installs; start 12-tester closed test | new channel | planned |
-| S13 | Device auth + `/v1/me/profile` sync; remove Cognito | server-restored profile | planned |
+| S13a | Device accounts API (register → 1 h HMAC token), `/v1/me/profile` with ETags, delete-my-data, IDOR tests; `users` table + Key Vault (signing key, rotated per deployment) | none yet (API only) | **done** |
+| S13b | App: consent, profile sync, "My data" screen; remove Cognito | profile saved server-side with consent | planned |
 | S14 | Push alerts (subscriptions, evaluation, queue, sender, alert log) | new | planned |
 | S15 | Mandi prices + MSP comparison (after confirming data.gov.in API access) | new | planned |
 | S16 | My-Field crop calendar | new | planned |

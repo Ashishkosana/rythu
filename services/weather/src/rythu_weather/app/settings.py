@@ -16,6 +16,12 @@ Variables (all optional):
 * ``RYTHU_UPSTREAM_BUDGET_PER_HOUR`` — on-demand Open-Meteo calls allowed per hour across all instances
   (default 120). Beyond it, misses serve the saved copy or an honest degraded answer.
 * ``RYTHU_PREWARM_MAX_CELLS`` — most cells the 20-minute pre-warm refreshes (default 60).
+* ``RYTHU_TOKEN_SIGNING_KEY`` — HMAC key for device tokens (ADR 0004), ≥ 32 characters. SECRET: in Azure
+  it is a Key Vault reference resolved by the platform; never logged, never in ``repr``. Unset locally →
+  a throwaway key per process (tokens die with it); unset in Azure → device accounts are switched off.
+* ``RYTHU_AZURE_USERS_TABLE`` — table for device accounts and profiles (default ``users``).
+* ``RYTHU_DEVICE_REGISTRATIONS_PER_HOUR`` — new device accounts allowed per hour, all instances
+  together (default 30): a pilot needs a handful; a script filling the table does not get far.
 
 Quota arithmetic (Open-Meteo free tier ≈ 10,000 calls/day; tests keep the worst case under 80 %):
 pre-warm 60 cells × 3 runs/h × 24 h = 4,320 + on-demand 120/h × 24 h = 2,880 → 7,200/day.
@@ -40,6 +46,9 @@ DEFAULT_LOG_LEVEL = "INFO"
 DEFAULT_UPSTREAM_BUDGET_PER_HOUR = 120
 DEFAULT_PREWARM_MAX_CELLS = 60
 DEFAULT_AZURE_FORECAST_TABLE = "forecast"
+DEFAULT_AZURE_USERS_TABLE = "users"
+DEFAULT_DEVICE_REGISTRATIONS_PER_HOUR = 30
+MIN_TOKEN_KEY_CHARS = 32
 # Azure table names: 3–63 alphanumerics, starting with a letter.
 _AZURE_TABLE_NAME = re.compile(r"[A-Za-z][A-Za-z0-9]{2,62}")
 
@@ -55,6 +64,16 @@ class Settings:
     log_level: str = DEFAULT_LOG_LEVEL
     upstream_budget_per_hour: int = DEFAULT_UPSTREAM_BUDGET_PER_HOUR
     prewarm_max_cells: int = DEFAULT_PREWARM_MAX_CELLS
+    # repr=False: the token signing key is the service's one real secret.
+    token_signing_key: bytes | None = field(default=None, repr=False)
+    # Why the key is missing, when that is a platform state rather than a choice (safe to log).
+    token_signing_key_problem: str | None = None
+    azure_users_table: str = DEFAULT_AZURE_USERS_TABLE
+    device_registrations_per_hour: int = DEFAULT_DEVICE_REGISTRATIONS_PER_HOUR
+
+    @property
+    def uses_azure_tables(self) -> bool:
+        return self.azure_tables_endpoint is not None or self.azure_tables_connection_string is not None
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -73,11 +92,7 @@ class Settings:
             raise ValueError(f"set at most one cache backend, not both: {' and '.join(backends)}")
         if endpoint and not endpoint.startswith("https://"):
             raise ValueError("RYTHU_AZURE_TABLES_ENDPOINT must be an https:// URL")
-        table = (e.get("RYTHU_AZURE_FORECAST_TABLE") or DEFAULT_AZURE_FORECAST_TABLE).strip()
-        if not _AZURE_TABLE_NAME.fullmatch(table):
-            raise ValueError(
-                f"RYTHU_AZURE_FORECAST_TABLE must be 3-63 letters/digits starting with a letter, got {table!r}"
-            )
+        table = _table_name(e, "RYTHU_AZURE_FORECAST_TABLE", DEFAULT_AZURE_FORECAST_TABLE)
         return cls(
             cache_table=dynamo,
             azure_tables_endpoint=endpoint,
@@ -89,7 +104,44 @@ class Settings:
                 e, "RYTHU_UPSTREAM_BUDGET_PER_HOUR", DEFAULT_UPSTREAM_BUDGET_PER_HOUR, 1, 400
             ),
             prewarm_max_cells=_bounded_int(e, "RYTHU_PREWARM_MAX_CELLS", DEFAULT_PREWARM_MAX_CELLS, 0, 100),
+            token_signing_key=_signing_key(e),
+            token_signing_key_problem=_signing_key_problem(e),
+            azure_users_table=_table_name(e, "RYTHU_AZURE_USERS_TABLE", DEFAULT_AZURE_USERS_TABLE),
+            device_registrations_per_hour=_bounded_int(
+                e, "RYTHU_DEVICE_REGISTRATIONS_PER_HOUR", DEFAULT_DEVICE_REGISTRATIONS_PER_HOUR, 1, 1000
+            ),
         )
+
+
+def _table_name(env: Mapping[str, str], name: str, default: str) -> str:
+    table = (env.get(name) or default).strip()
+    if not _AZURE_TABLE_NAME.fullmatch(table):
+        raise ValueError(f"{name} must be 3-63 letters/digits starting with a letter, got {table!r}")
+    return table
+
+
+def _signing_key(env: Mapping[str, str]) -> bytes | None:
+    raw = (env.get("RYTHU_TOKEN_SIGNING_KEY") or "").strip()
+    if not raw:
+        return None
+    if _unresolved_reference(raw):
+        return None  # never sign with the reference's own (public) text; see _signing_key_problem
+    if len(raw) < MIN_TOKEN_KEY_CHARS:
+        raise ValueError(f"RYTHU_TOKEN_SIGNING_KEY must be at least {MIN_TOKEN_KEY_CHARS} characters")
+    return raw.encode("utf-8")
+
+
+def _unresolved_reference(raw: str) -> bool:
+    # When the platform cannot resolve a Key Vault reference, the app sees the reference text itself.
+    return raw.startswith("@Microsoft.KeyVault(")
+
+
+def _signing_key_problem(env: Mapping[str, str]) -> str | None:
+    # Usually the first minutes of a fresh deployment (the role assignment still propagating), so it
+    # switches accounts off instead of failing the cold start — weather keeps working meanwhile.
+    if _unresolved_reference((env.get("RYTHU_TOKEN_SIGNING_KEY") or "").strip()):
+        return "unresolved Key Vault reference: does the app's identity have 'Key Vault Secrets User' on the vault?"
+    return None
 
 
 def _positive_float(env: Mapping[str, str], name: str, default: float) -> float:
