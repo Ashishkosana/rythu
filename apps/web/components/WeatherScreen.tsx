@@ -7,6 +7,8 @@ import { useLang } from "@/lib/lang";
 import LangToggle from "@/components/LangToggle";
 import { skyTheme } from "@/lib/sky";
 import { HERO_HOURS, nextHoursChance } from "@/lib/hero";
+import { sourceStamp } from "@/lib/freshness";
+import Link from "next/link";
 
 type Lang = "te" | "en";
 
@@ -112,12 +114,18 @@ export default function WeatherScreen({
   crop,
   place,
   locationQuery,
+  nowMs,
+  offline,
+  adviceLoading,
   children,
 }: {
-  data: WeatherContract;
+  data: WeatherContract; // already trimmed to "now" (lib/freshness.ts asOf)
   crop: Crop;
   place: string;
   locationQuery: string;
+  nowMs: number; // the device clock, for the "updated N min ago" stamp
+  offline: boolean; // showing a saved copy (server's or this device's)
+  adviceLoading: boolean; // the advice shown belongs to the previous crop: hide it
   children?: ReactNode;
 }) {
   const { lang } = useLang(); // app-wide language
@@ -182,7 +190,7 @@ export default function WeatherScreen({
               🔊 {t.listen}
             </button>
 
-            {data.reliability.is_offline_cache && (
+            {offline && (
               <p className={`mt-3 inline-block rounded-full px-2.5 py-0.5 text-xs ${sky.chip}`}>📴 {t.offline}</p>
             )}
             <p className={`mt-3 text-[11px] leading-snug ${sky.soft}`}>⚠️ {data.reliability.disclaimer_en}</p>
@@ -208,9 +216,8 @@ export default function WeatherScreen({
                           style={{ height: `${Math.max(4, (p / maxProb) * 100)}%` }}
                           title={`${p}%`}
                         />
-                        {/* Parse the hour from the ISO string (YYYY-MM-DDTHH:..) — using
-                            new Date().getHours() would render the server's UTC hour on SSR
-                            and the device's local hour on the client → hydration mismatch. */}
+                        {/* The hour as printed in the forecast's own time zone (IST), whatever
+                            the device's zone: YYYY-MM-DDTHH:.. */}
                         <span className="text-[11px] text-stone-400">{Number(h.time_local.slice(11, 13))}</span>
                       </div>
                     );
@@ -233,9 +240,12 @@ export default function WeatherScreen({
             {/* crop selector */}
             <div className="mb-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {CROPS.map((c) => (
-                <a
+                <Link
                   key={c}
                   href={`/?crop=${c}&${locationQuery}`}
+                  replace
+                  scroll={false}
+                  aria-current={c === crop ? "true" : undefined}
                   className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                     c === crop
                       ? "bg-green-700 text-white shadow-[var(--shadow-1)]"
@@ -244,11 +254,16 @@ export default function WeatherScreen({
                 >
                   <span className="text-base">{CROP_LABEL[c].emoji}</span>
                   {CROP_LABEL[c][lang]}
-                </a>
+                </Link>
               ))}
             </div>
             <div className="space-y-3">
-              {data.farming_read.length === 0 ? (
+              {adviceLoading ? (
+                <>
+                  <div className="card h-20 animate-pulse motion-reduce:animate-none" />
+                  <div className="card h-20 animate-pulse motion-reduce:animate-none" />
+                </>
+              ) : data.farming_read.length === 0 ? (
                 <p className="card p-4 text-sm text-stone-500">✅ {t.noAdvice}</p>
               ) : (
                 data.farming_read.map((r) => <ReadCard key={r.id} read={r} lang={lang} />)
@@ -266,7 +281,10 @@ export default function WeatherScreen({
                   return (
                     <div key={d.date} className="flex items-center gap-3 px-4 py-3">
                       <span className="w-11 font-medium text-stone-600">
-                        {new Date(d.date).toLocaleDateString(lang === "te" ? "te-IN" : "en-IN", { weekday: "short" })}
+                        {new Date(d.date).toLocaleDateString(lang === "te" ? "te-IN" : "en-IN", {
+                          weekday: "short",
+                          timeZone: "UTC", // "YYYY-MM-DD" parses as UTC midnight: name THAT day
+                        })}
                       </span>
                       <span className="w-8 text-center text-2xl">{d.emoji}</span>
                       <div className="flex flex-1 items-center gap-2">
@@ -288,7 +306,7 @@ export default function WeatherScreen({
 
           {/* honest source stamp */}
           <p className="px-2 text-center text-xs leading-relaxed text-stone-400">
-            {data.reliability.source_stamp_en}
+            {sourceStamp(data, nowMs, lang)}
             <br />
             📍 {data.coords.returned.lat.toFixed(3)}, {data.coords.returned.lon.toFixed(3)} · ~
             {data.coords.snap_distance_km} km from your pin

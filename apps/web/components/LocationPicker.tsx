@@ -15,7 +15,7 @@ import { pick, useLang } from "@/lib/lang";
 //   3. Search a village/town by name — on submit (search button / keyboard "Go"), not per
 //      keystroke: Nominatim's usage policy forbids autocomplete, and one request suits 3G better.
 // Selecting anything updates ?lat&lon&place while preserving crop/water, so the
-// server component re-fetches weather for that point.
+// home screen shows the forecast for that point.
 
 export default function LocationPicker({ currentPlace }: { currentPlace: string }) {
   const { lang } = useLang();
@@ -76,7 +76,12 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
     const ctrl = new AbortController();
     inflight.current = ctrl;
     setSearch({ state: "searching" });
-    const outcome = await searchPlaces(query, ctrl.signal);
+    let outcome;
+    try {
+      outcome = await searchPlaces(query, ctrl.signal);
+    } catch {
+      return; // superseded by a newer search
+    }
     if (ctrl.signal.aborted) return;
     setSearch(outcome.ok ? { state: "found", places: outcome.places } : { state: "failed" });
   }

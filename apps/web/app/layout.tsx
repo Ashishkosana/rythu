@@ -5,6 +5,7 @@ import Welcome from "@/components/Welcome";
 import ServiceWorker from "@/components/ServiceWorker";
 import OfflineBanner from "@/components/OfflineBanner";
 import { LanguageProvider } from "@/lib/lang";
+import { QueryProvider } from "@/lib/query";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -45,7 +46,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <LanguageProvider>
-          {children}
+          <QueryProvider>{children}</QueryProvider>
           <BottomNav />
         </LanguageProvider>
         <Welcome />

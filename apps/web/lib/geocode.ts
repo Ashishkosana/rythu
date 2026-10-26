@@ -3,8 +3,7 @@
 // searches on SUBMIT, never per keystroke: Nominatim's usage policy forbids autocomplete, and a
 // farmer on 3G is better served by one request than by six.
 //
-// Until the static export (S8) the browser reaches the API through our /api/geocode route.
-
+import { ApiUnavailable, getJson } from "./api";
 import type { Lang } from "./lang";
 import type { Place } from "./types";
 
@@ -50,11 +49,11 @@ export type SearchOutcome = { ok: true; places: Place[] } | { ok: false };
 export async function searchPlaces(query: string, signal?: AbortSignal): Promise<SearchOutcome> {
   if (!isSearchable(query)) return { ok: true, places: [] };
   try {
-    const res = await fetch(`/api/geocode?q=${encodeURIComponent(query.trim())}`, { signal });
-    if (!res.ok) return { ok: false };
-    const data = (await res.json()) as { results?: unknown };
-    return Array.isArray(data.results) ? { ok: true, places: data.results as Place[] } : { ok: false };
-  } catch {
-    return { ok: false };
+    const { res, body } = await getJson(`/v1/geocode?q=${encodeURIComponent(query.trim())}`, signal);
+    const results = (body as { results?: unknown } | null)?.results;
+    return res.ok && Array.isArray(results) ? { ok: true, places: results as Place[] } : { ok: false };
+  } catch (err) {
+    if (err instanceof ApiUnavailable) return { ok: false };
+    throw err; // aborted by the caller (a newer search) — not ours to report
   }
 }

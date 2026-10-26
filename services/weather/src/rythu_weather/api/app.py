@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Annotated, Any
 
 from fastapi import FastAPI, Header, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from rythu_weather.adapters.geocode import Geocoder
@@ -97,6 +98,18 @@ def create_app(provider: WeatherProvider | None = None, geocoder: Geocoder | Non
         # No dependencies checked on purpose: liveness must not fail because Open-Meteo is down.
         return JSONResponse({"status": "ok"}, headers={"Cache-Control": "no-store"})
 
+    # The web app is static (S8) and calls the API from the browser, cross-origin. Every endpoint is
+    # public and nothing rides on cookies (future auth is a bearer token), so any origin may read.
+    # A plain GET carries no custom header, so it needs no preflight — one round trip less on 3G;
+    # the request id is exposed so the app can quote it when something fails.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["GET", "PUT", "POST", "DELETE"],
+        allow_headers=["Authorization", "Content-Type", "If-Match", "X-Request-Id"],
+        expose_headers=["ETag", "X-Request-Id"],
+        max_age=7200,  # Chromium's ceiling for caching a preflight
+    )
     _document_only_real_responses(app)
     return app
 

@@ -211,7 +211,7 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | S5 | Repository ports + Table Storage adapter, Azurite contract tests | none (AWS still on DynamoDB) | **done** |
 | ⭐ S6 | Azure foundation: Bicep, Function App, App Insights, budget, OIDC, deploy to dev (Key Vault deferred: managed identity leaves no secret to store; it arrives with the first real secret, S15) | none (AWS live) | S6a+b **done**; S6c (first deploy) needs the runbook in `infra/azure/README.md` |
 | ⭐ S7 | Pre-warm timer, cell registry, global upstream budget | faster; served copy ≤ ~20 min old; bursts get saved/degraded | **done** |
-| ⭐ S8a | Client data layer behind a flag (TanStack Query, IndexedDB, on-device age) | none while off | planned |
+| ⭐ S8a | Client data layer (TanStack Query, IndexedDB, on-device age); browser → API with CORS. Shipped without the flag: no front end is live (Amplify is offline), so there was nothing to protect | instant repeat opens; offline shows the saved copy (≤ 6 h) labelled; age true when read | **done** |
 | S8b | Static export → Static Web Apps; app-shell service worker | SSR ends | planned |
 | S9 | `/v1/geocode`; search-on-submit (Nominatim policy) | search on tap; Telugu village names; "couldn't search" ≠ "not found" | **done** |
 | S10 | Cutover to Azure prod, 7-day dual run, `cdk destroy` (explicit approval) | none | planned |

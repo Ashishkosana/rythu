@@ -1,13 +1,7 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  // Bake the weather backend URL into the build. Amplify exposes env vars at
-  // build time but not to the SSR runtime, so inlining here (build-time replace)
-  // is what makes process.env.WEATHER_API resolve in production. Only set when
-  // present so local `next dev` keeps its 127.0.0.1 fallback in page.tsx.
-  ...(process.env.WEATHER_API
-    ? { env: { WEATHER_API: process.env.WEATHER_API } }
-    : {}),
-};
+// The API's base URL comes from NEXT_PUBLIC_API_BASE, which Next inlines into the browser bundle at
+// build time (lib/api.ts falls back to the local dev server). Nothing else to configure yet.
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

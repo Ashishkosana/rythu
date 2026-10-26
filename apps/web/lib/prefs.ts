@@ -25,10 +25,22 @@ export function savePlace(p: SavedPlace): void {
 }
 
 export function loadPlace(): SavedPlace | null {
+  return parseSavedPlace(loadPlaceRaw());
+}
+
+/** The stored string itself (a stable snapshot for useSyncExternalStore). */
+export function loadPlaceRaw(): string | null {
   if (!ok()) return null;
   try {
-    const raw = window.localStorage.getItem(PLACE_KEY);
-    if (!raw) return null;
+    return window.localStorage.getItem(PLACE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function parseSavedPlace(raw: string | null): SavedPlace | null {
+  if (!raw) return null;
+  try {
     const p = JSON.parse(raw) as Partial<SavedPlace>;
     if (typeof p.lat === "number" && typeof p.lon === "number" && typeof p.place === "string") {
       return { lat: p.lat, lon: p.lon, place: p.place };

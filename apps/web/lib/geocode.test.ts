@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { formatPlaceLabel, isSearchable, isValidCoord, placeName, roundCoord, searchPlaces } from "./geocode";
+import { API_BASE } from "./api";
 import type { Place } from "./types";
 
 const REGONDA: Place = {
@@ -63,7 +64,7 @@ describe("searchPlaces", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   function stubFetch(impl: () => Promise<Response>) {
-    const fetchMock = vi.fn(impl);
+    const fetchMock = vi.fn((url: string) => (void url, impl()));
     vi.stubGlobal("fetch", fetchMock);
     return fetchMock;
   }
@@ -72,7 +73,7 @@ describe("searchPlaces", () => {
     const fetchMock = stubFetch(async () => Response.json({ results: [REGONDA] }));
     expect(await searchPlaces("  Regonda ")).toEqual({ ok: true, places: [REGONDA] });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock.mock.calls[0]).toEqual(["/api/geocode?q=Regonda", { signal: undefined }]);
+    expect(fetchMock.mock.calls[0]![0]).toBe(`${API_BASE}/v1/geocode?q=Regonda`);
   });
 
   it("tells 'nothing found' apart from 'could not search'", async () => {
@@ -83,6 +84,9 @@ describe("searchPlaces", () => {
     expect(await searchPlaces("Regonda")).toEqual({ ok: false });
 
     stubFetch(async () => Promise.reject(new TypeError("offline")));
+    expect(await searchPlaces("Regonda")).toEqual({ ok: false });
+
+    stubFetch(async () => new Response("<html>proxy error</html>", { status: 200 }));
     expect(await searchPlaces("Regonda")).toEqual({ ok: false });
 
     stubFetch(async () => Response.json({ nope: true }));

@@ -38,7 +38,7 @@
 | **Infra** | **AWS CDK** (Python): API Gateway v2 **HTTP API → Lambda** (`rythu_weather.app.handler`, 256 MB, 15 s, reserved concurrency 10) **→ DynamoDB** forecast cache (`PAY_PER_REQUEST`, TTL auto-expire). |
 | **Quality gate** | Backend: `ruff` + `mypy --strict` + `pytest`. Frontend: `eslint` + `tsc` + `vitest` + `next build` + production `npm audit`. |
 
-The front end reaches the backend through a `WEATHER_API` value inlined at build time in `next.config.ts` (a workaround for Amplify not exposing env vars to the SSR runtime), with a `http://127.0.0.1:8001` fallback for local dev.
+The browser calls the API directly (CORS) at `NEXT_PUBLIC_API_BASE`, inlined at build time, with a `http://127.0.0.1:8001` fallback for local dev. Data fetching is client-side through TanStack Query, with the last answers copied to IndexedDB so the forecast paints instantly and works offline (see `docs/architecture/adr/0003-client-data-layer-tanstack-query.md`).
 
 ---
 
@@ -59,8 +59,8 @@ flowchart TD
 
     OM["Open-Meteo API<br/>free — no key"]
 
-    U -->|"HTTPS request"| AMP
-    AMP -->|"server-side fetch — WEATHER_API"| APIGW
+    U -->|"HTTPS — static app shell"| AMP
+    U -->|"browser fetch (CORS) — NEXT_PUBLIC_API_BASE"| APIGW
     APIGW --> LAMBDA
     LAMBDA -->|"read-through by grid cell"| DDB
     DDB -.->|"cache HIT: return cached forecast"| LAMBDA
@@ -75,14 +75,14 @@ flowchart TD
 
 **Request flow (weather):** the App Router page renders server-side on Amplify, does a server-side fetch to the API Gateway HTTP API, which invokes the Lambda handler. The service checks the DynamoDB read-through cache (keyed by weather grid cell, TTL); on a miss it calls Open-Meteo via the `httpx` adapter. The **domain engine + rules** build a typed `farming_read[]` plus reliability/coords, everything is serialized into one typed JSON contract, and `WeatherScreen.tsx` renders rain %, hourly bars, the 7-day outlook, and the advice cards.
 
-**Separate paths:** village search is a client → Next.js `/api/geocode` route (Node runtime) → Nominatim primary, Open-Meteo geocoding fallback, day-cached. The **crops guide, fertilizer calculator, and schemes** screens are 100% static client-side data (`lib/crops.ts`, `lib/agronomy.ts`, `lib/schemes.ts`) and do **not** call the Python backend.
+**Separate paths:** village search is the API's `GET /v1/geocode` (Nominatim primary, Open-Meteo fallback, day-cached, searched on submit per Nominatim's policy). The **crops guide, fertilizer calculator, and schemes** screens are 100% static client-side data (`lib/crops.ts`, `lib/agronomy.ts`, `lib/schemes.ts`) and do **not** call the Python backend.
 
 ### Why it's built this way (the decisions I can defend)
 
 - **Hexagonal backend with a domain-purity test.** The Open-Meteo client, the DynamoDB cache, and a fake adapter are all swappable ports; a `test_domain_purity` guard keeps the rules/engine/models free of I/O, so the advice engine is unit-testable without any HTTP. The wire shape is defined in exactly one place (`app/serialize.py`).
 - **The DynamoDB read-through cache is a cost / rate-limit decision.** `PAY_PER_REQUEST` + TTL caps Open-Meteo calls to roughly one per grid cell per window, and Lambda `reserved_concurrent_executions = 10` caps a public endpoint — both keep a free-for-farmers app inside free-tier economics.
 - **One typed JSON contract** between Python and TypeScript, and it deliberately never leaks raw upstream fields or emits a "confidence" score (see the sample below). Pydantic schemas (`api/schemas.py`, golden-tested against the serializer) → committed `services/weather/openapi.json` → generated `apps/web/lib/api.gen.ts`; CI fails if either generated file is stale, and the crop/water lists are compile-checked against the backend enums.
-- **Build-time inlining of `WEATHER_API`** works around Amplify not exposing env vars to the SSR runtime, while a localhost fallback keeps local dev friction-free.
+- **Build-time `NEXT_PUBLIC_API_BASE`** points the browser at the API, while a localhost fallback keeps local dev friction-free.
 - **Deploy packaging:** `build_lambda.sh` bundles `httpx` into `infra/build/lambda`; the CDK stack falls back to pure source so `cdk synth` still works without the bundled deps.
 
 <details>
@@ -153,7 +153,7 @@ CI (GitHub Actions) runs `ruff` + `mypy --strict` + `pytest` for the backend and
 - **Crops guide (`/crops`)** — per-crop season / water / sowing / tips, cited to PJTSAU, with an "AEO-confirm" disclaimer.
 - **Fertilizer calculator** — pick a crop + area (acre / guntha) → Urea / DAP / MOP bags & kg computed deterministically and offline from cited PJTSAU / ICAR N:P:K doses, with N-overdose-safe framing, a Telugu "Listen" text-to-speech, and an always-on soil-test / AEO fallback.
 - **5 crops wired end-to-end** (backend `Crop` enum ↔ frontend): chilli/mirchi, cotton, paddy, red gram, maize.
-- **Location picker** — browser GPS, verified pilot mandals, and per-village search via the server-side `/api/geocode` route (Nominatim primary, Open-Meteo geocoding fallback, day-cached). Location persists across crop switches; the default is the district HQ. Coverage is **Telangana plus a border margin** (the rules, doses and schemes are Telangana-specific): search only returns places inside it, and GPS or links outside it get a clear "Telangana only" screen with the picker, never a dead end.
+- **Location picker** — browser GPS, verified pilot mandals, and per-village search via the API's `/v1/geocode` (Nominatim primary, Open-Meteo geocoding fallback, day-cached; Telugu names when OpenStreetMap has them). Location persists across crop switches; the default is the district HQ. Coverage is **Telangana plus a border margin** (the rules, doses and schemes are Telangana-specific): search only returns places inside it, and GPS or links outside it get a clear "Telangana only" screen with the picker, never a dead end.
 - **Farmer-first UX** — Telugu-first (default Telugu, Telugu ⇄ English toggle), tap-to-hear Telugu voice, a first-run Welcome overlay, remembered village + language, big tap targets, PWA install, and a safe-area-aware iOS-style bottom tab nav (Weather / Crops / Schemes).
 - **Offline / degraded handling** — the DynamoDB read-through cache, an offline-cache badge, a degraded-state message, and the honest source stamp.
 

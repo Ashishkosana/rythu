@@ -111,3 +111,23 @@ async def test_openapi_documents_only_responses_that_can_happen():
     # …and garbage input really does get the documented 400, not a 422.
     resp = await _api(FakeProvider(_FC), "/v1/weather", {"lat": "x", "lon": "y", "crop": "?" * 500})
     assert resp.status_code == 400
+
+
+async def test_browser_can_call_cross_origin_without_a_preflight_and_read_the_request_id():
+    transport = httpx.ASGITransport(app=create_app(FakeProvider(_FC)))
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/v1/weather", params={"crop": "chilli"}, headers={"Origin": "https://rythu.example"})
+        assert resp.status_code == 200
+        assert resp.headers["Access-Control-Allow-Origin"] == "*"
+        assert "x-request-id" in resp.headers["Access-Control-Expose-Headers"].lower()
+
+        pre = await client.options(
+            "/v1/weather",
+            headers={
+                "Origin": "https://rythu.example",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "x-request-id",
+            },
+        )
+        assert pre.status_code == 200
+        assert pre.headers["Access-Control-Max-Age"] == "7200"
