@@ -6,13 +6,13 @@
 // Pool IDs come from NEXT_PUBLIC_ env vars — Next inlines them into the client
 // bundle at build. Until they're set (before the Cognito stack is deployed),
 // authConfigured() is false and the UI shows a graceful "coming soon" state.
+//
+// The Cognito SDK (~20 KB gz) is loaded only when a flow runs, so it stays out of every page's
+// first-load JavaScript (scripts/check-budget.mjs). It is replaced by device auth in S13.
 
-import {
-  CognitoUser,
-  CognitoUserAttribute,
-  CognitoUserPool,
-  AuthenticationDetails,
-} from "amazon-cognito-identity-js";
+import type { CognitoUserPool } from "amazon-cognito-identity-js";
+
+const sdk = () => import("amazon-cognito-identity-js");
 
 const POOL_ID = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
 const CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
@@ -21,8 +21,9 @@ export function authConfigured(): boolean {
   return Boolean(POOL_ID && CLIENT_ID);
 }
 
-function getPool(): CognitoUserPool {
+async function getPool(): Promise<CognitoUserPool> {
   if (!POOL_ID || !CLIENT_ID) throw new Error("Auth not configured");
+  const { CognitoUserPool } = await sdk();
   return new CognitoUserPool({ UserPoolId: POOL_ID, ClientId: CLIENT_ID });
 }
 
@@ -61,30 +62,34 @@ export function friendlyError(err: unknown): string {
 }
 
 // ── Cognito flows (promisified) ───────────────────────────────────────────
-export function signUp(email: string, password: string): Promise<void> {
+export async function signUp(email: string, password: string): Promise<void> {
+  const [{ CognitoUserAttribute }, pool] = await Promise.all([sdk(), getPool()]);
   return new Promise((resolve, reject) => {
     const attrs = [new CognitoUserAttribute({ Name: "email", Value: email.trim() })];
-    getPool().signUp(email.trim(), password, attrs, [], (err) => (err ? reject(err) : resolve()));
+    pool.signUp(email.trim(), password, attrs, [], (err) => (err ? reject(err) : resolve()));
   });
 }
 
-export function confirm(email: string, code: string): Promise<void> {
+export async function confirm(email: string, code: string): Promise<void> {
+  const [{ CognitoUser }, pool] = await Promise.all([sdk(), getPool()]);
   return new Promise((resolve, reject) => {
-    const user = new CognitoUser({ Username: email.trim(), Pool: getPool() });
+    const user = new CognitoUser({ Username: email.trim(), Pool: pool });
     user.confirmRegistration(code.trim(), true, (err) => (err ? reject(err) : resolve()));
   });
 }
 
-export function resendCode(email: string): Promise<void> {
+export async function resendCode(email: string): Promise<void> {
+  const [{ CognitoUser }, pool] = await Promise.all([sdk(), getPool()]);
   return new Promise((resolve, reject) => {
-    const user = new CognitoUser({ Username: email.trim(), Pool: getPool() });
+    const user = new CognitoUser({ Username: email.trim(), Pool: pool });
     user.resendConfirmationCode((err) => (err ? reject(err) : resolve()));
   });
 }
 
-export function signIn(email: string, password: string): Promise<void> {
+export async function signIn(email: string, password: string): Promise<void> {
+  const [{ CognitoUser, AuthenticationDetails }, pool] = await Promise.all([sdk(), getPool()]);
   return new Promise((resolve, reject) => {
-    const user = new CognitoUser({ Username: email.trim(), Pool: getPool() });
+    const user = new CognitoUser({ Username: email.trim(), Pool: pool });
     const details = new AuthenticationDetails({ Username: email.trim(), Password: password });
     user.authenticateUser(details, {
       onSuccess: () => resolve(),
@@ -93,17 +98,17 @@ export function signIn(email: string, password: string): Promise<void> {
   });
 }
 
-export function signOut(): void {
+export async function signOut(): Promise<void> {
   if (!authConfigured()) return;
-  getPool().getCurrentUser()?.signOut();
+  (await getPool()).getCurrentUser()?.signOut();
 }
 
 /** Resolve the signed-in user's email, or null if not signed in. */
-export function currentEmail(): Promise<string | null> {
+export async function currentEmail(): Promise<string | null> {
+  if (!authConfigured()) return null;
+  const user = (await getPool()).getCurrentUser();
+  if (!user) return null;
   return new Promise((resolve) => {
-    if (!authConfigured()) return resolve(null);
-    const user = getPool().getCurrentUser();
-    if (!user) return resolve(null);
     user.getSession((err: Error | null, session: { isValid: () => boolean } | null) => {
       if (err || !session || !session.isValid()) return resolve(null);
       user.getUserAttributes((aErr, attrs) => {

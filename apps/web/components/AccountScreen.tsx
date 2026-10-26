@@ -132,7 +132,7 @@ export default function AccountScreen() {
         </p>
         <button
           onClick={() => {
-            signOut();
+            void signOut(); // clears the local session; nothing to wait for
             setUser(null);
             setPassword("");
           }}

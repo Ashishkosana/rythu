@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/postbuild.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
     "gen:api": "openapi-typescript ../../services/weather/openapi.json -o lib/api.gen.ts",
-    "check:api": "openapi-typescript ../../services/weather/openapi.json -o lib/api.gen.ts --check"
+    "check:api": "openapi-typescript ../../services/weather/openapi.json -o lib/api.gen.ts --check",
+    "check:budget": "node scripts/check-budget.mjs"
   },
   "dependencies": {
     "@tanstack/query-async-storage-persister": "5.104.2",

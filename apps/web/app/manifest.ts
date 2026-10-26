@@ -1,5 +1,8 @@
 import type { MetadataRoute } from "next";
 
+// Rendered once at build time into out/manifest.webmanifest (static export).
+export const dynamic = "force-static";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Rythu — వాతావరణం",

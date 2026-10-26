@@ -49,7 +49,7 @@ jobs:
         run: az bicep lint --file infra/azure/main.bicep
 
   frontend:
-    name: frontend · lint + tsc + vitest + build
+    name: frontend · lint + tsc + vitest + build + budget
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -74,10 +74,12 @@ jobs:
         run: npx tsc --noEmit
       - name: Tests (vitest)
         run: npm run test
-      - name: Build (next build)
+      - name: Build (static export + service worker + SWA config)
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+      - name: Performance budget (first-load JS per page ≤ 170 KB gz)
+        run: npm run check:budget
       # Gate on what ships to phones. Dev-tool advisories are handled by Dependabot
       # rather than failing unrelated pushes.
       - name: Audit production dependencies

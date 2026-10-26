@@ -15,7 +15,7 @@
 [![backend tests](https://img.shields.io/badge/backend_tests-100_passed-brightgreen)](#tests--quality-gate)
 [![frontend tests](https://img.shields.io/badge/frontend_tests-51_passed-brightgreen)](#tests--quality-gate)
 
-> **Deployment status:** the AWS Amplify front end is currently offline, so there is no public demo URL right now. The app is a server-rendered Next.js web app and an installable PWA (add to home screen) — **not** a native mobile app. Backend infrastructure is defined in CDK and reproducible with `cdk deploy`; see [Stack](#stack) and [Run it locally](#run-it-locally-two-terminals).
+> **Deployment status:** the app is moving from AWS to Azure (plan: [`docs/architecture/README.md`](docs/architecture/README.md)). The AWS Amplify front end is offline, so there is no public demo URL right now; the Azure environment is described in Bicep and set up with [`infra/azure/README.md`](infra/azure/README.md). The app is a static Next.js export with an app-shell service worker — an installable PWA that opens instantly and works offline — and will ship to Android as a Trusted Web Activity. This README's architecture section still shows the AWS stack until the cutover (S10).
 
 ---
 
@@ -33,10 +33,10 @@
 
 | Layer | What it is |
 | --- | --- |
-| **Frontend** | Next.js 16 (App Router, SSR, `force-dynamic`), React 19, TypeScript 5, Tailwind CSS v4, Vitest for unit tests. Deployed on **AWS Amplify** (SSR hosting). |
+| **Frontend** | Next.js 16 (App Router, **static export**), React 19, TypeScript 5, Tailwind CSS v4, TanStack Query + IndexedDB, Vitest. Served by **Azure Static Web Apps** (Free) with a per-build CSP; a generated service worker precaches every page for instant, offline opens. |
 | **Backend** | Python 3.12 `rythu-weather` service in **hexagonal / ports-and-adapters** layout (`domain` / `adapters` / `app`). Single runtime dependency: `httpx`. Weather data from [Open-Meteo](https://open-meteo.com) (free, no API key). Packaged with `uv` + `hatchling`. |
 | **Infra** | **AWS CDK** (Python): API Gateway v2 **HTTP API → Lambda** (`rythu_weather.app.handler`, 256 MB, 15 s, reserved concurrency 10) **→ DynamoDB** forecast cache (`PAY_PER_REQUEST`, TTL auto-expire). |
-| **Quality gate** | Backend: `ruff` + `mypy --strict` + `pytest`. Frontend: `eslint` + `tsc` + `vitest` + `next build` + production `npm audit`. |
+| **Quality gate** | Backend: `ruff` + `mypy --strict` + `pytest` (with Azurite). Frontend: `eslint` + `tsc` + `vitest` + `next build` + first-load JS budget (≤ 170 KB gz per page) + production `npm audit`. Infra: `az bicep build` + lint. |
 
 The browser calls the API directly (CORS) at `NEXT_PUBLIC_API_BASE`, inlined at build time, with a `http://127.0.0.1:8001` fallback for local dev. Data fetching is client-side through TanStack Query, with the last answers copied to IndexedDB so the forecast paints instantly and works offline (see `docs/architecture/adr/0003-client-data-layer-tanstack-query.md`).
 

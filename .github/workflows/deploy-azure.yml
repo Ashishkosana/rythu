@@ -67,3 +67,62 @@ jobs:
           echo "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); assert 'reliability' in d; print('weather OK, degraded =', d.get('degraded', False))"
           code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/v1/weather?lat=13.08&lon=80.27")
           test "$code" = "400" && echo "coverage check OK (400 outside Telangana)"
+
+  deploy-web:
+    name: deploy · web (dev)
+    # Runs after the API job so the web app never points at an API that failed its smoke test.
+    needs: deploy-dev
+    if: vars.AZURE_STATICWEBAPP_NAME != ''
+    runs-on: ubuntu-latest
+    environment: dev
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Build the static export against the deployed API
+        run: npm run build && npm run check:budget
+        env:
+          NEXT_PUBLIC_API_BASE: ${{ vars.AZURE_FUNCTIONAPP_URL }}
+          NEXT_TELEMETRY_DISABLED: "1"
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Read the deployment token (never stored in GitHub)
+        env:
+          NAME: ${{ vars.AZURE_STATICWEBAPP_NAME }}
+        run: |
+          token=$(az staticwebapp secrets list --name "$NAME" --query properties.apiKey -o tsv)
+          echo "::add-mask::$token"
+          echo "SWA_TOKEN=$token" >> "$GITHUB_ENV"
+      - name: Upload apps/web/out to Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ env.SWA_TOKEN }}
+          action: upload
+          app_location: apps/web/out
+          skip_app_build: true
+          skip_api_build: true
+      - name: Smoke test
+        env:
+          URL: ${{ vars.AZURE_STATICWEBAPP_URL }}
+        run: |
+          for i in $(seq 1 12); do curl -fsS "$URL/" -o /tmp/index.html && grep -q "రైతు" /tmp/index.html && break; sleep 5; done
+          grep -q "రైతు" /tmp/index.html && echo "home page OK"
+          headers=$(curl -fsSI "$URL/")
+          echo "$headers" | grep -qi "^content-security-policy: .*connect-src 'self' ${{ vars.AZURE_FUNCTIONAPP_URL }}" && echo "CSP OK"
+          curl -fsSI "$URL/sw.js" | grep -qi "^cache-control: no-cache" && echo "service worker not cached OK"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/crops")
+          test "$code" = "301" -o "$code" = "308" -o "$code" = "200" && echo "/crops → $code OK"
