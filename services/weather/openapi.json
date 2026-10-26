@@ -129,6 +129,85 @@
         }
       }
     },
+    "/v1/geocode": {
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Find a village by name (Telangana + border)",
+        "operationId": "geocode_v1_geocode_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Village, town or mandal name (2-60 characters). Search on submit, not per keystroke.",
+              "title": "Q"
+            },
+            "description": "Village, town or mandal name (2-60 characters). Search on submit, not per keystroke."
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128}).",
+              "title": "X-Request-Id"
+            },
+            "description": "Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128})."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching places inside coverage (possibly none).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeocodeResults"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Query missing, too short or too long.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No geocoding source could be asked (code=upstream_unavailable).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "tags": [
@@ -306,7 +385,8 @@
             "type": "string",
             "enum": [
               "bad_request",
-              "outside_coverage"
+              "outside_coverage",
+              "upstream_unavailable"
             ],
             "title": "Code"
           }
@@ -318,7 +398,7 @@
           "code"
         ],
         "title": "ErrorBody",
-        "description": "400 body. ``code`` is stable and machine-readable; ``error`` is for humans/logs."
+        "description": "4xx/5xx body. ``code`` is stable and machine-readable; ``error`` is for humans/logs."
       },
       "FarmAction": {
         "type": "string",
@@ -441,6 +521,24 @@
           "sources"
         ],
         "title": "FarmingReadOut"
+      },
+      "GeocodeResults": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceOut"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "title": "GeocodeResults",
+        "description": "``GET /v1/geocode`` 200 body: places inside Rythu's coverage, best match first (may be empty)."
       },
       "Health": {
         "properties": {
@@ -571,6 +669,74 @@
           "lon"
         ],
         "title": "LatLon"
+      },
+      "PlaceOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "name_te": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name Te",
+            "description": "Telugu name when OpenStreetMap has one; else null."
+          },
+          "admin2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin2",
+            "description": "District."
+          },
+          "admin1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin1",
+            "description": "State."
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "name_te",
+          "admin2",
+          "admin1",
+          "lat",
+          "lon"
+        ],
+        "title": "PlaceOut"
       },
       "Reliability": {
         "properties": {

@@ -1,67 +1,34 @@
-import { COVERAGE } from "@/lib/coverage";
-import { normalizeGeoResults, normalizeNominatim, withinCoverage, type GeoResult } from "@/lib/geocode";
-
-// Server-side village search. OSM (Nominatim) has the best coverage of small
-// Indian villages; Open-Meteo is the fallback. Proxying here lets us send a
-// proper User-Agent (OSM policy), cache for a day, and swap providers without
-// touching the client.
+// Thin pass-through to the backend's GET /v1/geocode, which owns village search (Nominatim policy,
+// coverage filter, caching). It exists only until the static export (S8), when the browser calls
+// the API directly; nothing here may grow logic of its own.
 
 export const runtime = "nodejs";
 
-const NOMINATIM = "https://nominatim.openstreetmap.org/search";
-const OPEN_METEO = "https://geocoding-api.open-meteo.com/v1/search";
-const DAY = 86400;
-
-async function fromNominatim(q: string): Promise<GeoResult[]> {
-  // Bound the search to Rythu's coverage box (viewbox = lon,lat of two corners) so the 8 results
-  // are spent on Telangana, not on same-named villages elsewhere that we'd then have to drop.
-  const viewbox = `${COVERAGE.lonMin},${COVERAGE.latMax},${COVERAGE.lonMax},${COVERAGE.latMin}`;
-  const url =
-    `${NOMINATIM}?q=${encodeURIComponent(q)}&format=jsonv2&countrycodes=in&limit=8&addressdetails=1` +
-    `&viewbox=${viewbox}&bounded=1`;
-  const res = await fetch(url, {
-    headers: {
-      // OSM usage policy requires an identifying User-Agent.
-      "User-Agent": "Rythu/1.0 (farmer weather app; github.com/Ashishkosana/rythu)",
-      "Accept-Language": "en",
-    },
-    next: { revalidate: DAY },
-  });
-  if (!res.ok) return [];
-  return withinCoverage(normalizeNominatim(await res.json()));
-}
-
-async function fromOpenMeteo(q: string): Promise<GeoResult[]> {
-  const url = `${OPEN_METEO}?name=${encodeURIComponent(q)}&count=8&country=IN&language=en`;
-  const res = await fetch(url, { next: { revalidate: DAY } });
-  if (!res.ok) return [];
-  return withinCoverage(normalizeGeoResults(await res.json()));
-}
+const API = process.env.WEATHER_API ?? "http://127.0.0.1:8001";
+// Backend worst case: queue for a turn (3 s) + Nominatim (3 s) + Open-Meteo fallback (3 s).
+const TIMEOUT_MS = 10_000;
 
 export async function GET(request: Request): Promise<Response> {
-  const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
-  // Village names are short — bound the query so this can't be abused as an open,
-  // unbounded proxy to Nominatim/Open-Meteo.
-  if (q.length < 2 || q.length > 60) return Response.json({ results: [] });
-
-  let results: GeoResult[] = [];
+  const q = new URL(request.url).searchParams.get("q") ?? "";
+  const requestId = request.headers.get("X-Request-Id") ?? crypto.randomUUID();
   try {
-    results = await fromNominatim(q);
+    const res = await fetch(`${API}/v1/geocode?q=${encodeURIComponent(q)}`, {
+      headers: { "X-Request-Id": requestId },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      cache: "no-store", // the backend's Cache-Control is passed on to the browser below
+    });
+    return new Response(await res.text(), {
+      status: res.status,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": res.headers.get("Cache-Control") ?? "no-store",
+        "X-Request-Id": res.headers.get("X-Request-Id") ?? requestId,
+      },
+    });
   } catch {
-    /* fall through to Open-Meteo */
+    return Response.json(
+      { error: "village search is unavailable", code: "upstream_unavailable" },
+      { status: 502, headers: { "Cache-Control": "no-store", "X-Request-Id": requestId } },
+    );
   }
-  if (results.length === 0) {
-    try {
-      results = await fromOpenMeteo(q);
-    } catch {
-      /* return empty */
-    }
-  }
-
-  // Only cache real hits — don't let empty/garbage queries pin an empty result set.
-  const cacheControl =
-    results.length > 0
-      ? "public, max-age=86400, stale-while-revalidate=604800"
-      : "no-store";
-  return Response.json({ results }, { headers: { "Cache-Control": cacheControl } });
 }

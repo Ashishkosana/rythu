@@ -16,8 +16,10 @@ from typing import Annotated, Any
 from fastapi import FastAPI, Header, Query
 from fastapi.responses import JSONResponse
 
-from rythu_weather.api.schemas import ErrorBody, Health, WeatherContract
-from rythu_weather.app.composition import build_provider
+from rythu_weather.adapters.geocode import Geocoder
+from rythu_weather.api.schemas import ErrorBody, GeocodeResults, Health, WeatherContract
+from rythu_weather.app.composition import build_geocoder, build_provider
+from rythu_weather.app.geocode_request import MAX_QUERY, MIN_QUERY, answer_geocode
 from rythu_weather.app.weather_request import answer_weather
 from rythu_weather.domain.models import Crop, WaterSource, WeatherProvider
 
@@ -32,15 +34,21 @@ Lat = Annotated[str | None, Query(description="Decimal degrees. Give lat and lon
 Lon = Annotated[str | None, Query(description="Decimal degrees. See lat.")]
 CropQ = Annotated[str | None, Query(description=f"One of: {_CROPS}. Omit for crop-independent reads only.")]
 WaterQ = Annotated[str | None, Query(description=f"One of: {_WATERS}. Default rainfed.")]
+PlaceQ = Annotated[
+    str | None,
+    Query(description=f"Village, town or mandal name ({MIN_QUERY}-{MAX_QUERY} characters). Search on submit, "
+                      "not per keystroke."),
+]
 RequestId = Annotated[
     str | None,
     Header(alias="X-Request-Id", description="Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128})."),
 ]
 
 
-def create_app(provider: WeatherProvider | None = None) -> FastAPI:
-    """Build the app. Pass a provider in tests; production builds one from settings, once."""
+def create_app(provider: WeatherProvider | None = None, geocoder: Geocoder | None = None) -> FastAPI:
+    """Build the app. Pass fakes in tests; production builds them from settings, once."""
     weather_provider = provider or build_provider()
+    place_search = geocoder or build_geocoder()
     app = FastAPI(
         title="Rythu API",
         version="1",
@@ -69,6 +77,20 @@ def create_app(provider: WeatherProvider | None = None) -> FastAPI:
     )
     # Unversioned alias for the current web app (and the Lambda's path) until clients move to /v1.
     app.add_api_route("/weather", weather, methods=["GET"], response_model=None, include_in_schema=False)
+
+    async def geocode(q: PlaceQ = None, x_request_id: RequestId = None) -> JSONResponse:
+        result = await answer_geocode(q, place_search, inbound_request_id=x_request_id)
+        return JSONResponse(result.body, status_code=result.status, headers=result.headers)
+
+    app.add_api_route(
+        "/v1/geocode", geocode, methods=["GET"], tags=["places"], response_model=None,
+        responses={
+            200: {"model": GeocodeResults, "description": "Matching places inside coverage (possibly none)."},
+            400: {"model": ErrorBody, "description": "Query missing, too short or too long."},
+            503: {"model": ErrorBody, "description": "No geocoding source could be asked (code=upstream_unavailable)."},
+        },
+        summary="Find a village by name (Telangana + border)",
+    )
 
     @app.get("/healthz", response_model=Health, tags=["ops"], summary="Liveness: the process is up")
     async def healthz() -> JSONResponse:

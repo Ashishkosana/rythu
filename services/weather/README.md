@@ -38,7 +38,7 @@ uv sync --extra dev
 # Live end-to-end against the real API (no key needed):
 uv run python -m rythu_weather.app.demo --crop cotton --water rainfed
 
-# The HTTP API (FastAPI) on http://127.0.0.1:8001 — /v1/weather, /healthz, interactive docs at /docs:
+# The HTTP API (FastAPI) on http://127.0.0.1:8001 — /v1/weather, /v1/geocode, /healthz, docs at /docs:
 uv run python -m rythu_weather.app.local_server 8001
 
 # Quality gate:
@@ -52,12 +52,13 @@ npx azurite@3.37.0 azurite-table --inMemoryPersistence --tableHost 127.0.0.1 --t
 ## Layers
 
 ```
-api/          FastAPI transport — /v1/weather, /healthz, OpenAPI; Pydantic schemas describe the contract
+api/          FastAPI transport — /v1/weather, /v1/geocode, /healthz, OpenAPI; Pydantic schemas = the contract
 function_app.py  Azure Functions entry point: the same FastAPI app on Flex Consumption (logs → host → App Insights)
 app/          handler.py (Lambda transport) · weather_request.py (shared parse → validate → answer → log)
+              geocode_request.py (village search: validate → search → shape → log)
               service.py (use case) · serialize.py (THE wire shape) · composition.py (wiring) · settings.py
 domain/       pure rules, windows, models — no I/O, no clock, no logging (enforced by test_domain_purity)
-adapters/     Open-Meteo HTTP, read-through cache (DynamoDB · Azure Table Storage), fakes
+adapters/     Open-Meteo HTTP, read-through cache (DynamoDB · Azure Table Storage), geocoding, fakes
 ```
 
 Both transports are thin adapters over `app.weather_request.answer_weather`, so they cannot drift;
@@ -81,6 +82,20 @@ optimistic concurrency; a burst is refused, a storage error fails open). A timer
 (`function_app.py`, every 20 min) **pre-warms** every cell used in the last 14 days, so farmers almost
 never wait on Open-Meteo. Defaults keep the worst case at 7,200 calls/day, under 80 % of Open-Meteo's
 free tier (a test enforces the arithmetic).
+
+## Village search (S9)
+
+`GET /v1/geocode?q=Regonda` → `{"results": [{id, name, name_te, admin2, admin1, lat, lon}]}`, only places
+inside coverage. OpenStreetMap Nominatim first (best coverage of small villages, and `name_te` = the
+Telugu name when OSM has one), Open-Meteo's geocoder as fallback. Nominatim's
+[usage policy](https://operations.osmfoundation.org/policies/nominatim/) shapes the design: an
+identifying User-Agent, **at most one upstream call per second** (per process), results cached for a
+day, and **no autocomplete** — the app searches when the farmer taps the search button.
+A 200 with an empty list means a source really found nothing; when no source could be asked (all
+failed, or too many searches queued) the answer is **503 `upstream_unavailable`**, so the app says
+"try again" instead of "no such village". The query is never logged, only its length and outcome.
+Served by the FastAPI app (local + Azure) only: the AWS Lambda keeps just `/weather` — its front end
+is offline and AWS retires in S10, so the web app needs a FastAPI backend for search.
 
 ## Configuration & logs
 

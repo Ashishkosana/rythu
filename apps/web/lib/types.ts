@@ -20,6 +20,7 @@ export type FarmAction = Schemas["FarmAction"];
 export type Crop = Schemas["Crop"];
 export type WaterSource = Schemas["WaterSource"];
 export type ApiError = Schemas["ErrorBody"];
+export type Place = Schemas["PlaceOut"];
 
 // Runtime lists (types vanish at runtime), in display order. Checked against the backend enums
 // both ways: `satisfies` rejects a value the backend doesn't know, and the Exhaustive check

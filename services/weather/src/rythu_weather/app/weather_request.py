@@ -28,6 +28,7 @@ from zoneinfo import ZoneInfo
 
 from rythu_weather.app.degraded import degraded_contract
 from rythu_weather.app.service import BHUPALPALLY, get_weather
+from rythu_weather.domain.coverage import in_coverage
 from rythu_weather.domain.models import Crop, FarmerContext, GeoPoint, ProviderError, WaterSource, WeatherProvider
 from rythu_weather.observability import log_event, request_context, resolve_request_id
 
@@ -41,11 +42,6 @@ _BASE_HEADERS = {
 _CACHEABLE = "public, max-age=300"
 # A degraded answer must not be cached by anything in between: the next try may well succeed.
 _NOT_CACHEABLE = "no-store"
-
-# Rythu's rules, crop doses and schemes are Telangana-specific, so the API serves Telangana plus a
-# border margin. Keep in sync with apps/web/lib/coverage.ts.
-COVERAGE_LAT = (15.7, 20.0)
-COVERAGE_LON = (77.1, 81.5)
 
 
 class BadRequest(ValueError):
@@ -82,7 +78,7 @@ def parse_point(q: Mapping[str, str]) -> GeoPoint:
         raise BadRequest("lat and lon must be numbers") from exc
     if not (-90.0 <= point.lat <= 90.0 and -180.0 <= point.lon <= 180.0):
         raise BadRequest("lat/lon out of range")
-    if not (COVERAGE_LAT[0] <= point.lat <= COVERAGE_LAT[1] and COVERAGE_LON[0] <= point.lon <= COVERAGE_LON[1]):
+    if not in_coverage(point.lat, point.lon):
         raise BadRequest("Rythu currently covers Telangana only", code="outside_coverage")
     return point
 
@@ -103,13 +99,14 @@ def parse_context(q: Mapping[str, str], now: datetime) -> FarmerContext:
     return FarmerContext(now=now, water_source=water, crop=crop)
 
 
+def base_headers(request_id: str, *, cache_control: str) -> dict[str, str]:
+    """Headers every JSON response carries (shared with the other endpoints)."""
+    return {**_BASE_HEADERS, "Cache-Control": cache_control, "X-Request-Id": request_id}
+
+
 def _result(status: int, body: dict[str, Any], *, request_id: str, cacheable: bool) -> HttpResult:
-    headers = {
-        **_BASE_HEADERS,
-        "Cache-Control": _CACHEABLE if cacheable else _NOT_CACHEABLE,
-        "X-Request-Id": request_id,
-    }
-    return HttpResult(status, body, headers)
+    cache_control = _CACHEABLE if cacheable else _NOT_CACHEABLE
+    return HttpResult(status, body, base_headers(request_id, cache_control=cache_control))
 
 
 async def answer_weather(

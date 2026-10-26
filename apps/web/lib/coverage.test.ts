@@ -1,5 +1,22 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { COVERAGE_MESSAGE, inCoverage } from "./coverage";
+import { COVERAGE, COVERAGE_MESSAGE, inCoverage } from "./coverage";
+
+describe("coverage box", () => {
+  it("matches the backend's (services/weather/.../domain/coverage.py)", () => {
+    const py = readFileSync(
+      new URL("../../../services/weather/src/rythu_weather/domain/coverage.py", import.meta.url),
+      "utf8",
+    );
+    const pair = (name: string) => {
+      const m = py.match(new RegExp(String.raw`^${name} = \(([\d.]+), ([\d.]+)\)`, "m"));
+      if (!m) throw new Error(`${name} not found in coverage.py`);
+      return [Number(m[1]), Number(m[2])];
+    };
+    expect(pair("COVERAGE_LAT")).toEqual([COVERAGE.latMin, COVERAGE.latMax]);
+    expect(pair("COVERAGE_LON")).toEqual([COVERAGE.lonMin, COVERAGE.lonMax]);
+  });
+});
 
 describe("inCoverage (Telangana + border)", () => {
   it.each([

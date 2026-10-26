@@ -112,11 +112,27 @@ class WeatherContract(_Strict):
 
 
 class ErrorBody(_Strict):
-    """400 body. ``code`` is stable and machine-readable; ``error`` is for humans/logs."""
+    """4xx/5xx body. ``code`` is stable and machine-readable; ``error`` is for humans/logs."""
 
     error: str
-    code: Literal["bad_request", "outside_coverage"]
+    code: Literal["bad_request", "outside_coverage", "upstream_unavailable"]
 
 
 class Health(_Strict):
     status: Literal["ok"]
+
+
+class PlaceOut(_Strict):
+    id: int
+    name: str
+    name_te: str | None = Field(description="Telugu name when OpenStreetMap has one; else null.")
+    admin2: str | None = Field(description="District.")
+    admin1: str | None = Field(description="State.")
+    lat: float
+    lon: float
+
+
+class GeocodeResults(_Strict):
+    """``GET /v1/geocode`` 200 body: places inside Rythu's coverage, best match first (may be empty)."""
+
+    results: list[PlaceOut]

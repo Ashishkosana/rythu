@@ -213,7 +213,7 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | ⭐ S7 | Pre-warm timer, cell registry, global upstream budget | faster; served copy ≤ ~20 min old; bursts get saved/degraded | **done** |
 | ⭐ S8a | Client data layer behind a flag (TanStack Query, IndexedDB, on-device age) | none while off | planned |
 | S8b | Static export → Static Web Apps; app-shell service worker | SSR ends | planned |
-| S9 | `/v1/geocode`; search-on-submit (Nominatim policy) | search on tap | planned |
+| S9 | `/v1/geocode`; search-on-submit (Nominatim policy) | search on tap; Telugu village names; "couldn't search" ≠ "not found" | **done** |
 | S10 | Cutover to Azure prod, 7-day dual run, `cdk destroy` (explicit approval) | none | planned |
 | S11a | Tokens + primitives at today's values + lint rule (pixel-identical) | none | planned |
 | S11b–e | Contrast, type floor, SVG icons, lang/ARIA, per-screen migration (screenshots each) | visual | planned |

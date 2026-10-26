@@ -19,6 +19,13 @@ from typing import TYPE_CHECKING
 from rythu_weather.adapters.budget import BudgetedProvider
 from rythu_weather.adapters.cache import CachedProvider, CacheStore, DynamoDbCacheStore
 from rythu_weather.adapters.cells import CellRegistry, RegisteringProvider
+from rythu_weather.adapters.geocode import (
+    CachedGeocoder,
+    FallbackGeocoder,
+    Geocoder,
+    NominatimGeocoder,
+    OpenMeteoGeocoder,
+)
 from rythu_weather.adapters.open_meteo import OpenMeteoHttpProvider
 from rythu_weather.app.settings import Settings, get_settings
 from rythu_weather.domain.models import WeatherProvider
@@ -99,3 +106,7 @@ def _azure_store(s: Settings) -> CacheStore:
     return AzureTableCacheStore(
         auth.connection_string, s.azure_forecast_table, endpoint=auth.endpoint, credential=auth.credential
     )
+
+
+def build_geocoder() -> Geocoder:
+    return CachedGeocoder(FallbackGeocoder(NominatimGeocoder(), OpenMeteoGeocoder()))

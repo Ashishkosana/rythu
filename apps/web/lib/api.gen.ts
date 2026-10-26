@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/geocode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find a village by name (Telangana + border) */
+        get: operations["geocode_v1_geocode_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -89,7 +106,7 @@ export interface components {
         };
         /**
          * ErrorBody
-         * @description 400 body. ``code`` is stable and machine-readable; ``error`` is for humans/logs.
+         * @description 4xx/5xx body. ``code`` is stable and machine-readable; ``error`` is for humans/logs.
          */
         ErrorBody: {
             /** Error */
@@ -98,7 +115,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "bad_request" | "outside_coverage";
+            code: "bad_request" | "outside_coverage" | "upstream_unavailable";
         };
         /**
          * FarmAction
@@ -145,6 +162,14 @@ export interface components {
             /** Sources */
             sources: string[];
         };
+        /**
+         * GeocodeResults
+         * @description ``GET /v1/geocode`` 200 body: places inside Rythu's coverage, best match first (may be empty).
+         */
+        GeocodeResults: {
+            /** Results */
+            results: components["schemas"]["PlaceOut"][];
+        };
         /** Health */
         Health: {
             /**
@@ -178,6 +203,32 @@ export interface components {
         };
         /** LatLon */
         LatLon: {
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+        };
+        /** PlaceOut */
+        PlaceOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Name Te
+             * @description Telugu name when OpenStreetMap has one; else null.
+             */
+            name_te: string | null;
+            /**
+             * Admin2
+             * @description District.
+             */
+            admin2: string | null;
+            /**
+             * Admin1
+             * @description State.
+             */
+            admin1: string | null;
             /** Lat */
             lat: number;
             /** Lon */
@@ -299,6 +350,50 @@ export interface operations {
             };
             /** @description Malformed request, or outside coverage (code=outside_coverage). */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    geocode_v1_geocode_get: {
+        parameters: {
+            query?: {
+                /** @description Village, town or mandal name (2-60 characters). Search on submit, not per keystroke. */
+                q?: string | null;
+            };
+            header?: {
+                /** @description Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128}). */
+                "X-Request-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matching places inside coverage (possibly none). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeocodeResults"];
+                };
+            };
+            /** @description Query missing, too short or too long. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No geocoding source could be asked (code=upstream_unavailable). */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

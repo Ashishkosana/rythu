@@ -1,12 +1,16 @@
-import { describe, expect, it } from "vitest";
-import {
-  formatPlaceLabel,
-  isValidCoord,
-  normalizeGeoResults,
-  normalizeNominatim,
-  roundCoord,
-  withinCoverage,
-} from "./geocode";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { formatPlaceLabel, isSearchable, isValidCoord, placeName, roundCoord, searchPlaces } from "./geocode";
+import type { Place } from "./types";
+
+const REGONDA: Place = {
+  id: 42,
+  name: "Regonda",
+  name_te: "రేగొండ",
+  admin2: "Bhupalpally",
+  admin1: "Telangana",
+  lat: 18.2378,
+  lon: 79.775,
+};
 
 describe("roundCoord", () => {
   it("clamps to 4 decimals", () => {
@@ -28,86 +32,66 @@ describe("isValidCoord", () => {
   });
 });
 
-describe("formatPlaceLabel", () => {
+describe("place names", () => {
+  it("shows the Telugu name in Telugu mode when OpenStreetMap has one", () => {
+    expect(placeName(REGONDA, "te")).toBe("రేగొండ");
+    expect(placeName(REGONDA, "en")).toBe("Regonda");
+    expect(placeName({ name: "Kataram", name_te: null }, "te")).toBe("Kataram");
+  });
+
   it("appends the district when it differs from the name", () => {
-    expect(formatPlaceLabel({ name: "Regonda", admin2: "Bhupalpally" })).toBe(
-      "Regonda, Bhupalpally",
-    );
+    expect(formatPlaceLabel(REGONDA)).toBe("Regonda, Bhupalpally");
+    expect(formatPlaceLabel(REGONDA, "te")).toBe("రేగొండ, Bhupalpally");
   });
-  it("shows only the name when district matches or is absent", () => {
-    expect(formatPlaceLabel({ name: "Bhupalpally", admin2: "Bhupalpally" })).toBe("Bhupalpally");
-    expect(formatPlaceLabel({ name: "Warangal" })).toBe("Warangal");
+
+  it("shows only the name when the district matches or is absent", () => {
+    expect(formatPlaceLabel({ name: "Bhupalpally", name_te: null, admin2: "Bhupalpally" })).toBe("Bhupalpally");
+    expect(formatPlaceLabel({ name: "Warangal", name_te: null, admin2: null })).toBe("Warangal");
   });
 });
 
-describe("normalizeGeoResults", () => {
-  it("maps valid rows and rounds coordinates", () => {
-    const out = normalizeGeoResults({
-      results: [
-        { id: 1, name: "Regonda", admin2: "Bhupalpally", admin1: "Telangana", latitude: 18.23781, longitude: 79.77502 },
-      ],
-    });
-    expect(out).toEqual([
-      { id: 1, name: "Regonda", admin2: "Bhupalpally", admin1: "Telangana", lat: 18.2378, lon: 79.775 },
-    ]);
-  });
-
-  it("drops rows with missing name or bad coordinates", () => {
-    const out = normalizeGeoResults({
-      results: [
-        { id: 1, latitude: 18.4, longitude: 79.8 }, // no name
-        { id: 2, name: "Bad", latitude: 999, longitude: 79.8 }, // out of range
-        { id: 3, name: "Good", latitude: 18.5, longitude: 79.7 },
-      ],
-    });
-    expect(out.map((r) => r.name)).toEqual(["Good"]);
-  });
-
-  it("returns [] for malformed input", () => {
-    expect(normalizeGeoResults(null)).toEqual([]);
-    expect(normalizeGeoResults({})).toEqual([]);
-    expect(normalizeGeoResults({ results: "nope" })).toEqual([]);
+describe("isSearchable", () => {
+  it("mirrors the API's 2–60 characters after trimming", () => {
+    expect(isSearchable("  a ")).toBe(false);
+    expect(isSearchable("ab")).toBe(true);
+    expect(isSearchable("x".repeat(60))).toBe(true);
+    expect(isSearchable("x".repeat(61))).toBe(false);
   });
 });
 
-describe("normalizeNominatim", () => {
-  it("prefers village name from address details and parses string coords", () => {
-    const out = normalizeNominatim([
-      {
-        place_id: 42,
-        lat: "18.23781",
-        lon: "79.77502",
-        display_name: "Regonda, Bhupalpally, Telangana, India",
-        address: { village: "Regonda", state_district: "Bhupalpally", state: "Telangana" },
-      },
-    ]);
-    expect(out).toEqual([
-      { id: 42, name: "Regonda", admin2: "Bhupalpally", admin1: "Telangana", lat: 18.2378, lon: 79.775 },
-    ]);
+describe("searchPlaces", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  function stubFetch(impl: () => Promise<Response>) {
+    const fetchMock = vi.fn(impl);
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
+
+  it("asks the API once, with the trimmed query", async () => {
+    const fetchMock = stubFetch(async () => Response.json({ results: [REGONDA] }));
+    expect(await searchPlaces("  Regonda ")).toEqual({ ok: true, places: [REGONDA] });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]).toEqual(["/api/geocode?q=Regonda", { signal: undefined }]);
   });
 
-  it("falls back through hamlet/town/city then display_name", () => {
-    const out = normalizeNominatim([
-      { place_id: 1, lat: "18.5", lon: "79.7", address: { hamlet: "Tinyville", state: "Telangana" } },
-      { place_id: 2, lat: "18.6", lon: "79.8", display_name: "Nowhere, X", address: {} },
-    ]);
-    expect(out.map((r) => r.name)).toEqual(["Tinyville", "Nowhere"]);
+  it("tells 'nothing found' apart from 'could not search'", async () => {
+    stubFetch(async () => Response.json({ results: [] }));
+    expect(await searchPlaces("Atlantis")).toEqual({ ok: true, places: [] });
+
+    stubFetch(async () => Response.json({ error: "x" }, { status: 502 }));
+    expect(await searchPlaces("Regonda")).toEqual({ ok: false });
+
+    stubFetch(async () => Promise.reject(new TypeError("offline")));
+    expect(await searchPlaces("Regonda")).toEqual({ ok: false });
+
+    stubFetch(async () => Response.json({ nope: true }));
+    expect(await searchPlaces("Regonda")).toEqual({ ok: false });
   });
 
-  it("drops rows with invalid coordinates and handles non-arrays", () => {
-    expect(normalizeNominatim([{ place_id: 1, lat: "999", lon: "79", address: { village: "Bad" } }])).toEqual([]);
-    expect(normalizeNominatim(null)).toEqual([]);
-    expect(normalizeNominatim({ results: [] })).toEqual([]);
-  });
-});
-
-describe("withinCoverage", () => {
-  it("keeps only places Rythu serves (Telangana + border)", () => {
-    const rs = [
-      { id: 1, name: "Regonda", lat: 18.33, lon: 79.88 },
-      { id: 2, name: "Chennai", lat: 13.08, lon: 80.27 },
-      { id: 3, name: "Hyderabad", lat: 17.385, lon: 78.4867 },
-    ];
-    expect(withinCoverage(rs).map((r) => r.name)).toEqual(["Regonda", "Hyderabad"]);
+  it("does not call the API for a query it would reject", async () => {
+    const fetchMock = stubFetch(async () => Response.json({ results: [] }));
+    expect(await searchPlaces(" a ")).toEqual({ ok: true, places: [] });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

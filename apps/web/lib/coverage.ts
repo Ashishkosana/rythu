@@ -1,6 +1,6 @@
 // Where Rythu gives weather + advice. The rules, crop doses and schemes are Telangana-specific,
 // so the app serves Telangana plus a border margin. The backend enforces the same box
-// (services/weather/src/rythu_weather/app/handler.py COVERAGE_LAT/LON) — keep them in sync.
+// (services/weather/src/rythu_weather/domain/coverage.py) — coverage.test.ts fails if they drift.
 
 export const COVERAGE = { latMin: 15.7, latMax: 20.0, lonMin: 77.1, lonMax: 81.5 } as const;
 
