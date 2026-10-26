@@ -37,22 +37,22 @@ export default function Welcome() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-3xl bg-surface-raised p-6 shadow-xl">
         <div className="text-center">
           <p className="text-4xl">🌾</p>
           <h1 className="mt-2 text-2xl font-bold">రైతు</h1>
-          <p className="mt-1 text-sm text-stone-500">మీ కోసం — మేము ఏమీ అమ్మము</p>
+          <p className="mt-1 text-sm text-ink-secondary">మీ కోసం — మేము ఏమీ అమ్మము</p>
         </div>
 
         <div className="mt-5 space-y-3">
           {POINTS.map((p) => (
-            <div key={p.te} className="flex items-center gap-3 rounded-2xl bg-stone-50 px-4 py-3">
+            <div key={p.te} className="flex items-center gap-3 rounded-2xl bg-surface-sunken px-4 py-3">
               <span className="text-3xl" aria-hidden>
                 {p.icon}
               </span>
               <div>
                 <p className="font-semibold">{p.te}</p>
-                <p className="text-xs text-stone-400">{p.en}</p>
+                <p className="text-xs text-ink-secondary">{p.en}</p>
               </div>
             </div>
           ))}
@@ -60,14 +60,14 @@ export default function Welcome() {
 
         <button
           onClick={() => speak(INTRO, "te")}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-green-600 py-3 text-base font-semibold text-green-800"
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-brand py-3 text-base font-semibold text-brand-ink"
         >
           🔊 వినండి · Listen
         </button>
 
         <button
           onClick={close}
-          className="mt-3 w-full rounded-2xl bg-green-700 py-3.5 text-lg font-bold text-white"
+          className="mt-3 w-full rounded-2xl bg-brand py-3.5 text-lg font-bold text-white"
         >
           మొదలుపెట్టండి · Start
         </button>

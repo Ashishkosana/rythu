@@ -66,7 +66,7 @@ function Forecast({ loc, crop, water }: { loc: ResolvedLocation; crop: Crop; wat
 function Unavailable({ place, tooOld, onRetry }: { place: string; tooOld: boolean; onRetry: () => void }) {
   const { lang } = useLang();
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-3 p-6 pb-28 text-center text-stone-700">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-3 p-6 pb-28 text-center text-ink">
       <p className="text-3xl" aria-hidden>
         🌧️
       </p>
@@ -75,10 +75,10 @@ function Unavailable({ place, tooOld, onRetry }: { place: string; tooOld: boolea
           ? pick(lang, "సేవ్ చేసిన వాతావరణం 6 గంటల కంటే పాతది", "The saved forecast is more than 6 hours old")
           : pick(lang, "వాతావరణ సమాచారం అందుబాటులో లేదు", "Weather data unavailable")}
       </p>
-      <p className="text-sm text-stone-500">
+      <p className="text-sm text-ink-secondary">
         {pick(lang, "ఇంటర్నెట్ ఉన్నప్పుడు మళ్లీ ప్రయత్నించండి", "Please try again when you have internet")}
       </p>
-      <button onClick={onRetry} className="mx-auto rounded-xl bg-green-600 px-6 py-3 font-semibold text-white">
+      <button onClick={onRetry} className="mx-auto rounded-xl bg-brand px-6 py-3 font-semibold text-white">
         {pick(lang, "మళ్లీ ప్రయత్నించు", "Try again")}
       </button>
       <div className="mt-4 text-left">
@@ -90,12 +90,12 @@ function Unavailable({ place, tooOld, onRetry }: { place: string; tooOld: boolea
 
 function CoverageNotice({ place }: { place: string }) {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-4 p-6 pb-28 text-center text-stone-700">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-4 p-6 pb-28 text-center text-ink">
       <p className="text-3xl" aria-hidden>
         📍
       </p>
       <p className="font-semibold">{COVERAGE_MESSAGE.te}</p>
-      <p className="text-sm text-stone-600">{COVERAGE_MESSAGE.en} · మీ ఊరిని ఎంచుకోండి / choose your village</p>
+      <p className="text-sm text-ink-secondary">{COVERAGE_MESSAGE.en} · మీ ఊరిని ఎంచుకోండి / choose your village</p>
       <div className="text-left">
         <LocationPicker currentPlace={place} />
       </div>

@@ -168,13 +168,15 @@ lacks `aria-expanded`, the hourly chart has no text alternative, crop chips are 
 and 🫛 (Emoji 15) renders as tofu on older Android.
 
 ### Tokens (every text/background pair ≥ 4.5 : 1, computed)
+Values live in `apps/web/lib/design/tokens.ts`; `tokens.test.ts` computes every pairing below and fails
+if `globals.css` drifts. Tailwind's default palette is switched off and eslint rejects raw palette classes.
 | Group | Tokens |
 | --- | --- |
 | Surface | `surface` #f4f2ec · `surface-raised` #fff · `surface-sunken` stone-100 |
 | Text | `text` #1c1917 · `text-secondary` stone-600 #57534e (6.81 on surface / 7.63 on white) · no tertiary |
-| Brand | `brand` green-700 (5.02) · `brand-strong` green-800 (white 7.13) · `on-brand` #fff |
+| Brand | `brand` green-700 — **fills only** (white on it 5.02; as text on the paper surface it is 4.48, just short) · `brand-ink` green-800 for brand text (7.13 on white) · `on-brand` #fff · `brand-soft` green-100 |
 | Status bg/fg | info sky-50/sky-800 (7.09) · caution amber-50/amber-900 (8.75) · act red-50/red-800 (7.60) · success green-100/green-800 (6.49) · warn orange-100/orange-800 (6.38) |
-| Sky hero | clear: sky-700→emerald-700 (5.93/5.48) · cloudy: slate-600 (7.58) · rain/storm unchanged (pass) |
+| Sky hero | clear: sky-700→emerald-700 (5.93/5.48) · cloudy: slate-600→700 (7.58) · rain/storm unchanged; soft text white/90 (≥ 4.78) · chips darken with black/15 (white text ≥ 6.99; the old white/25 frost failed at 3.40) · green screen headers green-800→900 |
 | Type (17 px base) | caption 14 · body-sm 15 · body 17 · title-sm 20 · title 24 · display 32 · hero 72; floor 14 px; Telugu line-height 1.55 |
 | Space | 4 · 8 · 12 · 16 · 24 · 32 · 48 |
 | Radius | 8 · 12 · 16 · 24 (card) · full |
@@ -215,7 +217,7 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | S8b | Static export → Static Web Apps (Free, per-build CSP by script hash); generated app-shell service worker (all pages precached, all-or-nothing install, hashed files reused across updates); first-load JS budget in CI | SSR ends; every page opens offline; updates show on the next launch | **done** |
 | S9 | `/v1/geocode`; search-on-submit (Nominatim policy) | search on tap; Telugu village names; "couldn't search" ≠ "not found" | **done** |
 | S10 | Cutover to Azure prod, 7-day dual run, `cdk destroy` (explicit approval) | none | planned |
-| S11a | Tokens + primitives at today's values + lint rule (pixel-identical) | none | planned |
+| S11a+b | Tokens with AA values (computed in tests), palette off + eslint guard, every screen migrated. Folded into one step: nothing is live, so a pixel-identical intermediate protected no one | visual: readable sunny/cloudy heroes, darker secondary text, AA buttons | **done** |
 | S11b–e | Contrast, type floor, SVG icons, lang/ARIA, per-screen migration (screenshots each) | visual | planned |
 | ⭐ S12 | Android TWA → Play internal testing → father installs; start 12-tester closed test | new channel | planned |
 | S13 | Device auth + `/v1/me/profile` sync; remove Cognito | server-restored profile | planned |

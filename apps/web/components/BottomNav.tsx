@@ -17,7 +17,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const { lang } = useLang();
   return (
-    <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md justify-around border-t border-stone-200/80 bg-white/85 backdrop-blur-xl">
+    <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 mx-auto flex max-w-md justify-around border-t border-line/80 bg-surface-raised/85 backdrop-blur-xl">
       {TABS.map((t) => {
         const active = pathname === t.href;
         return (
@@ -29,13 +29,13 @@ export default function BottomNav() {
           >
             <span
               className={`flex h-9 w-16 items-center justify-center rounded-2xl text-2xl transition-all ${
-                active ? "scale-105 bg-green-100" : "opacity-60"
+                active ? "scale-105 bg-brand-soft" : "opacity-60"
               }`}
               aria-hidden
             >
               {t.icon}
             </span>
-            <span className={`text-[13px] ${active ? "font-bold text-green-800" : "text-stone-500"}`}>
+            <span className={`text-[13px] ${active ? "font-bold text-brand-ink" : "text-ink-secondary"}`}>
               {lang === "te" ? t.te : t.en}
             </span>
           </Link>

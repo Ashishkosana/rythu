@@ -10,10 +10,10 @@ import { pick, useLang, type Lang } from "@/lib/lang";
 function Row({ label, te, en, lang }: { label: string; te: string; en: string; lang: Lang }) {
   return (
     <div className="flex gap-2">
-      <dt className="w-20 shrink-0 font-medium text-stone-500">{label}</dt>
+      <dt className="w-20 shrink-0 font-medium text-ink-secondary">{label}</dt>
       <dd>
         {pick(lang, te, en)}
-        <span className="block text-xs text-stone-400">{pick(lang, en, te)}</span>
+        <span className="block text-xs text-ink-secondary">{pick(lang, en, te)}</span>
       </dd>
     </div>
   );
@@ -22,12 +22,12 @@ function Row({ label, te, en, lang }: { label: string; te: string; en: string; l
 export default function CropsScreen() {
   const { lang } = useLang();
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-md pb-28 text-stone-900">
-      <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-green-700 to-green-800 px-5 pb-6 pt-4 text-white shadow-[var(--shadow-hero)]">
+    <div className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
+      <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-hero-brand-from to-hero-brand-to px-5 pb-6 pt-4 text-white shadow-hero">
         <div className="flex items-start justify-between gap-2">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">🌱 {pick(lang, "పంటల మార్గదర్శి", "Crop guide")}</h1>
-            <p className="mt-0.5 text-sm text-green-100">{pick(lang, "ఖరీఫ్ · భూపాలపల్లి", "Kharif · Bhupalpally")}</p>
+            <p className="mt-0.5 text-sm text-white/90">{pick(lang, "ఖరీఫ్ · భూపాలపల్లి", "Kharif · Bhupalpally")}</p>
           </div>
           <LangToggle light />
         </div>
@@ -37,7 +37,7 @@ export default function CropsScreen() {
         <FertilizerCalculator />
         <PestGuide />
         <ExpertBridge />
-        <h2 className="px-1 pt-2 text-lg font-bold tracking-tight text-stone-800">
+        <h2 className="px-1 pt-2 text-lg font-bold tracking-tight text-ink">
           {pick(lang, "పంటల వివరాలు", "Crop details")}
         </h2>
         {CROP_GUIDES.map((c) => (
@@ -48,7 +48,7 @@ export default function CropsScreen() {
               </span>
               <span>
                 {pick(lang, c.name_te, c.name_en)}{" "}
-                <span className="text-sm font-normal text-stone-500">· {pick(lang, c.name_en, c.name_te)}</span>
+                <span className="text-sm font-normal text-ink-secondary">· {pick(lang, c.name_en, c.name_te)}</span>
               </span>
             </summary>
 
@@ -59,11 +59,11 @@ export default function CropsScreen() {
             </dl>
 
             <div className="mt-3">
-              <p className="text-sm font-medium text-green-800">{pick(lang, "ముఖ్య సూచనలు", "Key tips")}</p>
+              <p className="text-sm font-medium text-brand-ink">{pick(lang, "ముఖ్య సూచనలు", "Key tips")}</p>
               <ul className="mt-1 space-y-1">
                 {c.tips_te.map((tip, i) => (
                   <li key={i} className="flex gap-2 text-sm">
-                    <span className="text-green-600" aria-hidden>
+                    <span className="text-brand-ink" aria-hidden>
                       ✓
                     </span>
                     <span>{pick(lang, tip, c.tips_en[i])}</span>
@@ -72,14 +72,14 @@ export default function CropsScreen() {
               </ul>
             </div>
 
-            <p className="mt-3 text-xs text-stone-500">
+            <p className="mt-3 text-xs text-ink-secondary">
               {pick(
                 lang,
                 "సరైన తేదీలు, మోతాదుల కోసం మీ వ్యవసాయ అధికారి (AEO)ని సంప్రదించండి",
                 "Confirm exact dates & doses with your Agriculture Officer (AEO)",
               )}{" "}
               ·{" "}
-              <a href={c.source} target="_blank" rel="noopener noreferrer" className="text-green-700 underline">
+              <a href={c.source} target="_blank" rel="noopener noreferrer" className="text-brand-ink underline">
                 Source: PJTSAU
               </a>
             </p>

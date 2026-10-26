@@ -55,9 +55,9 @@ const L = {
 } as const;
 
 const SEV_STYLES: Record<Severity, { bar: string; tint: string }> = {
-  info: { bar: "bg-sky-500", tint: "bg-sky-50" },
-  caution: { bar: "bg-amber-500", tint: "bg-amber-50" },
-  act: { bar: "bg-red-500", tint: "bg-red-50" },
+  info: { bar: "bg-info-accent", tint: "bg-info-bg" },
+  caution: { bar: "bg-caution-accent", tint: "bg-caution-bg" },
+  act: { bar: "bg-act-accent", tint: "bg-act-bg" },
 };
 
 const ACTION_ICON: Record<FarmAction, string> = {
@@ -85,19 +85,19 @@ function ReadCard({ read, lang }: { read: FarmingRead; lang: Lang }) {
           <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg ${sev.tint}`}>
             {ACTION_ICON[read.action] ?? "•"}
           </span>
-          <p className="font-semibold leading-snug text-stone-900">{headline}</p>
+          <p className="font-semibold leading-snug text-ink">{headline}</p>
         </div>
-        {detail && <p className="mt-2 text-sm leading-relaxed text-stone-500">{detail}</p>}
+        {detail && <p className="mt-2 text-sm leading-relaxed text-ink-secondary">{detail}</p>}
         <button
           onClick={() => setOpen((v) => !v)}
-          className="mt-2.5 text-sm font-semibold text-green-700"
+          className="mt-2.5 text-sm font-semibold text-brand-ink"
         >
           {L[lang].why} {open ? "▲" : "▼"}
         </button>
         {open && (
-          <div className="mt-2 space-y-1.5 rounded-xl bg-stone-50 p-3 text-sm text-stone-600">
+          <div className="mt-2 space-y-1.5 rounded-xl bg-surface-sunken p-3 text-sm text-ink-secondary">
             <p>⚠️ {caveat}</p>
-            {read.window_note && <p className="text-stone-400">🕑 {read.window_note}</p>}
+            {read.window_note && <p className="text-ink-secondary">🕑 {read.window_note}</p>}
           </div>
         )}
       </div>
@@ -106,7 +106,7 @@ function ReadCard({ read, lang }: { read: FarmingRead; lang: Lang }) {
 }
 
 function SectionTitle({ children }: { children: ReactNode }) {
-  return <h2 className="mb-2.5 px-1 text-lg font-bold tracking-tight text-stone-800">{children}</h2>;
+  return <h2 className="mb-2.5 px-1 text-lg font-bold tracking-tight text-ink">{children}</h2>;
 }
 
 export default function WeatherScreen({
@@ -144,9 +144,9 @@ export default function WeatherScreen({
   const maxDayProb = Math.max(10, ...data.daily.map((d) => d.precipitation_probability_max ?? 0));
 
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-md pb-28 text-stone-900">
+    <div className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
       {/* ── Dynamic sky hero ─────────────────────────────────────── */}
-      <div className={`safe-top rounded-b-[2.25rem] px-4 pb-6 pt-3 text-white shadow-[var(--shadow-hero)] ${sky.gradient}`}>
+      <div className={`safe-top rounded-b-[2.25rem] px-4 pb-6 pt-3 text-white shadow-hero ${sky.gradient}`}>
         {/* brand row */}
         <div className="flex items-center justify-between">
           <span className="text-base font-bold tracking-tight">🌾 రైతు</span>
@@ -162,7 +162,7 @@ export default function WeatherScreen({
         {children && <div className="mt-3">{children}</div>}
 
         {data.degraded ? (
-          <div className="mt-5 rounded-2xl bg-white/15 p-6 text-center font-medium">🌧️ {t.degraded}</div>
+          <div className="mt-5 rounded-2xl bg-black/15 p-6 text-center font-medium">🌧️ {t.degraded}</div>
         ) : (
           <>
             {/* the one answer, big */}
@@ -203,31 +203,31 @@ export default function WeatherScreen({
           {/* hourly */}
           <section>
             <div className="card p-4">
-              <p className="mb-3 text-sm font-medium text-stone-500">{t.hourly}</p>
+              <p className="mb-3 text-sm font-medium text-ink-secondary">{t.hourly}</p>
               {hasRainBars ? (
                 <div className="flex items-end gap-1.5" style={{ height: 104 }}>
                   {bars.map((h, i) => {
                     const p = h.precipitation_probability ?? 0;
                     return (
                       <div key={i} className="flex h-full flex-1 flex-col items-center gap-1">
-                        <span className="text-[10px] font-semibold text-sky-700">{p >= 20 ? `${p}` : ""}</span>
+                        <span className="text-[10px] font-semibold text-info-fg">{p >= 20 ? `${p}` : ""}</span>
                         {/* The bar's % height needs a parent of definite height: this flex-1 slot. */}
                         <div className="flex w-full flex-1 items-end">
                           <div
-                            className="w-full rounded-full bg-gradient-to-t from-sky-500 to-sky-300"
+                            className="w-full rounded-full bg-info-accent"
                             style={{ height: `${Math.max(4, (p / maxProb) * 100)}%` }}
                             title={`${p}%`}
                           />
                         </div>
                         {/* The hour as printed in the forecast's own time zone (IST), whatever
                             the device's zone: YYYY-MM-DDTHH:.. */}
-                        <span className="text-[11px] text-stone-400">{Number(h.time_local.slice(11, 13))}</span>
+                        <span className="text-[11px] text-ink-secondary">{Number(h.time_local.slice(11, 13))}</span>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="flex items-center gap-3 rounded-2xl bg-amber-50 px-4 py-5 text-amber-900">
+                <div className="flex items-center gap-3 rounded-2xl bg-caution-bg px-4 py-5 text-caution-fg">
                   <span className="text-3xl" aria-hidden>☀️</span>
                   <p className="text-sm font-medium">{t.hourlyDry}</p>
                 </div>
@@ -251,8 +251,8 @@ export default function WeatherScreen({
                   aria-current={c === crop ? "true" : undefined}
                   className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                     c === crop
-                      ? "bg-green-700 text-white shadow-[var(--shadow-1)]"
-                      : "bg-white text-stone-700 shadow-[var(--shadow-1)]"
+                      ? "bg-brand text-white shadow-1"
+                      : "bg-surface-raised text-ink shadow-1"
                   }`}
                 >
                   <span className="text-base">{CROP_LABEL[c].emoji}</span>
@@ -267,7 +267,7 @@ export default function WeatherScreen({
                   <div className="card h-20 animate-pulse motion-reduce:animate-none" />
                 </>
               ) : data.farming_read.length === 0 ? (
-                <p className="card p-4 text-sm text-stone-500">✅ {t.noAdvice}</p>
+                <p className="card p-4 text-sm text-ink-secondary">✅ {t.noAdvice}</p>
               ) : (
                 data.farming_read.map((r) => <ReadCard key={r.id} read={r} lang={lang} />)
               )}
@@ -278,12 +278,12 @@ export default function WeatherScreen({
           <section>
             <SectionTitle>{t.week}</SectionTitle>
             <div className="card overflow-hidden">
-              <div className="divide-y divide-stone-100">
+              <div className="divide-y divide-line">
                 {data.daily.map((d) => {
                   const p = d.precipitation_probability_max ?? 0;
                   return (
                     <div key={d.date} className="flex items-center gap-3 px-4 py-3">
-                      <span className="w-11 font-medium text-stone-600">
+                      <span className="w-11 font-medium text-ink-secondary">
                         {new Date(d.date).toLocaleDateString(lang === "te" ? "te-IN" : "en-IN", {
                           weekday: "short",
                           timeZone: "UTC", // "YYYY-MM-DD" parses as UTC midnight: name THAT day
@@ -291,12 +291,12 @@ export default function WeatherScreen({
                       </span>
                       <span className="w-8 text-center text-2xl">{d.emoji}</span>
                       <div className="flex flex-1 items-center gap-2">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-100">
-                          <div className="h-full rounded-full bg-sky-400" style={{ width: `${(p / maxDayProb) * 100}%` }} />
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken">
+                          <div className="h-full rounded-full bg-info-accent" style={{ width: `${(p / maxDayProb) * 100}%` }} />
                         </div>
-                        <span className="w-9 text-right text-sm font-semibold text-sky-700 tabular-nums">{p}%</span>
+                        <span className="w-9 text-right text-sm font-semibold text-info-fg tabular-nums">{p}%</span>
                       </div>
-                      <span className="w-16 text-right text-stone-500 tabular-nums">
+                      <span className="w-16 text-right text-ink-secondary tabular-nums">
                         {d.temperature_max_c !== null ? Math.round(d.temperature_max_c) : "–"}° /{" "}
                         {d.temperature_min_c !== null ? Math.round(d.temperature_min_c) : "–"}°
                       </span>
@@ -308,7 +308,7 @@ export default function WeatherScreen({
           </section>
 
           {/* honest source stamp */}
-          <p className="px-2 text-center text-xs leading-relaxed text-stone-400">
+          <p className="px-2 text-center text-xs leading-relaxed text-ink-secondary">
             {sourceStamp(data, nowMs, lang)}
             <br />
             📍 {data.coords.returned.lat.toFixed(3)}, {data.coords.returned.lon.toFixed(3)} · ~

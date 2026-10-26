@@ -40,7 +40,7 @@ export default function FertilizerCalculator() {
         <span className="text-2xl" aria-hidden>🧮</span>
         <div>
           <h2 className="text-lg font-bold leading-tight">{pick(lang, "ఎరువుల లెక్క", "Fertilizer calculator")}</h2>
-          <p className="text-xs text-stone-500">{pick(lang, "ఎంత వేయాలి?", "How much to apply?")}</p>
+          <p className="text-xs text-ink-secondary">{pick(lang, "ఎంత వేయాలి?", "How much to apply?")}</p>
         </div>
       </div>
 
@@ -51,7 +51,7 @@ export default function FertilizerCalculator() {
             key={c.key}
             onClick={() => setCropKey(c.key)}
             className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium ${
-              c.key === cropKey ? "bg-green-700 text-white" : "bg-stone-100 text-stone-700"
+              c.key === cropKey ? "bg-brand text-white" : "bg-surface-sunken text-ink"
             }`}
           >
             <span>{c.emoji}</span>
@@ -68,16 +68,16 @@ export default function FertilizerCalculator() {
           min="0"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="w-24 rounded-xl border border-stone-300 px-3 py-2.5 text-lg font-semibold outline-none focus:border-green-600"
+          className="w-24 rounded-xl border border-line-strong px-3 py-2.5 text-lg font-semibold outline-none focus:border-brand"
           aria-label="విస్తీర్ణం"
         />
-        <div className="flex rounded-xl bg-stone-100 p-1">
+        <div className="flex rounded-xl bg-surface-sunken p-1">
           {(["acre", "guntha"] as Unit[]).map((u) => (
             <button
               key={u}
               onClick={() => setUnit(u)}
               className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                unit === u ? "bg-white text-green-800 shadow-[var(--shadow-1)]" : "text-stone-500"
+                unit === u ? "bg-surface-raised text-brand-ink shadow-1" : "text-ink-secondary"
               }`}
             >
               {u === "acre" ? "ఎకరం" : "గుంట"}
@@ -88,25 +88,25 @@ export default function FertilizerCalculator() {
 
       {/* result */}
       {acres > 0 ? (
-        <div className="mt-4 rounded-2xl bg-green-50 p-4">
+        <div className="mt-4 rounded-2xl bg-brand-soft p-4">
           <div className="grid grid-cols-3 gap-2 text-center">
             <Bag label="యూరియా" en="Urea" bags={r.ureaBags} kg={r.ureaKg} />
             <Bag label="డీఏపీ" en="DAP" bags={r.dapBags} kg={r.dapKg} />
             <Bag label="పొటాష్" en="MOP" bags={r.mopBags} kg={r.mopKg} />
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-stone-500">
-            <span className="font-semibold text-stone-700">వేయు విధానం: </span>
+          <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
+            <span className="font-semibold text-ink">వేయు విధానం: </span>
             {dose.splits_te}
           </p>
           <button
             onClick={listen}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-2.5 text-sm font-semibold text-white"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-2.5 text-sm font-semibold text-white"
           >
             🔊 వినండి
           </button>
         </div>
       ) : (
-        <p className="mt-4 rounded-2xl bg-stone-50 p-4 text-center text-sm text-stone-500">
+        <p className="mt-4 rounded-2xl bg-surface-sunken p-4 text-center text-sm text-ink-secondary">
           విస్తీర్ణం నమోదు చేయండి · Enter your area
         </p>
       )}
@@ -114,7 +114,7 @@ export default function FertilizerCalculator() {
       {/* honesty */}
       <p
         className={`mt-3 rounded-xl px-3 py-2 text-xs leading-relaxed ${
-          dose.needsVerification ? "bg-amber-50 text-amber-900" : "bg-stone-50 text-stone-500"
+          dose.needsVerification ? "bg-caution-bg text-caution-fg" : "bg-surface-sunken text-ink-secondary"
         }`}
       >
         ⚠️ ఇవి PJTSAU/ICAR సాధారణ సిఫార్సులు. మీ నేల పరీక్ష (Soil Health Card), నేల రకం, నీటి వసతిని బట్టి అసలు
@@ -126,11 +126,11 @@ export default function FertilizerCalculator() {
 
 function Bag({ label, en, bags, kg }: { label: string; en: string; bags: number; kg: number }) {
   return (
-    <div className="rounded-xl bg-white p-2.5 shadow-[var(--shadow-1)]">
-      <p className="text-2xl font-bold tabular-nums text-green-800">{bags}</p>
-      <p className="text-[11px] font-medium text-stone-600">బస్తాలు</p>
+    <div className="rounded-xl bg-surface-raised p-2.5 shadow-1">
+      <p className="text-2xl font-bold tabular-nums text-brand-ink">{bags}</p>
+      <p className="text-[11px] font-medium text-ink-secondary">బస్తాలు</p>
       <p className="mt-0.5 text-sm font-semibold">{label}</p>
-      <p className="text-[10px] text-stone-400">{en} · {kg} kg</p>
+      <p className="text-[10px] text-ink-secondary">{en} · {kg} kg</p>
     </div>
   );
 }
