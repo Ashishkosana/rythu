@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { CROPS, type Crop, type FarmAction, type FarmingRead, type Severity, type WeatherContract } from "@/lib/types";
 import { speak, weatherSpeech } from "@/lib/speak";
 import { useLang } from "@/lib/lang";
@@ -9,6 +9,7 @@ import { skyTheme } from "@/lib/sky";
 import { HERO_HOURS, nextHoursChance } from "@/lib/hero";
 import { sourceStamp } from "@/lib/freshness";
 import Link from "next/link";
+import Icon from "@/components/ui/Icon";
 
 type Lang = "te" | "en";
 
@@ -17,12 +18,15 @@ const CROP_LABEL: Record<Crop, { te: string; en: string; emoji: string }> = {
   chilli: { te: "మిర్చి", en: "Chilli", emoji: "🌶️" },
   cotton: { te: "పత్తి", en: "Cotton", emoji: "🧺" },
   paddy: { te: "వరి", en: "Paddy", emoji: "🌾" },
-  red_gram: { te: "కంది", en: "Red gram", emoji: "🫛" },
+  red_gram: { te: "కంది", en: "Red gram", emoji: "🌿" }, // not 🫛: an empty box before Android 13
   maize: { te: "మొక్కజొన్న", en: "Maize", emoji: "🌽" },
 };
 
 const L = {
   te: {
+    title: "వాతావరణం",
+    hour: "సమయం",
+    chance: "వర్షం అవకాశం",
     sellNothing: "మేము ఏదీ అమ్మము",
     chanceNext: "రాబోయే 12 గంటల్లో వర్షం అవకాశం",
     rainLikely: "వర్షం రావచ్చు",
@@ -38,6 +42,9 @@ const L = {
     listen: "వినండి",
   },
   en: {
+    title: "Weather",
+    hour: "Time",
+    chance: "Chance of rain",
     sellNothing: "We sell you nothing",
     chanceNext: "Chance of rain, next 12 hours",
     rainLikely: "Rain likely",
@@ -71,6 +78,7 @@ const ACTION_ICON: Record<FarmAction, string> = {
 
 function ReadCard({ read, lang }: { read: FarmingRead; lang: Lang }) {
   const [open, setOpen] = useState(false);
+  const whyId = useId();
   const sev = SEV_STYLES[read.severity] ?? SEV_STYLES.info;
   // Show Telugu when the app is in Telugu AND the backend supplied it; else English.
   const te = (teVal: string | undefined, enVal: string) => (lang === "te" && teVal ? teVal : enVal);
@@ -90,12 +98,15 @@ function ReadCard({ read, lang }: { read: FarmingRead; lang: Lang }) {
         {detail && <p className="mt-2 text-sm leading-relaxed text-ink-secondary">{detail}</p>}
         <button
           onClick={() => setOpen((v) => !v)}
-          className="mt-2.5 text-sm font-semibold text-brand-ink"
+          aria-expanded={open}
+          aria-controls={whyId}
+          className="tap -ml-2 mt-1 flex items-center gap-1 px-2 text-sm font-semibold text-brand-ink"
         >
-          {L[lang].why} {open ? "▲" : "▼"}
+          {L[lang].why}
+          <Icon name="chevron-down" size={18} className={open ? "rotate-180" : ""} />
         </button>
         {open && (
-          <div className="mt-2 space-y-1.5 rounded-xl bg-surface-sunken p-3 text-sm text-ink-secondary">
+          <div id={whyId} className="mt-1 space-y-1.5 rounded-xl bg-surface-sunken p-3 text-sm text-ink-secondary">
             <p>⚠️ {caveat}</p>
             {read.window_note && <p className="text-ink-secondary">🕑 {read.window_note}</p>}
           </div>
@@ -144,15 +155,20 @@ export default function WeatherScreen({
   const maxDayProb = Math.max(10, ...data.daily.map((d) => d.precipitation_probability_max ?? 0));
 
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
+    <main className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
+      <h1 className="sr-only">
+        {t.title} · {place}
+      </h1>
       {/* ── Dynamic sky hero ─────────────────────────────────────── */}
       <div className={`safe-top rounded-b-[2.25rem] px-4 pb-6 pt-3 text-white shadow-hero ${sky.gradient}`}>
         {/* brand row */}
         <div className="flex items-center justify-between">
-          <span className="text-base font-bold tracking-tight">🌾 రైతు</span>
+          <span className="text-base font-bold tracking-tight" lang="te">
+            🌾 రైతు
+          </span>
           <div className="flex items-center gap-2">
-            <span className={`rounded-full px-2.5 py-1 text-caption font-medium ${sky.chip}`}>
-              ✓ {t.sellNothing}
+            <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-caption font-medium ${sky.chip}`}>
+              <Icon name="check" size={14} /> {t.sellNothing}
             </span>
             <LangToggle light />
           </div>
@@ -185,15 +201,19 @@ export default function WeatherScreen({
 
             <button
               onClick={() => speak(weatherSpeech({ place, chance, temp, wet }), "te")}
-              className={`mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-base font-semibold ${sky.chip}`}
+              className={`tap mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-base font-semibold ${sky.chip}`}
             >
-              🔊 {t.listen}
+              <Icon name="volume-2" size={22} /> {t.listen}
             </button>
 
             {offline && (
-              <p className={`mt-3 inline-block rounded-full px-2.5 py-0.5 text-caption ${sky.chip}`}>📴 {t.offline}</p>
+              <p className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-caption ${sky.chip}`}>
+                <Icon name="wifi-off" size={14} /> {t.offline}
+              </p>
             )}
-            <p className={`mt-3 text-caption ${sky.soft}`}>⚠️ {data.reliability.disclaimer_en}</p>
+            <p className={`mt-3 text-caption ${sky.soft}`} lang="en">
+              ⚠️ {data.reliability.disclaimer_en}
+            </p>
           </>
         )}
       </div>
@@ -203,9 +223,28 @@ export default function WeatherScreen({
           {/* hourly */}
           <section>
             <div className="card p-4">
-              <p className="mb-3 text-sm font-medium text-ink-secondary">{t.hourly}</p>
+              <p className="mb-3 text-sm font-medium text-ink-secondary" aria-hidden>
+                {t.hourly}
+              </p>
+              <table className="sr-only">
+                <caption>{t.hourly}</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">{t.hour}</th>
+                    <th scope="col">{t.chance}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bars.map((h) => (
+                    <tr key={h.time_local}>
+                      <td>{h.time_local.slice(11, 16)}</td>
+                      <td>{h.precipitation_probability === null ? "–" : `${h.precipitation_probability}%`}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
               {hasRainBars ? (
-                <div className="flex items-end gap-1.5" style={{ height: 104 }}>
+                <div className="flex items-end gap-1.5" style={{ height: 104 }} aria-hidden>
                   {bars.map((h, i) => {
                     const p = h.precipitation_probability ?? 0;
                     return (
@@ -249,7 +288,7 @@ export default function WeatherScreen({
                   replace
                   scroll={false}
                   aria-current={c === crop ? "true" : undefined}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`tap flex shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                     c === crop
                       ? "bg-brand text-white shadow-1"
                       : "bg-surface-raised text-ink shadow-1"
@@ -316,6 +355,6 @@ export default function WeatherScreen({
           </p>
         </div>
       )}
-    </div>
+    </main>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useId, useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PILOT_MANDALS } from "@/lib/locations";
 import { formatPlaceLabel, isSearchable, MAX_QUERY, placeName, roundCoord, searchPlaces } from "@/lib/geocode";
@@ -8,6 +8,7 @@ import type { Place } from "@/lib/types";
 import { savePlace } from "@/lib/prefs";
 import { COVERAGE_MESSAGE, inCoverage } from "@/lib/coverage";
 import { pick, useLang } from "@/lib/lang";
+import Icon from "@/components/ui/Icon";
 
 // Telugu-first location chooser. Three honest paths to a real coordinate:
 //   1. GPS  → the farmer's exact spot (one tap, no typing — best for low literacy)
@@ -30,6 +31,7 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
     { state: "idle" } | { state: "searching" } | { state: "found"; places: Place[] } | { state: "failed" }
   >({ state: "idle" });
   const inflight = useRef<AbortController | null>(null);
+  const panelId = useId();
 
   function go(lat: number, lon: number, place: string) {
     const rlat = roundCoord(lat);
@@ -90,10 +92,12 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
     <div className="mb-3">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-2xl bg-surface-raised/95 px-4 py-3 text-left shadow-1 backdrop-blur"
+        aria-expanded={open}
+        aria-controls={panelId}
+        className="tap flex w-full items-center justify-between rounded-2xl bg-surface-raised/95 px-4 py-3 text-left shadow-1 backdrop-blur"
       >
         <span className="flex items-center gap-2 truncate">
-          <span aria-hidden>📍</span>
+          <Icon name="map-pin" size={20} className="shrink-0 text-brand-ink" />
           <span className="truncate font-semibold text-ink">{currentPlace}</span>
         </span>
         <span className="shrink-0 text-sm font-medium text-brand-ink">
@@ -102,13 +106,13 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
       </button>
 
       {open && (
-        <div className="mt-2 space-y-3 rounded-2xl bg-surface-raised p-3 text-ink shadow-2">
+        <div id={panelId} className="mt-2 space-y-3 rounded-2xl bg-surface-raised p-3 text-ink shadow-2">
           <button
             onClick={useGps}
             disabled={gpsBusy}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 font-semibold text-white disabled:opacity-60"
+            className="tap flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 font-semibold text-white disabled:opacity-60"
           >
-            <span aria-hidden>🧭</span>
+            <Icon name="locate-fixed" size={20} />
             {gpsBusy ? pick(lang, "వెతుకుతోంది…", "Locating…") : pick(lang, "నా ప్రాంతం వాడు", "Use my location")}
           </button>
           {msg && <p className="text-center text-sm text-caution-fg">{msg}</p>}
@@ -122,7 +126,7 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
                 <button
                   key={m.name_en}
                   onClick={() => go(m.lat, m.lon, pick(lang, m.name_te, m.name_en))}
-                  className="rounded-full border border-brand px-3 py-1.5 text-sm text-brand-ink"
+                  className="tap rounded-full border border-brand px-4 py-1.5 text-sm text-brand-ink"
                 >
                   {pick(lang, m.name_te, m.name_en)}
                 </button>
@@ -140,12 +144,12 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
                 onChange={(e) => setQuery(e.target.value)}
                 aria-label={pick(lang, "మీ ఊరు పేరు", "Your village name")}
                 placeholder={pick(lang, "మీ ఊరు వెతకండి", "Search your village")}
-                className="min-w-0 flex-1 rounded-xl border border-line-strong px-4 py-2.5 outline-none focus:border-brand"
+                className="tap min-w-0 flex-1 rounded-xl border border-line-strong px-4 py-2.5 outline-none focus:border-brand"
               />
               <button
                 type="submit"
                 disabled={!isSearchable(query) || search.state === "searching"}
-                className="shrink-0 rounded-xl bg-brand px-4 py-2.5 font-semibold text-white disabled:opacity-50"
+                className="tap flex shrink-0 items-center gap-1.5 rounded-xl bg-brand px-4 py-2.5 font-semibold text-white disabled:opacity-50"
               >
                 {pick(lang, "వెతుకు", "Search")}
               </button>
@@ -172,7 +176,7 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
                     <button
                       type="button"
                       onClick={() => go(r.lat, r.lon, formatPlaceLabel(r, lang))}
-                      className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-surface-sunken"
+                      className="tap flex w-full flex-col items-start justify-center px-3 py-2 text-left hover:bg-surface-sunken"
                     >
                       <span className="font-medium text-ink">{placeName(r, lang)}</span>
                       <span className="text-caption text-ink-secondary">

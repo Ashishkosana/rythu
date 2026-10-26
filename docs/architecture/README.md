@@ -219,7 +219,8 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | S10 | Cutover to Azure prod, 7-day dual run, `cdk destroy` (explicit approval) | none | planned |
 | S11a+b | Tokens with AA values (computed in tests), palette off + eslint guard, every screen migrated. Folded into one step: nothing is live, so a pixel-identical intermediate protected no one | visual: readable sunny/cloudy heroes, darker secondary text, AA buttons | **done** |
 | S11c | Type floor 14 px (33 uses below it, incl. 10–13 px chart and nav labels) + Telugu line-height 1.55 + eslint floor rule | larger small text | **done** |
-| S11d–e | SVG icons, lang/ARIA, accessible chart, primitives (screenshots each) | visual | planned |
+| S11d | Accessibility: axe-core 4.14 audit of every screen ×2 languages → 0 violations (was: lang fixed at te, no main/h1, opacity-dimmed schemes failing contrast); 48 px targets; disclosures with aria-expanded; chart → screen-reader table; SVG chrome icons (Lucide subset); 🫛 → 🌿; dialog semantics; visible focus | visual | **done** |
+| S11e | Primitives (Button, Chip, Card, Disclosure…) + `/dev/ui` gallery — extracted when the new screens (S15–S17) give each pattern a second user, not speculatively | none | with S15–S17 |
 | ⭐ S12 | Android TWA → Play internal testing → father installs; start 12-tester closed test | new channel | planned |
 | S13 | Device auth + `/v1/me/profile` sync; remove Cognito | server-restored profile | planned |
 | S14 | Push alerts (subscriptions, evaluation, queue, sender, alert log) | new | planned |

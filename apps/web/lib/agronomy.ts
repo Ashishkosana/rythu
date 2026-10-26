@@ -73,7 +73,7 @@ export const CROP_DOSES: readonly CropDose[] = [
     key: "red_gram",
     name_te: "కంది",
     name_en: "Red gram",
-    emoji: "🫛",
+    emoji: "🌿", // not 🫛: an empty box before Android 13
     n: 8.1,
     p: 20.2,
     k: 8.1,

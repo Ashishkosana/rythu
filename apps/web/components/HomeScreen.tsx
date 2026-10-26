@@ -70,15 +70,15 @@ function Unavailable({ place, tooOld, onRetry }: { place: string; tooOld: boolea
       <p className="text-3xl" aria-hidden>
         🌧️
       </p>
-      <p className="font-semibold">
+      <h1 className="font-semibold">
         {tooOld
           ? pick(lang, "సేవ్ చేసిన వాతావరణం 6 గంటల కంటే పాతది", "The saved forecast is more than 6 hours old")
           : pick(lang, "వాతావరణ సమాచారం అందుబాటులో లేదు", "Weather data unavailable")}
-      </p>
+      </h1>
       <p className="text-sm text-ink-secondary">
         {pick(lang, "ఇంటర్నెట్ ఉన్నప్పుడు మళ్లీ ప్రయత్నించండి", "Please try again when you have internet")}
       </p>
-      <button onClick={onRetry} className="mx-auto rounded-xl bg-brand px-6 py-3 font-semibold text-white">
+      <button onClick={onRetry} className="tap mx-auto rounded-xl bg-brand px-6 py-3 font-semibold text-white">
         {pick(lang, "మళ్లీ ప్రయత్నించు", "Try again")}
       </button>
       <div className="mt-4 text-left">
@@ -94,7 +94,7 @@ function CoverageNotice({ place }: { place: string }) {
       <p className="text-3xl" aria-hidden>
         📍
       </p>
-      <p className="font-semibold">{COVERAGE_MESSAGE.te}</p>
+      <h1 className="font-semibold">{COVERAGE_MESSAGE.te}</h1>
       <p className="text-sm text-ink-secondary">{COVERAGE_MESSAGE.en} · మీ ఊరిని ఎంచుకోండి / choose your village</p>
       <div className="text-left">
         <LocationPicker currentPlace={place} />

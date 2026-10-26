@@ -113,6 +113,33 @@ body {
   box-shadow: var(--shadow-2);
 }
 
+/* Touch targets ≥ 48 × 48 px. `tap` sizes a control; `hit-48` enlarges the hit area of a control
+   that must stay visually small (a pill in a header), without moving anything. */
+@utility tap {
+  min-height: 48px;
+  min-width: 48px;
+}
+@utility hit-48 {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 48px);
+    height: max(100%, 48px);
+    transform: translate(-50%, -50%);
+  }
+}
+
+/* Keyboard / switch-access focus: a white inner ring inside an ink outer ring reads on paper and on
+   the darkest sky alike. */
+:focus-visible {
+  outline: 2px solid var(--color-white);
+  outline-offset: 0;
+  box-shadow: 0 0 0 4px var(--color-ink);
+}
+
 /* Tactile press feedback — makes taps feel native on touch devices */
 @media (hover: none) {
   button:active,

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { CROP_DOSES, GUNTHA_PER_ACRE, computeForArea } from "@/lib/agronomy";
 import { speak } from "@/lib/speak";
 import { pick, useLang } from "@/lib/lang";
+import Icon from "@/components/ui/Icon";
 
 // Fertilizer calculator: pick crop + area → exact Urea/DAP/MOP bags, from cited
 // PJTSAU/ICAR norms (never company formulas). Deterministic + offline. Honest:
@@ -50,7 +51,7 @@ export default function FertilizerCalculator() {
           <button
             key={c.key}
             onClick={() => setCropKey(c.key)}
-            className={`flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium ${
+            className={`tap flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium ${
               c.key === cropKey ? "bg-brand text-white" : "bg-surface-sunken text-ink"
             }`}
           >
@@ -68,7 +69,7 @@ export default function FertilizerCalculator() {
           min="0"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          className="w-24 rounded-xl border border-line-strong px-3 py-2.5 text-lg font-semibold outline-none focus:border-brand"
+          className="tap w-24 rounded-xl border border-line-strong px-3 py-2.5 text-lg font-semibold outline-none focus:border-brand"
           aria-label="విస్తీర్ణం"
         />
         <div className="flex rounded-xl bg-surface-sunken p-1">
@@ -76,7 +77,7 @@ export default function FertilizerCalculator() {
             <button
               key={u}
               onClick={() => setUnit(u)}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+              className={`tap rounded-lg px-3 py-1.5 text-sm font-medium ${
                 unit === u ? "bg-surface-raised text-brand-ink shadow-1" : "text-ink-secondary"
               }`}
             >
@@ -100,9 +101,9 @@ export default function FertilizerCalculator() {
           </p>
           <button
             onClick={listen}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-2.5 text-sm font-semibold text-white"
+            className="tap mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-2.5 text-sm font-semibold text-white"
           >
-            🔊 వినండి
+            <Icon name="volume-2" size={20} /> వినండి
           </button>
         </div>
       ) : (

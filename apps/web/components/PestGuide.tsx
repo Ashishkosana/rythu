@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { PESTS, type Pest } from "@/lib/pests";
 import { pick, useLang } from "@/lib/lang";
+import Icon from "@/components/ui/Icon";
 
 const CROP_FILTERS = [
   { key: "all", te: "అన్నీ" },
@@ -20,7 +21,7 @@ function PestCard({ p }: { p: Pest }) {
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center gap-3 text-left"
+        className="tap flex w-full items-center gap-3 text-left"
       >
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-xl">
           {p.emoji}
@@ -29,7 +30,7 @@ function PestCard({ p }: { p: Pest }) {
           <span className="block font-semibold leading-snug">{p.name_te}</span>
           <span className="block text-caption text-ink-secondary">{p.crop_te} · {p.name_en}</span>
         </span>
-        <span className="text-sm text-brand-ink">{open ? "▲" : "▼"}</span>
+        <Icon name="chevron-down" size={20} className={`shrink-0 text-brand-ink ${open ? "rotate-180" : ""}`} />
       </button>
 
       <p className="mt-2 text-sm text-ink-secondary">
@@ -96,7 +97,7 @@ export default function PestGuide() {
             key={f.key}
             onClick={() => setCrop(f.key)}
             aria-pressed={crop === f.key}
-            className={`rounded-full px-4 py-2.5 text-sm font-medium ${
+            className={`tap rounded-full px-4 py-2.5 text-sm font-medium ${
               crop === f.key ? "bg-brand text-white" : "bg-surface-sunken text-ink"
             }`}
           >

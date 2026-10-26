@@ -22,7 +22,7 @@ function Row({ label, te, en, lang }: { label: string; te: string; en: string; l
 export default function CropsScreen() {
   const { lang } = useLang();
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
+    <main className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
       <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-hero-brand-from to-hero-brand-to px-5 pb-6 pt-4 text-white shadow-hero">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -79,13 +79,13 @@ export default function CropsScreen() {
                 "Confirm exact dates & doses with your Agriculture Officer (AEO)",
               )}{" "}
               ·{" "}
-              <a href={c.source} target="_blank" rel="noopener noreferrer" className="text-brand-ink underline">
+              <a href={c.source} target="_blank" rel="noopener noreferrer" className="hit-48 text-brand-ink underline">
                 Source: PJTSAU
               </a>
             </p>
           </details>
         ))}
       </div>
-    </div>
+    </main>
   );
 }

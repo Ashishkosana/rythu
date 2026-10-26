@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { SCHEMES, type Scheme, type SchemeStatus } from "@/lib/schemes";
 import { pick, useLang, type Lang } from "@/lib/lang";
 import LangToggle from "@/components/LangToggle";
+import Icon from "@/components/ui/Icon";
 
 type Filter = "all" | "state" | "central";
 
@@ -24,11 +25,17 @@ const STATUS: Record<SchemeStatus, { te: string; en: string; cls: string }> = {
 
 function SchemeCard({ s, lang }: { s: Scheme; lang: Lang }) {
   const [open, setOpen] = useState(false);
+  const detailsId = useId();
   const badge = STATUS[s.status];
   const dimmed = s.status === "closed" || s.status === "suspended";
   return (
-    <div className={`card p-4 ${dimmed ? "opacity-70" : ""}`}>
-      <button onClick={() => setOpen((v) => !v)} className="flex w-full items-start justify-between gap-3 text-left">
+    <div className={`card p-4 ${dimmed ? "bg-surface-sunken! shadow-none!" : ""}`}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls={detailsId}
+        className="flex w-full items-start justify-between gap-3 text-left"
+      >
         <div>
           <h2 className="text-lg font-semibold leading-snug">{pick(lang, s.name_te, s.name_en)}</h2>
           <p className="text-caption text-ink-secondary">{pick(lang, s.name_en, s.name_te)}</p>
@@ -44,7 +51,7 @@ function SchemeCard({ s, lang }: { s: Scheme; lang: Lang }) {
       </p>
 
       {open && (
-        <div className="mt-3 space-y-3 border-t border-line pt-3 text-sm">
+        <div id={detailsId} className="mt-3 space-y-3 border-t border-line pt-3 text-sm">
           <p>
             <span className="font-medium text-brand-ink">{pick(lang, "ఎవరికి", "Who")}: </span>
             {pick(lang, s.who_te, s.who_en)}
@@ -62,14 +69,20 @@ function SchemeCard({ s, lang }: { s: Scheme; lang: Lang }) {
       )}
 
       <div className="mt-3 flex items-center justify-between">
-        <button onClick={() => setOpen((v) => !v)} className="text-sm font-semibold text-brand-ink">
-          {open ? pick(lang, "మూసివేయి ▲", "Close ▲") : pick(lang, "వివరాలు ▼", "Details ▼")}
+        <button
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-controls={detailsId}
+          className="tap -ml-2 flex items-center gap-1 px-2 text-sm font-semibold text-brand-ink"
+        >
+          {open ? pick(lang, "మూసివేయి", "Close") : pick(lang, "వివరాలు", "Details")}
+          <Icon name="chevron-down" size={18} className={open ? "rotate-180" : ""} />
         </button>
         <a
           href={s.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-xl bg-brand px-3 py-1.5 text-sm font-semibold text-white"
+          className="tap flex items-center rounded-xl bg-brand px-4 py-1.5 text-sm font-semibold text-white"
         >
           {pick(lang, "అధికారిక సైట్ →", "Official site →")}
         </a>
@@ -86,7 +99,7 @@ export default function SchemesScreen() {
     .sort((a, b) => b.priority - a.priority);
 
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
+    <main className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
       <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-hero-brand-from to-hero-brand-to px-5 pb-6 pt-4 text-white shadow-hero">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -106,7 +119,7 @@ export default function SchemesScreen() {
             key={f.key}
             onClick={() => setFilter(f.key)}
             aria-pressed={filter === f.key}
-            className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+            className={`tap rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
               filter === f.key
                 ? "border-brand bg-brand text-white"
                 : "border-line-strong bg-surface-raised text-ink"
@@ -129,6 +142,6 @@ export default function SchemesScreen() {
           )}
         </p>
       </div>
-    </div>
+    </main>
   );
 }

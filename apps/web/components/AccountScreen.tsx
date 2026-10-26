@@ -92,7 +92,7 @@ export default function AccountScreen() {
   }
 
   const shell = (children: React.ReactNode) => (
-    <div className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
+    <main className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
       <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-hero-brand-from to-hero-brand-to px-5 pb-6 pt-4 text-white shadow-hero">
         <div className="flex items-start justify-between gap-2">
           <div>
@@ -105,7 +105,7 @@ export default function AccountScreen() {
         </div>
       </header>
       <div className="p-4 pt-6">{children}</div>
-    </div>
+    </main>
   );
 
   if (!configured) {
@@ -164,7 +164,7 @@ export default function AccountScreen() {
                 setError(null);
                 setNotice(null);
               }}
-              className={`flex-1 rounded-lg py-2 text-sm font-semibold ${
+              className={`tap flex-1 rounded-lg py-2 text-sm font-semibold ${
                 mode === m ? "bg-surface-raised text-brand-ink shadow-1" : "text-ink-secondary"
               }`}
             >
@@ -191,7 +191,7 @@ export default function AccountScreen() {
           </button>
           <button
             onClick={() => run(() => resendCode(email), () => setNotice(pick(lang, "కోడ్ మళ్లీ పంపాం", "Code resent")))}
-            className="w-full text-sm font-medium text-brand-ink"
+            className="tap w-full text-sm font-medium text-brand-ink"
           >
             {pick(lang, "కోడ్ మళ్లీ పంపండి", "Resend code")}
           </button>

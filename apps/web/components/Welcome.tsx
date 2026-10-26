@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { hasSeenWelcome, markWelcomeSeen } from "@/lib/prefs";
 import { speak, stopSpeaking } from "@/lib/speak";
+import Icon from "@/components/ui/Icon";
 
 // First-run intro for a farmer new to smartphones: three big icons + one tap to
 // HEAR what the app does (reading is the barrier). Shows once, then never again.
@@ -37,10 +38,19 @@ export default function Welcome() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-      <div className="w-full max-w-md rounded-3xl bg-surface-raised p-6 shadow-xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="welcome-title"
+        className="w-full max-w-md rounded-3xl bg-surface-raised p-6 shadow-xl"
+      >
         <div className="text-center">
-          <p className="text-4xl">🌾</p>
-          <h1 className="mt-2 text-2xl font-bold">రైతు</h1>
+          <p className="text-4xl" aria-hidden>
+            🌾
+          </p>
+          <h2 id="welcome-title" className="mt-2 text-2xl font-bold">
+            రైతు
+          </h2>
           <p className="mt-1 text-sm text-ink-secondary">మీ కోసం — మేము ఏమీ అమ్మము</p>
         </div>
 
@@ -60,14 +70,15 @@ export default function Welcome() {
 
         <button
           onClick={() => speak(INTRO, "te")}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-brand py-3 text-base font-semibold text-brand-ink"
+          className="tap mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-brand py-3 text-base font-semibold text-brand-ink"
         >
-          🔊 వినండి · Listen
+          <Icon name="volume-2" size={22} /> వినండి · Listen
         </button>
 
         <button
           onClick={close}
-          className="mt-3 w-full rounded-2xl bg-brand py-3.5 text-lg font-bold text-white"
+          autoFocus
+          className="tap mt-3 w-full rounded-2xl bg-brand py-3.5 text-lg font-bold text-white"
         >
           మొదలుపెట్టండి · Start
         </button>
