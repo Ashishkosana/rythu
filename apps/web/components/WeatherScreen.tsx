@@ -144,7 +144,7 @@ export default function WeatherScreen({
   const maxDayProb = Math.max(10, ...data.daily.map((d) => d.precipitation_probability_max ?? 0));
 
   return (
-    <div className="mx-auto min-h-dvh max-w-md pb-28 text-stone-900">
+    <div className="mx-auto min-h-dvh w-full max-w-md pb-28 text-stone-900">
       {/* ── Dynamic sky hero ─────────────────────────────────────── */}
       <div className={`safe-top rounded-b-[2.25rem] px-4 pb-6 pt-3 text-white shadow-[var(--shadow-hero)] ${sky.gradient}`}>
         {/* brand row */}
@@ -209,13 +209,16 @@ export default function WeatherScreen({
                   {bars.map((h, i) => {
                     const p = h.precipitation_probability ?? 0;
                     return (
-                      <div key={i} className="flex flex-1 flex-col items-center justify-end gap-1">
+                      <div key={i} className="flex h-full flex-1 flex-col items-center gap-1">
                         <span className="text-[10px] font-semibold text-sky-700">{p >= 20 ? `${p}` : ""}</span>
-                        <div
-                          className="w-full rounded-full bg-gradient-to-t from-sky-500 to-sky-300"
-                          style={{ height: `${Math.max(4, (p / maxProb) * 100)}%` }}
-                          title={`${p}%`}
-                        />
+                        {/* The bar's % height needs a parent of definite height: this flex-1 slot. */}
+                        <div className="flex w-full flex-1 items-end">
+                          <div
+                            className="w-full rounded-full bg-gradient-to-t from-sky-500 to-sky-300"
+                            style={{ height: `${Math.max(4, (p / maxProb) * 100)}%` }}
+                            title={`${p}%`}
+                          />
+                        </div>
                         {/* The hour as printed in the forecast's own time zone (IST), whatever
                             the device's zone: YYYY-MM-DDTHH:.. */}
                         <span className="text-[11px] text-stone-400">{Number(h.time_local.slice(11, 13))}</span>

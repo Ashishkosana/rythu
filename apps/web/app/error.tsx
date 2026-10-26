@@ -5,7 +5,7 @@
 // the version-specific reset/unstable_retry prop.
 export default function Error() {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-3 p-8 text-center text-stone-700">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center gap-3 p-8 text-center text-stone-700">
       <p className="text-3xl">🌾</p>
       <p className="font-semibold">ఏదో తప్పు జరిగింది</p>
       <p className="text-sm text-stone-500">Something went wrong · కాసేపటి తర్వాత మళ్లీ చూడండి</p>

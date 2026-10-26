@@ -66,7 +66,7 @@ function Forecast({ loc, crop, water }: { loc: ResolvedLocation; crop: Crop; wat
 function Unavailable({ place, tooOld, onRetry }: { place: string; tooOld: boolean; onRetry: () => void }) {
   const { lang } = useLang();
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-3 p-6 pb-28 text-center text-stone-700">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-3 p-6 pb-28 text-center text-stone-700">
       <p className="text-3xl" aria-hidden>
         🌧️
       </p>
@@ -90,7 +90,7 @@ function Unavailable({ place, tooOld, onRetry }: { place: string; tooOld: boolea
 
 function CoverageNotice({ place }: { place: string }) {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 p-6 pb-28 text-center text-stone-700">
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center gap-4 p-6 pb-28 text-center text-stone-700">
       <p className="text-3xl" aria-hidden>
         📍
       </p>
