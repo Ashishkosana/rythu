@@ -40,6 +40,12 @@ def cache_key(point: GeoPoint) -> str:
     return f"{c.lat:.1f},{c.lon:.1f}"
 
 
+def cell_from_key(key: str) -> GeoPoint:
+    """Inverse of :func:`cache_key`: the cell centre a key stands for."""
+    lat, lon = key.split(",")
+    return GeoPoint(float(lat), float(lon))
+
+
 class CacheStore(Protocol):
     """Port for the cache backend. Values are :func:`forecast_to_cache` dicts."""
 

@@ -115,6 +115,17 @@ resource forecast 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-0
   name: forecastTable
 }
 
+// Cells farmers use (what the pre-warm timer refreshes) and the shared hourly upstream budget.
+resource cellsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: tableService
+  name: 'cells'
+}
+
+resource budgetTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: tableService
+  name: 'budget'
+}
+
 // ── Compute: Flex Consumption Function App ──────────────────────────────────────────────────
 resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: 'plan-${baseName}-${env}-${suffix}'

@@ -110,3 +110,80 @@ async def test_cached_provider_reads_through_the_store(store):
     hit = await provider.fetch(GeoPoint(18.4489, 79.8571))  # same cell → served from the store
     assert calls == 1
     assert hit.upstream_fetched_at == now
+
+
+# --- S7: the cell registry and upstream budget share one contract across implementations ----------
+
+
+@pytest.fixture(params=["in_memory", "azure_table"])
+def registry(request):
+    from rythu_weather.adapters.cells import InMemoryCellRegistry
+
+    if request.param == "in_memory":
+        return InMemoryCellRegistry()
+    from rythu_weather.adapters.azure_table import AzureTableCellRegistry, TableAuth
+
+    store = azure_store_or_skip()
+    return AzureTableCellRegistry(TableAuth(connection_string=AZURITE), store.table_name)
+
+
+@pytest.fixture(params=["in_memory", "azure_table"])
+def budget(request):
+    from rythu_weather.adapters.budget import InMemoryUpstreamBudget
+
+    if request.param == "in_memory":
+        return InMemoryUpstreamBudget()
+    from rythu_weather.adapters.azure_table import AzureTableUpstreamBudget, TableAuth
+
+    store = azure_store_or_skip()
+    return AzureTableUpstreamBudget(TableAuth(connection_string=AZURITE), store.table_name)
+
+
+async def test_registry_tracks_last_seen_orders_recent_first_and_prunes(registry):
+    t0 = at(2026, 10, 1, 9)
+    assert await registry.active(t0) == []  # empty (Azure: table not created yet)
+    await registry.touch("18.4,79.9", t0)
+    await registry.touch("17.4,78.5", t0 + timedelta(hours=2))
+    await registry.touch("16.5,80.6", t0 - timedelta(days=30))
+    await registry.touch("18.4,79.9", t0 + timedelta(hours=3))  # seen again, later
+    assert await registry.active(t0 - timedelta(days=1)) == ["18.4,79.9", "17.4,78.5"]
+    assert await registry.prune(t0 - timedelta(days=14)) == 1
+    assert "16.5,80.6" not in await registry.active(t0 - timedelta(days=60))
+
+
+async def test_budget_counts_per_window(budget):
+    assert [await budget.try_acquire("2026-10-26T09", 2) for _ in range(3)] == [True, True, False]
+    assert await budget.try_acquire("2026-10-26T10", 2) is True  # a fresh hour
+
+
+async def test_budget_is_exact_under_concurrency(budget):
+    """Many instances spending at once must never overspend (Azure: ETag optimistic concurrency)."""
+    import asyncio
+
+    results = await asyncio.gather(*(budget.try_acquire("2026-10-26T11", 10) for _ in range(25)),
+                                   return_exceptions=True)
+    granted = [r for r in results if r is True]
+    assert len(granted) <= 10  # never more than the limit
+    assert all(r is True or r is False or type(r).__name__ == "BudgetContention" for r in results)
+    assert await budget.try_acquire("2026-10-26T11", 10) is (len(granted) < 10)
+
+
+async def test_a_burst_never_spends_more_than_the_budget(budget):
+    """End to end through BudgetedProvider: 25 simultaneous misses, budget 10 → ≤ 10 upstream calls."""
+    import asyncio
+
+    from rythu_weather.adapters.budget import BudgetedProvider, BudgetExhausted
+
+    calls = 0
+
+    class Upstream:
+        async def fetch(self, point):
+            nonlocal calls
+            calls += 1
+            return forecast(at(2026, 10, 26, 9))
+
+    provider = BudgetedProvider(Upstream(), budget, per_hour=10, clock=lambda: at(2026, 10, 26, 12))
+    results = await asyncio.gather(*(provider.fetch(GeoPoint(18.44, 79.86)) for _ in range(25)),
+                                   return_exceptions=True)
+    assert all(isinstance(r, Forecast | BudgetExhausted) for r in results)
+    assert 0 < calls <= 10

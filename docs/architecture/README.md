@@ -210,7 +210,7 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | S4 | OpenAPI → generated TS types + CI drift check | none | **done** |
 | S5 | Repository ports + Table Storage adapter, Azurite contract tests | none (AWS still on DynamoDB) | **done** |
 | ⭐ S6 | Azure foundation: Bicep, Function App, App Insights, budget, OIDC, deploy to dev (Key Vault deferred: managed identity leaves no secret to store; it arrives with the first real secret, S15) | none (AWS live) | S6a+b **done**; S6c (first deploy) needs the runbook in `infra/azure/README.md` |
-| ⭐ S7 | Pre-warm timer, cell registry, global upstream budget | faster; ≤ 30 min staleness | planned |
+| ⭐ S7 | Pre-warm timer, cell registry, global upstream budget | faster; served copy ≤ ~20 min old; bursts get saved/degraded | **done** |
 | ⭐ S8a | Client data layer behind a flag (TanStack Query, IndexedDB, on-device age) | none while off | planned |
 | S8b | Static export → Static Web Apps; app-shell service worker | SSR ends | planned |
 | S9 | `/v1/geocode`; search-on-submit (Nominatim policy) | search on tap | planned |

@@ -13,6 +13,12 @@ Variables (all optional):
   logged, never in ``repr``.
 * ``RYTHU_AZURE_FORECAST_TABLE`` — table name for the Azure forecast cache (default ``forecast``).
 * ``RYTHU_OPEN_METEO_TIMEOUT_S`` — total deadline for one Open-Meteo fetch (default 4).
+* ``RYTHU_UPSTREAM_BUDGET_PER_HOUR`` — on-demand Open-Meteo calls allowed per hour across all instances
+  (default 120). Beyond it, misses serve the saved copy or an honest degraded answer.
+* ``RYTHU_PREWARM_MAX_CELLS`` — most cells the 20-minute pre-warm refreshes (default 60).
+
+Quota arithmetic (Open-Meteo free tier ≈ 10,000 calls/day; tests keep the worst case under 80 %):
+pre-warm 60 cells × 3 runs/h × 24 h = 4,320 + on-demand 120/h × 24 h = 2,880 → 7,200/day.
 * ``RYTHU_LOG_LEVEL`` — ``DEBUG`` / ``INFO`` / ``WARNING`` / ``ERROR`` (default ``INFO``).
 
 At most one cache backend may be configured; neither means no cache.
@@ -31,6 +37,8 @@ _LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR"})
 # (Next.js server, then the phone) has its own budget on top of this.
 DEFAULT_OPEN_METEO_TIMEOUT_S = 4.0
 DEFAULT_LOG_LEVEL = "INFO"
+DEFAULT_UPSTREAM_BUDGET_PER_HOUR = 120
+DEFAULT_PREWARM_MAX_CELLS = 60
 DEFAULT_AZURE_FORECAST_TABLE = "forecast"
 # Azure table names: 3–63 alphanumerics, starting with a letter.
 _AZURE_TABLE_NAME = re.compile(r"[A-Za-z][A-Za-z0-9]{2,62}")
@@ -45,6 +53,8 @@ class Settings:
     azure_forecast_table: str = DEFAULT_AZURE_FORECAST_TABLE
     open_meteo_timeout_s: float = DEFAULT_OPEN_METEO_TIMEOUT_S
     log_level: str = DEFAULT_LOG_LEVEL
+    upstream_budget_per_hour: int = DEFAULT_UPSTREAM_BUDGET_PER_HOUR
+    prewarm_max_cells: int = DEFAULT_PREWARM_MAX_CELLS
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -75,6 +85,10 @@ class Settings:
             azure_forecast_table=table,
             open_meteo_timeout_s=timeout,
             log_level=level,
+            upstream_budget_per_hour=_bounded_int(
+                e, "RYTHU_UPSTREAM_BUDGET_PER_HOUR", DEFAULT_UPSTREAM_BUDGET_PER_HOUR, 1, 400
+            ),
+            prewarm_max_cells=_bounded_int(e, "RYTHU_PREWARM_MAX_CELLS", DEFAULT_PREWARM_MAX_CELLS, 0, 100),
         )
 
 
@@ -88,6 +102,19 @@ def _positive_float(env: Mapping[str, str], name: str, default: float) -> float:
         raise ValueError(f"{name} must be a number, got {raw!r}") from exc
     if not 0 < value <= 60:
         raise ValueError(f"{name} must be in (0, 60], got {value}")
+    return value
+
+
+def _bounded_int(env: Mapping[str, str], name: str, default: int, lo: int, hi: int) -> int:
+    raw = env.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a whole number, got {raw!r}") from exc
+    if not lo <= value <= hi:
+        raise ValueError(f"{name} must be in [{lo}, {hi}], got {value}")
     return value
 
 

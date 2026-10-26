@@ -72,6 +72,16 @@ imports FastAPI/Pydantic (also tested), so its bundle is still just `httpx`.
 installs the requirements with a remote build on Azure. `tests/test_function_app.py` drives real requests
 through the Functions ASGI adapter. Infrastructure and the deploy workflow: see `infra/azure/`.
 
+## Keeping it fast and inside the free quota (S7)
+
+On Azure the request path is `RegisteringProvider → CachedProvider → BudgetedProvider → Open-Meteo`:
+each request notes its ~11 km cell (throttled to one write per cell per hour), cache hits return in
+milliseconds, and cache misses spend from a **shared hourly budget** (Table Storage counter with ETag
+optimistic concurrency; a burst is refused, a storage error fails open). A timer
+(`function_app.py`, every 20 min) **pre-warms** every cell used in the last 14 days, so farmers almost
+never wait on Open-Meteo. Defaults keep the worst case at 7,200 calls/day, under 80 % of Open-Meteo's
+free tier (a test enforces the arithmetic).
+
 ## Configuration & logs
 
 All settings are environment variables, parsed and validated once at startup in
@@ -85,6 +95,8 @@ All settings are environment variables, parsed and validated once at startup in
 | `RYTHU_AZURE_FORECAST_TABLE` | `forecast` | table name for the Azure cache |
 | `RYTHU_OPEN_METEO_TIMEOUT_S` | `4` | total deadline for one Open-Meteo fetch, (0, 60] |
 | `RYTHU_LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
+| `RYTHU_UPSTREAM_BUDGET_PER_HOUR` | `120` | on-demand Open-Meteo calls per hour across all instances (1–400) |
+| `RYTHU_PREWARM_MAX_CELLS` | `60` | most cells the 20-minute pre-warm refreshes (0–100) |
 
 At most one cache backend may be set (more = startup error); none = no cache.
 

@@ -38,12 +38,22 @@ def _load_function_app():
     return module
 
 
+def _triggers(app, kind):
+    return [b for fn in app.get_functions() for b in fn.get_bindings() if b.type == kind]
+
+
 def test_entry_point_registers_one_anonymous_catch_all_http_function(restore_logging):
     app = _load_function_app().app
-    [fn] = app.get_functions()
-    [trigger] = [b for b in fn.get_bindings() if b.type == "httpTrigger"]
+    [trigger] = _triggers(app, "httpTrigger")
     assert trigger.route == "/{*route}"
     assert trigger.auth_level == func.AuthLevel.ANONYMOUS
+
+
+def test_prewarm_timer_runs_every_20_minutes(restore_logging):
+    """20 min + a 15 min refresh threshold keeps a served forecast inside the 30 min freshness target."""
+    [timer] = _triggers(_load_function_app().app, "timerTrigger")
+    assert timer.schedule == "0 */20 * * * *"
+    assert timer.run_on_startup is False  # never a burst of upstream calls on every cold start
 
 
 def test_host_json_keeps_api_paths_unprefixed():
