@@ -4,7 +4,7 @@
 // the honest state to show. Presentational components below it never fetch.
 
 import { useSearchParams } from "next/navigation";
-import { useMemo, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import LocationPicker from "@/components/LocationPicker";
 import WeatherScreen from "@/components/WeatherScreen";
 import WeatherSkeleton from "@/components/WeatherSkeleton";
@@ -13,24 +13,37 @@ import { COVERAGE_MESSAGE } from "@/lib/coverage";
 import { asOf, isTooOld } from "@/lib/freshness";
 import { pick, useLang } from "@/lib/lang";
 import { locationQuery, resolveLocation, type ResolvedLocation } from "@/lib/location";
-import { loadPlaceRaw, parseSavedPlace } from "@/lib/prefs";
+import { PREFS_EVENT, loadCrop, loadPlaceRaw, loadWater, parseSavedPlace, saveCrop, saveWater } from "@/lib/prefs";
 import { isCrop, isWaterSource, type Crop, type WaterSource } from "@/lib/types";
 import { useNow } from "@/lib/useNow";
 import { useWeather } from "@/lib/useWeather";
 
 function subscribeStorage(cb: () => void) {
-  window.addEventListener("storage", cb);
-  return () => window.removeEventListener("storage", cb);
+  window.addEventListener("storage", cb); // other tabs
+  window.addEventListener(PREFS_EVENT, cb); // this tab
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener(PREFS_EVENT, cb);
+  };
 }
 
 export default function HomeScreen() {
   const params = useSearchParams();
   const savedRaw = useSyncExternalStore(subscribeStorage, loadPlaceRaw, () => null);
   const loc = useMemo(() => resolveLocation(params, parseSavedPlace(savedRaw)), [params, savedRaw]);
+  // Crop and water: the link's, else the farmer's last choice, else mirchi (the main local crop).
+  const savedCrop = useSyncExternalStore(subscribeStorage, loadCrop, () => null);
+  const savedWater = useSyncExternalStore(subscribeStorage, loadWater, () => null);
   const rawCrop = params.get("crop") ?? undefined;
-  const crop: Crop = isCrop(rawCrop) ? rawCrop : "chilli"; // mirchi = main local crop
   const rawWater = params.get("water") ?? undefined;
-  const water: WaterSource = isWaterSource(rawWater) ? rawWater : "rainfed";
+  const crop: Crop = isCrop(rawCrop) ? rawCrop : (savedCrop ?? "chilli");
+  const water: WaterSource = isWaterSource(rawWater) ? rawWater : (savedWater ?? "rainfed");
+
+  // Remember a choice made by tapping a crop (or opening a link), so the next launch starts there.
+  useEffect(() => {
+    if (isCrop(rawCrop)) saveCrop(rawCrop);
+    if (isWaterSource(rawWater)) saveWater(rawWater);
+  }, [rawCrop, rawWater]);
 
   // Outside the area we serve: say so and offer the picker — never a dead-end error page.
   if (loc.outside) return <CoverageNotice place={loc.place} />;

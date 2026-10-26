@@ -43,15 +43,20 @@ export function withTimeout(signal: AbortSignal | undefined, ms: number): AbortS
   return signal; // very old WebView: the caller's signal still cancels
 }
 
-export async function getJson(path: string, signal?: AbortSignal): Promise<{ res: Response; body: unknown }> {
-  let res: Response;
+/** fetch() against the API with our timeout; network failures become ApiUnavailable. */
+export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const signal = init.signal ?? undefined;
   try {
-    // No custom request headers on purpose: a plain GET needs no CORS preflight (one round trip less).
-    res = await fetch(`${API_BASE}${path}`, { signal: withTimeout(signal, REQUEST_TIMEOUT_MS) });
+    return await fetch(`${API_BASE}${path}`, { ...init, signal: withTimeout(signal, REQUEST_TIMEOUT_MS) });
   } catch (err) {
     if (signal?.aborted) throw err; // superseded, not a failure
     throw new ApiUnavailable(`network: ${String(err)}`);
   }
+}
+
+export async function getJson(path: string, signal?: AbortSignal): Promise<{ res: Response; body: unknown }> {
+  // No custom request headers on purpose: a plain GET needs no CORS preflight (one round trip less).
+  const res = await apiFetch(path, { signal });
   const body: unknown = await res.json().catch(() => null);
   return { res, body };
 }

@@ -3,6 +3,7 @@ import { Geist, Noto_Sans_Telugu } from "next/font/google";
 import BottomNav from "@/components/BottomNav";
 import Welcome from "@/components/Welcome";
 import ServiceWorker from "@/components/ServiceWorker";
+import SyncAgent from "@/components/SyncAgent";
 import OfflineBanner from "@/components/OfflineBanner";
 import { LanguageProvider } from "@/lib/lang";
 import { QueryProvider } from "@/lib/query";
@@ -52,6 +53,7 @@ export default function RootLayout({
         <Welcome />
         <OfflineBanner />
         <ServiceWorker />
+        <SyncAgent />
       </body>
     </html>
   );

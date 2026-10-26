@@ -13,7 +13,7 @@ const TABS: readonly { href: string; icon: IconName; te: string; en: string }[] 
   { href: "/", icon: "cloud-sun", te: "వాతావరణం", en: "Weather" },
   { href: "/crops/", icon: "sprout", te: "పంటలు", en: "Crops" },
   { href: "/schemes/", icon: "landmark", te: "పథకాలు", en: "Schemes" },
-  { href: "/account/", icon: "user", te: "ఖాతా", en: "Account" },
+  { href: "/account/", icon: "user", te: "నా సమాచారం", en: "My data" },
 ];
 
 export default function BottomNav() {

@@ -55,7 +55,7 @@ const sw = readFileSync(new URL("../sw/sw.js", import.meta.url), "utf8")
 if (sw.includes("__VERSION__") || sw.includes("__PRECACHE__")) throw new Error("sw.js placeholders not filled");
 writeFileSync(new URL("sw.js", OUT), sw);
 
-const csp = contentSecurityPolicy({ scriptHashes, apiBase: API_BASE, cognitoPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID });
+const csp = contentSecurityPolicy({ scriptHashes, apiBase: API_BASE });
 writeFileSync(new URL("staticwebapp.config.json", OUT), JSON.stringify(staticWebAppConfig({ csp }), null, 2) + "\n");
 
 const bytes = list.reduce((n, u) => n + read(u.endsWith("/") ? `${u}index.html` : u).length, 0);

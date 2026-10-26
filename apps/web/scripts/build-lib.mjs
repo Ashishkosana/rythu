@@ -85,13 +85,11 @@ export function versionOf(entries) {
 /**
  * Content-Security-Policy for the static app. Scripts: our own files plus the exact inline
  * bootstrap scripts Next wrote into the HTML (by hash — no 'unsafe-inline'). Network: ourselves
- * and the API (plus Cognito while the account screen still uses it, until S13).
- * @param {{ scriptHashes: string[], apiBase: string, cognitoPoolId?: string }} opts
+ * and the API, nothing else.
+ * @param {{ scriptHashes: string[], apiBase: string }} opts
  */
-export function contentSecurityPolicy({ scriptHashes, apiBase, cognitoPoolId }) {
+export function contentSecurityPolicy({ scriptHashes, apiBase }) {
   const connect = ["'self'", new URL(apiBase).origin];
-  const region = cognitoPoolId?.split("_")[0];
-  if (region) connect.push(`https://cognito-idp.${region}.amazonaws.com`);
   const hashes = [...new Set(scriptHashes)].sort().map((h) => `'sha256-${h}'`);
   return [
     "default-src 'self'",

@@ -21,6 +21,9 @@ export type Crop = Schemas["Crop"];
 export type WaterSource = Schemas["WaterSource"];
 export type ApiError = Schemas["ErrorBody"];
 export type Place = Schemas["PlaceOut"];
+export type DeviceCredentials = Schemas["DeviceCredentialsOut"];
+export type ProfileIn = Schemas["ProfileIn"];
+export type ProfileOut = Schemas["ProfileOut"];
 
 // Runtime lists (types vanish at runtime), in display order. Checked against the backend enums
 // both ways: `satisfies` rejects a value the backend doesn't know, and the Exhaustive check

@@ -7,20 +7,13 @@ import { useLang } from "@/lib/lang";
 import LangToggle from "@/components/LangToggle";
 import { skyTheme } from "@/lib/sky";
 import { HERO_HOURS, nextHoursChance } from "@/lib/hero";
+import { CROP_LABEL } from "@/lib/cropLabels";
 import { sourceStamp } from "@/lib/freshness";
 import Link from "next/link";
 import Icon from "@/components/ui/Icon";
 
 type Lang = "te" | "en";
 
-// Keyed by the backend's Crop enum: a crop added on the backend without a label won't compile.
-const CROP_LABEL: Record<Crop, { te: string; en: string; emoji: string }> = {
-  chilli: { te: "మిర్చి", en: "Chilli", emoji: "🌶️" },
-  cotton: { te: "పత్తి", en: "Cotton", emoji: "🧺" },
-  paddy: { te: "వరి", en: "Paddy", emoji: "🌾" },
-  red_gram: { te: "కంది", en: "Red gram", emoji: "🌿" }, // not 🫛: an empty box before Android 13
-  maize: { te: "మొక్కజొన్న", en: "Maize", emoji: "🌽" },
-};
 
 const L = {
   te: {

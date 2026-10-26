@@ -72,9 +72,9 @@ describe("CSP", () => {
     expect(csp).toContain("object-src 'none'");
   });
 
-  it("adds Cognito only while a pool is configured", () => {
-    const csp = contentSecurityPolicy({ scriptHashes: [], apiBase: "http://127.0.0.1:8001", cognitoPoolId: "ap-south-1_AbC" });
-    expect(csp).toContain("connect-src 'self' http://127.0.0.1:8001 https://cognito-idp.ap-south-1.amazonaws.com;");
+  it("connects to the local API in development", () => {
+    const csp = contentSecurityPolicy({ scriptHashes: [], apiBase: "http://127.0.0.1:8001" });
+    expect(csp).toContain("connect-src 'self' http://127.0.0.1:8001;");
   });
 });
 
