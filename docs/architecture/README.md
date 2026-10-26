@@ -218,7 +218,8 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | S9 | `/v1/geocode`; search-on-submit (Nominatim policy) | search on tap; Telugu village names; "couldn't search" ≠ "not found" | **done** |
 | S10 | Cutover to Azure prod, 7-day dual run, `cdk destroy` (explicit approval) | none | planned |
 | S11a+b | Tokens with AA values (computed in tests), palette off + eslint guard, every screen migrated. Folded into one step: nothing is live, so a pixel-identical intermediate protected no one | visual: readable sunny/cloudy heroes, darker secondary text, AA buttons | **done** |
-| S11b–e | Contrast, type floor, SVG icons, lang/ARIA, per-screen migration (screenshots each) | visual | planned |
+| S11c | Type floor 14 px (33 uses below it, incl. 10–13 px chart and nav labels) + Telugu line-height 1.55 + eslint floor rule | larger small text | **done** |
+| S11d–e | SVG icons, lang/ARIA, accessible chart, primitives (screenshots each) | visual | planned |
 | ⭐ S12 | Android TWA → Play internal testing → father installs; start 12-tester closed test | new channel | planned |
 | S13 | Device auth + `/v1/me/profile` sync; remove Cognito | server-restored profile | planned |
 | S14 | Push alerts (subscriptions, evaluation, queue, sender, alert log) | new | planned |

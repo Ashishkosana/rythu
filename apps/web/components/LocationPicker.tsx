@@ -114,7 +114,7 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
           {msg && <p className="text-center text-sm text-caution-fg">{msg}</p>}
 
           <div>
-            <p className="mb-1 text-xs font-medium text-ink-secondary">
+            <p className="mb-1 text-caption font-medium text-ink-secondary">
               {pick(lang, "భూపాలపల్లి జిల్లా", "Bhupalpally district")}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -175,7 +175,7 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
                       className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-surface-sunken"
                     >
                       <span className="font-medium text-ink">{placeName(r, lang)}</span>
-                      <span className="text-xs text-ink-secondary">
+                      <span className="text-caption text-ink-secondary">
                         {[r.admin2, r.admin1].filter(Boolean).join(", ")}
                       </span>
                     </button>

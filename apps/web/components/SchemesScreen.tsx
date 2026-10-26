@@ -30,17 +30,17 @@ function SchemeCard({ s, lang }: { s: Scheme; lang: Lang }) {
     <div className={`card p-4 ${dimmed ? "opacity-70" : ""}`}>
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-start justify-between gap-3 text-left">
         <div>
-          <h2 className="text-lg font-semibold leading-tight">{pick(lang, s.name_te, s.name_en)}</h2>
-          <p className="text-xs text-ink-secondary">{pick(lang, s.name_en, s.name_te)}</p>
+          <h2 className="text-lg font-semibold leading-snug">{pick(lang, s.name_te, s.name_en)}</h2>
+          <p className="text-caption text-ink-secondary">{pick(lang, s.name_en, s.name_te)}</p>
         </div>
-        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${badge.cls}`}>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-caption font-medium ${badge.cls}`}>
           {pick(lang, badge.te, badge.en)}
         </span>
       </button>
 
       <p className="mt-2 text-sm">
         {pick(lang, s.what_te, s.what_en)}
-        <span className="mt-0.5 block text-xs text-ink-secondary">{pick(lang, s.what_en, s.what_te)}</span>
+        <span className="mt-0.5 block text-caption text-ink-secondary">{pick(lang, s.what_en, s.what_te)}</span>
       </p>
 
       {open && (
@@ -121,7 +121,7 @@ export default function SchemesScreen() {
         {shown.map((s) => (
           <SchemeCard key={s.key} s={s} lang={lang} />
         ))}
-        <p className="px-1 pt-1 text-xs text-ink-secondary">
+        <p className="px-1 pt-1 text-caption text-ink-secondary">
           {pick(
             lang,
             "మొత్తాలు, అర్హతలు ఏటా మారవచ్చు — అధికారిక వెబ్‌సైట్ లేదా మీ AEOని సంప్రదించండి. Rythu ఏమీ అమ్మదు.",

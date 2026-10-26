@@ -127,7 +127,7 @@ export default function AccountScreen() {
         <p className="text-3xl">✅</p>
         <p className="mt-2 text-sm text-ink-secondary">{pick(lang, "లాగిన్ అయ్యారు", "Signed in")}</p>
         <p className="mt-1 font-semibold break-all">{user}</p>
-        <p className="mt-3 text-xs text-ink-secondary">
+        <p className="mt-3 text-caption text-ink-secondary">
           {pick(lang, "మీ ఊరు, పంట సమాచారం ఈ ఖాతాతో సమకాలీకరించబడతాయి.", "Your village & crop details will sync with this account.")}
         </p>
         <button
@@ -146,7 +146,7 @@ export default function AccountScreen() {
 
   return shell(
     <div className="card p-5">
-      <p className="mb-4 rounded-xl bg-brand-soft px-3 py-2 text-xs leading-relaxed text-brand-ink">
+      <p className="mb-4 rounded-xl bg-brand-soft px-3 py-2 text-caption leading-relaxed text-brand-ink">
         {pick(
           lang,
           "ఖాతా తప్పనిసరి కాదు. మీ ఊరు, పంట వివరాలను వేరే ఫోన్‌లో కూడా పొందేందుకు మాత్రమే. మేము ఏమీ అమ్మము.",
@@ -216,7 +216,7 @@ export default function AccountScreen() {
             className="w-full rounded-xl border border-line-strong px-4 py-3 outline-none focus:border-brand"
           />
           {mode === "signup" && (
-            <p className="text-xs text-ink-secondary">
+            <p className="text-caption text-ink-secondary">
               {pick(lang, "కనీసం 8 అక్షరాలు, ఒక అక్షరం + ఒక సంఖ్య.", "At least 8 characters, a letter + a number.")}
             </p>
           )}

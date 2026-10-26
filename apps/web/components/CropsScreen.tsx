@@ -13,7 +13,7 @@ function Row({ label, te, en, lang }: { label: string; te: string; en: string; l
       <dt className="w-20 shrink-0 font-medium text-ink-secondary">{label}</dt>
       <dd>
         {pick(lang, te, en)}
-        <span className="block text-xs text-ink-secondary">{pick(lang, en, te)}</span>
+        <span className="block text-caption text-ink-secondary">{pick(lang, en, te)}</span>
       </dd>
     </div>
   );
@@ -72,7 +72,7 @@ export default function CropsScreen() {
               </ul>
             </div>
 
-            <p className="mt-3 text-xs text-ink-secondary">
+            <p className="mt-3 text-caption text-ink-secondary">
               {pick(
                 lang,
                 "సరైన తేదీలు, మోతాదుల కోసం మీ వ్యవసాయ అధికారి (AEO)ని సంప్రదించండి",

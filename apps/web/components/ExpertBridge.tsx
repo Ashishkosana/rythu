@@ -13,8 +13,8 @@ export default function ExpertBridge() {
       <div className="flex items-center gap-2">
         <span className="text-2xl" aria-hidden>👨‍🌾</span>
         <div>
-          <h2 className="text-lg font-bold leading-tight">{pick(lang, "నిపుణుడితో మాట్లాడండి", "Talk to a real expert")}</h2>
-          <p className="text-xs text-ink-secondary">{pick(lang, "ఉచితం", "Free")}</p>
+          <h2 className="text-lg font-bold leading-snug">{pick(lang, "నిపుణుడితో మాట్లాడండి", "Talk to a real expert")}</h2>
+          <p className="text-caption text-ink-secondary">{pick(lang, "ఉచితం", "Free")}</p>
         </div>
       </div>
 
@@ -33,7 +33,7 @@ export default function ExpertBridge() {
         📞 1800-180-1551
       </a>
 
-      <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
+      <p className="mt-3 text-caption leading-relaxed text-ink-secondary">
         {pick(
           lang,
           "లేదా మీ గ్రామ వ్యవసాయ విస్తరణ అధికారి (AEO) / రైతు వేదికను సంప్రదించండి. పురుగు కనిపిస్తే ఫోటో తీసి వారికి చూపించండి.",

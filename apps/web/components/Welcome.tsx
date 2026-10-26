@@ -52,7 +52,7 @@ export default function Welcome() {
               </span>
               <div>
                 <p className="font-semibold">{p.te}</p>
-                <p className="text-xs text-ink-secondary">{p.en}</p>
+                <p className="text-caption text-ink-secondary">{p.en}</p>
               </div>
             </div>
           ))}

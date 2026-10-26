@@ -35,7 +35,7 @@ export default function BottomNav() {
             >
               {t.icon}
             </span>
-            <span className={`text-[13px] ${active ? "font-bold text-brand-ink" : "text-ink-secondary"}`}>
+            <span className={`text-caption ${active ? "font-bold text-brand-ink" : "text-ink-secondary"}`}>
               {lang === "te" ? t.te : t.en}
             </span>
           </Link>

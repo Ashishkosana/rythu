@@ -26,8 +26,8 @@ function PestCard({ p }: { p: Pest }) {
           {p.emoji}
         </span>
         <span className="flex-1">
-          <span className="block font-semibold leading-tight">{p.name_te}</span>
-          <span className="block text-xs text-ink-secondary">{p.crop_te} · {p.name_en}</span>
+          <span className="block font-semibold leading-snug">{p.name_te}</span>
+          <span className="block text-caption text-ink-secondary">{p.crop_te} · {p.name_en}</span>
         </span>
         <span className="text-sm text-brand-ink">{open ? "▲" : "▼"}</span>
       </button>
@@ -44,12 +44,12 @@ function PestCard({ p }: { p: Pest }) {
           <Field label="అవసరమైతే మందు" body={p.chemical_te} tint="bg-surface-sunken" />
           {/* Always shown wherever a chemical is named — label, dose, and the
               pre-harvest interval (కోత ముందు గడువు) must be confirmed with an AEO. */}
-          <p className="rounded-xl bg-caution-bg px-3 py-2 text-xs leading-relaxed text-caution-fg">
+          <p className="rounded-xl bg-caution-bg px-3 py-2 text-caption leading-relaxed text-caution-fg">
             ⚠️ మందు వాడే ముందు లేబుల్ చదవండి; మోతాదు మరియు కోత ముందు వేచి ఉండాల్సిన గడువు (pre-harvest
             interval)ను మీ AEOతో నిర్ధారించుకోండి.
           </p>
           {p.needsVerification && (
-            <p className="rounded-xl bg-caution-bg px-3 py-2 text-xs leading-relaxed text-caution-fg">
+            <p className="rounded-xl bg-caution-bg px-3 py-2 text-caption leading-relaxed text-caution-fg">
               ⚠️ ఈ పురుగు పరిమితి/మోతాదు అధికారికంగా నిర్ధారించబడలేదు — AEO/PJTSAUతో సరిచూసుకోండి.
             </p>
           )}
@@ -62,7 +62,7 @@ function PestCard({ p }: { p: Pest }) {
 function Field({ label, body, tint }: { label: string; body: string; tint?: string }) {
   return (
     <div className={tint ? `rounded-xl ${tint} px-3 py-2` : ""}>
-      <p className="text-xs font-semibold text-brand-ink">{label}</p>
+      <p className="text-caption font-semibold text-brand-ink">{label}</p>
       <p className="mt-0.5 leading-relaxed text-ink">{body}</p>
     </div>
   );
@@ -78,13 +78,13 @@ export default function PestGuide() {
       <div className="flex items-center gap-2">
         <span className="text-2xl" aria-hidden>🐛</span>
         <div>
-          <h2 className="text-lg font-bold leading-tight">{pick(lang, "పురుగులు & తెగుళ్లు", "Pests & diseases")}</h2>
-          <p className="text-xs text-ink-secondary">{pick(lang, "గుర్తించి, జాగ్రత్తగా చర్య", "Identify, then act carefully")}</p>
+          <h2 className="text-lg font-bold leading-snug">{pick(lang, "పురుగులు & తెగుళ్లు", "Pests & diseases")}</h2>
+          <p className="text-caption text-ink-secondary">{pick(lang, "గుర్తించి, జాగ్రత్తగా చర్య", "Identify, then act carefully")}</p>
         </div>
       </div>
 
       {/* honest framing up top */}
-      <p className="mt-3 rounded-xl bg-brand-soft px-3 py-2 text-xs leading-relaxed text-brand-ink">
+      <p className="mt-3 rounded-xl bg-brand-soft px-3 py-2 text-caption leading-relaxed text-brand-ink">
         పురుగు కనిపిస్తే మొదట <span className="font-semibold">పరిశీలించండి</span>. మందు కంటే ముందు సహజ పద్ధతులు.
         పంటకు నష్టం స్థాయి (ETL) దాటితేనే మందు. మేము బ్రాండ్ కాదు — <span className="font-semibold">మందు రకం (active ingredient)</span> మాత్రమే చెబుతాం. మేము ఏమీ అమ్మము.
       </p>

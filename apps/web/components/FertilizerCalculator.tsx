@@ -39,8 +39,8 @@ export default function FertilizerCalculator() {
       <div className="flex items-center gap-2">
         <span className="text-2xl" aria-hidden>🧮</span>
         <div>
-          <h2 className="text-lg font-bold leading-tight">{pick(lang, "ఎరువుల లెక్క", "Fertilizer calculator")}</h2>
-          <p className="text-xs text-ink-secondary">{pick(lang, "ఎంత వేయాలి?", "How much to apply?")}</p>
+          <h2 className="text-lg font-bold leading-snug">{pick(lang, "ఎరువుల లెక్క", "Fertilizer calculator")}</h2>
+          <p className="text-caption text-ink-secondary">{pick(lang, "ఎంత వేయాలి?", "How much to apply?")}</p>
         </div>
       </div>
 
@@ -94,7 +94,7 @@ export default function FertilizerCalculator() {
             <Bag label="డీఏపీ" en="DAP" bags={r.dapBags} kg={r.dapKg} />
             <Bag label="పొటాష్" en="MOP" bags={r.mopBags} kg={r.mopKg} />
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-ink-secondary">
+          <p className="mt-3 text-caption leading-relaxed text-ink-secondary">
             <span className="font-semibold text-ink">వేయు విధానం: </span>
             {dose.splits_te}
           </p>
@@ -113,7 +113,7 @@ export default function FertilizerCalculator() {
 
       {/* honesty */}
       <p
-        className={`mt-3 rounded-xl px-3 py-2 text-xs leading-relaxed ${
+        className={`mt-3 rounded-xl px-3 py-2 text-caption leading-relaxed ${
           dose.needsVerification ? "bg-caution-bg text-caution-fg" : "bg-surface-sunken text-ink-secondary"
         }`}
       >
@@ -128,9 +128,9 @@ function Bag({ label, en, bags, kg }: { label: string; en: string; bags: number;
   return (
     <div className="rounded-xl bg-surface-raised p-2.5 shadow-1">
       <p className="text-2xl font-bold tabular-nums text-brand-ink">{bags}</p>
-      <p className="text-[11px] font-medium text-ink-secondary">బస్తాలు</p>
+      <p className="text-caption font-medium text-ink-secondary">బస్తాలు</p>
       <p className="mt-0.5 text-sm font-semibold">{label}</p>
-      <p className="text-[10px] text-ink-secondary">{en} · {kg} kg</p>
+      <p className="text-caption text-ink-secondary">{en} · <span className="whitespace-nowrap">{kg} kg</span></p>
     </div>
   );
 }

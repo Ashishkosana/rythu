@@ -85,7 +85,7 @@ function ReadCard({ read, lang }: { read: FarmingRead; lang: Lang }) {
           <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-lg ${sev.tint}`}>
             {ACTION_ICON[read.action] ?? "•"}
           </span>
-          <p className="font-semibold leading-snug text-ink">{headline}</p>
+          <p className="font-semibold text-ink">{headline}</p>
         </div>
         {detail && <p className="mt-2 text-sm leading-relaxed text-ink-secondary">{detail}</p>}
         <button
@@ -151,7 +151,7 @@ export default function WeatherScreen({
         <div className="flex items-center justify-between">
           <span className="text-base font-bold tracking-tight">🌾 రైతు</span>
           <div className="flex items-center gap-2">
-            <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${sky.chip}`}>
+            <span className={`rounded-full px-2.5 py-1 text-caption font-medium ${sky.chip}`}>
               ✓ {t.sellNothing}
             </span>
             <LangToggle light />
@@ -191,9 +191,9 @@ export default function WeatherScreen({
             </button>
 
             {offline && (
-              <p className={`mt-3 inline-block rounded-full px-2.5 py-0.5 text-xs ${sky.chip}`}>📴 {t.offline}</p>
+              <p className={`mt-3 inline-block rounded-full px-2.5 py-0.5 text-caption ${sky.chip}`}>📴 {t.offline}</p>
             )}
-            <p className={`mt-3 text-[11px] leading-snug ${sky.soft}`}>⚠️ {data.reliability.disclaimer_en}</p>
+            <p className={`mt-3 text-caption ${sky.soft}`}>⚠️ {data.reliability.disclaimer_en}</p>
           </>
         )}
       </div>
@@ -210,7 +210,7 @@ export default function WeatherScreen({
                     const p = h.precipitation_probability ?? 0;
                     return (
                       <div key={i} className="flex h-full flex-1 flex-col items-center gap-1">
-                        <span className="text-[10px] font-semibold text-info-fg">{p >= 20 ? `${p}` : ""}</span>
+                        <span className="text-caption font-semibold text-info-fg">{p >= 20 ? `${p}` : ""}</span>
                         {/* The bar's % height needs a parent of definite height: this flex-1 slot. */}
                         <div className="flex w-full flex-1 items-end">
                           <div
@@ -221,7 +221,7 @@ export default function WeatherScreen({
                         </div>
                         {/* The hour as printed in the forecast's own time zone (IST), whatever
                             the device's zone: YYYY-MM-DDTHH:.. */}
-                        <span className="text-[11px] text-ink-secondary">{Number(h.time_local.slice(11, 13))}</span>
+                        <span className="text-caption text-ink-secondary">{Number(h.time_local.slice(11, 13))}</span>
                       </div>
                     );
                   })}
@@ -308,7 +308,7 @@ export default function WeatherScreen({
           </section>
 
           {/* honest source stamp */}
-          <p className="px-2 text-center text-xs leading-relaxed text-ink-secondary">
+          <p className="px-2 text-center text-caption leading-relaxed text-ink-secondary">
             {sourceStamp(data, nowMs, lang)}
             <br />
             📍 {data.coords.returned.lat.toFixed(3)}, {data.coords.returned.lon.toFixed(3)} · ~

@@ -60,9 +60,12 @@
   --color-hero-brand-from: #166534;
   --color-hero-brand-to: #14532d;
 
-  /* Type: 17 px base. Nothing below 14 px (caption) — eslint enforces the floor. */
+  /* Type: 17 px base. Nothing below 14 px (caption) — eslint enforces the floor. Telugu vowel
+     signs reach far above and below the line, so running text gets 1.55. */
   --text-caption: 0.8235rem; /* 14 px */
-  --text-caption--line-height: 1.45;
+  --text-caption--line-height: 1.55;
+  --text-sm--line-height: 1.55;
+  --text-base--line-height: 1.55;
 
   /* Elevation — soft, layered, never harsh */
   --shadow-1: 0 1px 2px rgba(28, 25, 23, 0.05), 0 1px 3px rgba(28, 25, 23, 0.06);

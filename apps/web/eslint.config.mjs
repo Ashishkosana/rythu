@@ -10,6 +10,9 @@ const RAW_COLOUR =
   "|(?:text|bg|border|from|to|via|fill|stroke)-\\[#";
 const RAW_COLOUR_MESSAGE =
   "Use a design token (bg-surface-raised, text-ink-secondary, bg-brand, text-caution-fg … see lib/design/tokens.ts), not a raw palette colour.";
+// Type floor: nothing below 14 px (text-caption). text-xs is 12.75 px at the app's 17 px base.
+const BELOW_FLOOR = "(?:^|[\\s\"'`:])text-(?:xs|\\[(?:[0-9]|1[0-3])(?:\\.[0-9]+)?px\\])(?![\\w-])";
+const BELOW_FLOOR_MESSAGE = "Text below the 14 px floor: use text-caption (14 px) or larger.";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -21,6 +24,8 @@ const eslintConfig = defineConfig([
         "error",
         { selector: `Literal[value=/${RAW_COLOUR}/]`, message: RAW_COLOUR_MESSAGE },
         { selector: `TemplateElement[value.raw=/${RAW_COLOUR}/]`, message: RAW_COLOUR_MESSAGE },
+        { selector: `Literal[value=/${BELOW_FLOOR}/]`, message: BELOW_FLOOR_MESSAGE },
+        { selector: `TemplateElement[value.raw=/${BELOW_FLOOR}/]`, message: BELOW_FLOOR_MESSAGE },
       ],
     },
   },
