@@ -124,7 +124,37 @@ export function staticWebAppConfig({ csp }) {
     routes: [
       { route: "/_next/static/*", headers: { "Cache-Control": "public, max-age=31536000, immutable" } },
       { route: "/sw.js", headers: { "Cache-Control": "no-cache" } },
+      // Android verifies the app ↔ site link here. Served from a plain folder: dot-folders are easy
+      // for deploy tooling to drop, and a missing file silently turns the app into a browser tab.
+      { route: "/.well-known/assetlinks.json", rewrite: ASSET_LINKS_PATH },
     ],
     mimeTypes: { ".webmanifest": "application/manifest+json" },
   };
+}
+
+export const ASSET_LINKS_PATH = "/well-known/assetlinks.json";
+
+const SHA256_FINGERPRINT = /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/;
+
+/**
+ * Digital Asset Links statement letting the Android app (Trusted Web Activity) open this site full
+ * screen. ``twa`` is apps/android/twa-manifest.json; its fingerprints are the SHA-256 of the Play
+ * app-signing key (and the upload key, for testing a locally signed build). None yet → null (no
+ * file): the app still works, as a Custom Tab with a URL bar. A malformed fingerprint fails the build
+ * rather than shipping a link that silently never verifies.
+ */
+export function assetLinks(twa) {
+  const fingerprints = (twa.fingerprints ?? []).map((f) => f.value.trim().toUpperCase());
+  const bad = fingerprints.filter((f) => !SHA256_FINGERPRINT.test(f));
+  if (bad.length) throw new Error(`twa-manifest.json: not a SHA-256 fingerprint: ${bad.join(", ")}`);
+  if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(twa.packageId ?? "")) {
+    throw new Error(`twa-manifest.json: bad packageId ${JSON.stringify(twa.packageId)}`);
+  }
+  if (!fingerprints.length) return null;
+  return [
+    {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: { namespace: "android_app", package_name: twa.packageId, sha256_cert_fingerprints: fingerprints },
+    },
+  ];
 }

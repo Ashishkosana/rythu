@@ -5,6 +5,7 @@
 // the screen has to make sense to someone new to smartphones.
 
 import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { createStore, del } from "idb-keyval";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import LangToggle from "@/components/LangToggle";
@@ -182,6 +183,12 @@ export default function MyDataScreen() {
         <p className="px-2 text-center text-sm text-ink-secondary">
           {pick(lang, "Rythu ఏమీ అమ్మదు. మీ సమాచారం ఎవరికీ ఇవ్వదు.", "Rythu sells nothing and shares your data with no one.")}
         </p>
+        <Link
+          href="/privacy/"
+          className="tap mx-auto flex w-fit items-center px-4 text-sm font-semibold text-brand-ink underline underline-offset-4"
+        >
+          {pick(lang, "గోప్యతా విధానం", "Privacy policy")}
+        </Link>
       </div>
     </main>
   );

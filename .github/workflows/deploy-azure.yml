@@ -137,3 +137,9 @@ jobs:
           curl -fsSI "$URL/sw.js" | grep -qi "^cache-control: no-cache" && echo "service worker not cached OK"
           code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/crops")
           test "$code" = "301" -o "$code" = "308" -o "$code" = "200" && echo "/crops → $code OK"
+          curl -fsS "$URL/privacy/" | grep -q "Rythu" && echo "privacy policy OK"
+          # The Android app verifies itself against this file; once keys exist it must be served as JSON.
+          if [ -f out/well-known/assetlinks.json ]; then
+            curl -fsSI "$URL/.well-known/assetlinks.json" | grep -qi "^content-type: application/json"
+            curl -fsS "$URL/.well-known/assetlinks.json" | grep -q "handle_all_urls" && echo "asset links OK"
+          fi

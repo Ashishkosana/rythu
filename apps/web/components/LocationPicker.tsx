@@ -3,7 +3,7 @@
 import { useId, useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PILOT_MANDALS } from "@/lib/locations";
-import { formatPlaceLabel, isSearchable, MAX_QUERY, placeName, roundCoord, searchPlaces } from "@/lib/geocode";
+import { coarsenGps, formatPlaceLabel, isSearchable, MAX_QUERY, placeName, roundCoord, searchPlaces } from "@/lib/geocode";
 import type { Place } from "@/lib/types";
 import { savePlace } from "@/lib/prefs";
 import { COVERAGE_MESSAGE, inCoverage } from "@/lib/coverage";
@@ -61,7 +61,7 @@ export default function LocationPicker({ currentPlace }: { currentPlace: string 
           setMsg(pick(lang, COVERAGE_MESSAGE.te, COVERAGE_MESSAGE.en));
           return;
         }
-        go(latitude, longitude, pick(lang, "నా ప్రాంతం", "My location"));
+        go(coarsenGps(latitude), coarsenGps(longitude), pick(lang, "నా ప్రాంతం", "My location"));
       },
       () => {
         setGpsBusy(false);

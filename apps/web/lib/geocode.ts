@@ -12,6 +12,14 @@ export function roundCoord(n: number): number {
   return Math.round(n * 1e4) / 1e4;
 }
 
+/**
+ * A GPS fix is where the farmer stands — home or field. The forecast grid is ~11 km, so ~1 km
+ * (2 decimals) loses nothing and is all the server ever sees: approximate, not precise, location.
+ */
+export function coarsenGps(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 export function isValidCoord(lat: number, lon: number): boolean {
   return (
     Number.isFinite(lat) &&

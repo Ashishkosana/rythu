@@ -18,5 +18,7 @@ Option 1. Publish to the internal testing track first so the father can install 
 ## Consequences
 - ➕ One codebase; instant updates; Play distribution also counters fake-APK scams ("install only from Play").
 - ➖ Depends on Chrome being present and up to date; offline-first behaviour relies on the service worker.
-- ➖ Requires a custom domain and a one-time $25 Play Console fee.
+- ➖ A one-time $25 Play Console fee. *(Amended 2026-10-27: a custom domain is not required — Asset Links
+  verify per host, and the Static Web Apps host is ours. A custom domain is still worth it for a stable,
+  readable host: changing the host later means an app update.)*
 - Revisit Capacitor if a native capability is needed that the web platform cannot provide.

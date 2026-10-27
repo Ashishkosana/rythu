@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatPlaceLabel, isSearchable, isValidCoord, placeName, roundCoord, searchPlaces } from "./geocode";
+import { coarsenGps, formatPlaceLabel, isSearchable, isValidCoord, placeName, roundCoord, searchPlaces } from "./geocode";
 import { API_BASE } from "./api";
 import type { Place } from "./types";
 
@@ -17,6 +17,14 @@ describe("roundCoord", () => {
   it("clamps to 4 decimals", () => {
     expect(roundCoord(18.428712345)).toBe(18.4287);
     expect(roundCoord(79.749)).toBe(79.749);
+  });
+});
+
+describe("coarsenGps", () => {
+  it("keeps a GPS fix to ~1 km (2 decimals) — the forecast grid is ~11 km", () => {
+    expect(coarsenGps(18.428712345)).toBe(18.43);
+    expect(coarsenGps(79.744999)).toBe(79.74);
+    expect(Math.abs(coarsenGps(18.4287) - 18.4287) * 111).toBeLessThan(1); // < 1 km of latitude
   });
 });
 

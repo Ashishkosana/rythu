@@ -1,9 +1,12 @@
 // After `next build` (static export to out/): write the service worker with its precache list and
-// version, and the Static Web Apps config with a CSP that allows exactly this build's inline scripts.
+// version, the Static Web Apps config with a CSP that allows exactly this build's inline scripts, and
+// the Android app's Digital Asset Links (from apps/android/twa-manifest.json).
 //   node scripts/postbuild.mjs            (run by `npm run build`)
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import {
+  ASSET_LINKS_PATH,
+  assetLinks,
   contentSecurityPolicy,
   cssAssets,
   inlineScripts,
@@ -56,7 +59,14 @@ if (sw.includes("__VERSION__") || sw.includes("__PRECACHE__")) throw new Error("
 writeFileSync(new URL("sw.js", OUT), sw);
 
 const csp = contentSecurityPolicy({ scriptHashes, apiBase: API_BASE });
+const links = assetLinks(JSON.parse(readFileSync(new URL("../../android/twa-manifest.json", import.meta.url), "utf8")));
+if (links) {
+  mkdirSync(new URL("." + ASSET_LINKS_PATH.replace(/[^/]+$/, ""), OUT), { recursive: true });
+  writeFileSync(new URL("." + ASSET_LINKS_PATH, OUT), JSON.stringify(links, null, 2) + "\n");
+} else {
+  rmSync(new URL("." + ASSET_LINKS_PATH, OUT), { force: true });
+}
 writeFileSync(new URL("staticwebapp.config.json", OUT), JSON.stringify(staticWebAppConfig({ csp }), null, 2) + "\n");
 
 const bytes = list.reduce((n, u) => n + read(u.endsWith("/") ? `${u}index.html` : u).length, 0);
-console.log(`postbuild: sw ${version} precaches ${list.length} files (${Math.round(bytes / 1024)} KB raw); CSP allows ${new Set(scriptHashes).size} inline scripts; API ${new URL(API_BASE).origin}`);
+console.log(`postbuild: sw ${version} precaches ${list.length} files (${Math.round(bytes / 1024)} KB raw); CSP allows ${new Set(scriptHashes).size} inline scripts; API ${new URL(API_BASE).origin}; asset links: ${links ? links[0].target.sha256_cert_fingerprints.length + " key(s)" : "none yet"}`);

@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  ASSET_LINKS_PATH,
+  assetLinks,
   contentSecurityPolicy,
   cssAssets,
   inlineScripts,
@@ -94,5 +96,37 @@ describe("version", () => {
     expect(versionOf([["/b", "2"], ["/a", "1"]])).toBe(a);
     expect(versionOf([["/a", "1"], ["/b", "3"]])).not.toBe(a);
     expect(a).toMatch(/^[0-9a-f]{12}$/);
+  });
+});
+
+describe("assetLinks — the Android app ↔ site link", () => {
+  const PLAY = "14:6D:E9:83:C5:73:06:50:D8:EE:B9:95:2F:34:FC:64:16:A0:83:42:E6:1D:BE:A8:8A:04:96:B2:3F:CF:44:E5";
+  const twa = { packageId: "io.github.example.rythu", fingerprints: [{ name: "play", value: PLAY.toLowerCase() }] };
+
+  it("states handle_all_urls for the package and its signing keys, upper-cased", () => {
+    expect(assetLinks(twa)).toEqual([
+      {
+        relation: ["delegate_permission/common.handle_all_urls"],
+        target: { namespace: "android_app", package_name: "io.github.example.rythu", sha256_cert_fingerprints: [PLAY] },
+      },
+    ]);
+  });
+
+  it("writes nothing until there is a key, and refuses a malformed one", () => {
+    expect(assetLinks({ ...twa, fingerprints: [] })).toBeNull();
+    expect(() => assetLinks({ ...twa, fingerprints: [{ value: PLAY.slice(3) }] })).toThrow(/SHA-256/);
+    expect(() => assetLinks({ ...twa, packageId: "Rythu" })).toThrow(/packageId/);
+  });
+
+  it("is served at /.well-known/ from a plain folder", () => {
+    const routes = staticWebAppConfig({ csp: "x" }).routes;
+    expect(routes).toContainEqual({ route: "/.well-known/assetlinks.json", rewrite: ASSET_LINKS_PATH });
+    expect(ASSET_LINKS_PATH.startsWith("/.")).toBe(false);
+  });
+
+  it("the committed TWA config is valid", async () => {
+    const { readFileSync } = await import("node:fs");
+    const committed = JSON.parse(readFileSync(new URL("../../android/twa-manifest.json", import.meta.url), "utf8"));
+    expect(() => assetLinks(committed)).not.toThrow();
   });
 });
