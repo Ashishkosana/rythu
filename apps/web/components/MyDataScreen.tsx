@@ -8,8 +8,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { createStore, del } from "idb-keyval";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import LangToggle from "@/components/LangToggle";
 import Icon from "@/components/ui/Icon";
+import ScreenHeader from "@/components/ui/ScreenHeader";
 import { CROP_LABEL } from "@/lib/cropLabels";
 import { pick, useLang } from "@/lib/lang";
 import {
@@ -75,15 +75,7 @@ export default function MyDataScreen() {
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
-      <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-hero-brand-from to-hero-brand-to px-5 pb-6 pt-4 text-white shadow-hero">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{pick(lang, "నా వివరాలు", "My data")}</h1>
-            <p className="mt-0.5 text-sm text-white/90">{pick(lang, "మీ సమాచారం మీదే", "Your data is yours")}</p>
-          </div>
-          <LangToggle light />
-        </div>
-      </header>
+      <ScreenHeader title={pick(lang, "నా వివరాలు", "My data")} subtitle={pick(lang, "మీ సమాచారం మీదే", "Your data is yours")} />
 
       <div className="space-y-4 p-4 pt-6">
         <section className="card p-4" aria-labelledby="on-phone">

@@ -4,8 +4,8 @@
 // feature changes what leaves the phone, change this page in the same commit.
 
 import Link from "next/link";
-import LangToggle from "@/components/LangToggle";
 import { pick, useLang } from "@/lib/lang";
+import ScreenHeader from "@/components/ui/ScreenHeader";
 
 const UPDATED = "2026-10-27";
 
@@ -120,12 +120,7 @@ export default function PrivacyScreen() {
   const { lang } = useLang();
   return (
     <main className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
-      <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-hero-brand-from to-hero-brand-to px-5 pb-6 pt-4 text-white shadow-hero">
-        <div className="flex items-start justify-between gap-2">
-          <h1 className="text-2xl font-bold tracking-tight">🔒 {pick(lang, "గోప్యతా విధానం", "Privacy policy")}</h1>
-          <LangToggle light />
-        </div>
-      </header>
+      <ScreenHeader title={`🔒 ${pick(lang, "గోప్యతా విధానం", "Privacy policy")}`} />
       <div className="space-y-3 p-4 pt-6">
         {SECTIONS.map((s) => (
           <section key={s.en} className="card p-4">

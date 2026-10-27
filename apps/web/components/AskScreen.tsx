@@ -6,8 +6,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
-import LangToggle from "@/components/LangToggle";
 import Icon from "@/components/ui/Icon";
+import ScreenHeader from "@/components/ui/ScreenHeader";
 import { MAX_QUESTION, askRythu, canAsk, type AskContext, type AskResult } from "@/lib/ask";
 import { CROP_LABEL } from "@/lib/cropLabels";
 import { KISAN_CALL_CENTRE } from "@/lib/helplines";
@@ -182,17 +182,7 @@ export default function AskScreen() {
   const busy = status.kind === "asking";
   return (
     <main className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
-      <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-hero-brand-from to-hero-brand-to px-5 pb-6 pt-4 text-white shadow-hero">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">🙋 {pick(lang, "రైతు ప్రశ్న", "Ask Rythu")}</h1>
-            <p className="mt-0.5 text-sm text-white/90">
-              {pick(lang, "Rythu సరిచూసిన సమాచారం నుంచే సమాధానం", "Answers only from Rythu's checked information")}
-            </p>
-          </div>
-          <LangToggle light />
-        </div>
-      </header>
+      <ScreenHeader title={`🙋 ${pick(lang, "రైతు ప్రశ్న", "Ask Rythu")}`} subtitle={pick(lang, "Rythu సరిచూసిన సమాచారం నుంచే సమాధానం", "Answers only from Rythu's checked information")} />
 
       <div className="space-y-3 p-4 pt-6">
         <form onSubmit={onSubmit} className="card space-y-3 p-4">

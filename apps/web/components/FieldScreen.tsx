@@ -5,8 +5,8 @@
 // official PJTSAU / TNAU / ICAR / NIPHM guidance with its source; flagged tasks carry the AEO note.
 
 import { useState } from "react";
-import LangToggle from "@/components/LangToggle";
 import Icon from "@/components/ui/Icon";
+import ScreenHeader from "@/components/ui/ScreenHeader";
 import { daysUntil, ordered, useCalendar, type CalendarTask, type TaskWhen } from "@/lib/calendar";
 import { formatDay, useFields, useToday, whenText } from "@/lib/fieldView";
 import { CROP_LABEL } from "@/lib/cropLabels";
@@ -32,15 +32,7 @@ export default function FieldScreen() {
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
-      <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-hero-brand-from to-hero-brand-to px-5 pb-6 pt-4 text-white shadow-hero">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{pick(lang, "నా పొలం", "My field")}</h1>
-            <p className="mt-0.5 text-sm text-white/90">{pick(lang, "ఏ పని, ఎప్పుడు", "What to do, and when")}</p>
-          </div>
-          <LangToggle light />
-        </div>
-      </header>
+      <ScreenHeader title={pick(lang, "నా పొలం", "My field")} subtitle={pick(lang, "ఏ పని, ఎప్పుడు", "What to do, and when")} />
 
       <div className="space-y-4 p-4 pt-6">
         {fields.length === 0 && !adding && (

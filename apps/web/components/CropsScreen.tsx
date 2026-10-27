@@ -5,8 +5,8 @@ import FertilizerCalculator from "@/components/FertilizerCalculator";
 import PestGuide from "@/components/PestGuide";
 import AskEntry from "@/components/AskEntry";
 import ExpertBridge from "@/components/ExpertBridge";
-import LangToggle from "@/components/LangToggle";
 import { pick, useLang, type Lang } from "@/lib/lang";
+import ScreenHeader from "@/components/ui/ScreenHeader";
 
 function Row({ label, te, en, lang }: { label: string; te: string; en: string; lang: Lang }) {
   return (
@@ -24,15 +24,7 @@ export default function CropsScreen() {
   const { lang } = useLang();
   return (
     <main className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
-      <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-hero-brand-from to-hero-brand-to px-5 pb-6 pt-4 text-white shadow-hero">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">🌱 {pick(lang, "పంటల మార్గదర్శి", "Crop guide")}</h1>
-            <p className="mt-0.5 text-sm text-white/90">{pick(lang, "ఖరీఫ్ · భూపాలపల్లి", "Kharif · Bhupalpally")}</p>
-          </div>
-          <LangToggle light />
-        </div>
-      </header>
+      <ScreenHeader title={`🌱 ${pick(lang, "పంటల మార్గదర్శి", "Crop guide")}`} subtitle={pick(lang, "ఖరీఫ్ · భూపాలపల్లి", "Kharif · Bhupalpally")} />
 
       <div className="space-y-3 p-4 pt-6">
         <AskEntry />

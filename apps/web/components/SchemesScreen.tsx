@@ -3,9 +3,9 @@
 import { useId, useState } from "react";
 import { SCHEMES, type Scheme, type SchemeStatus } from "@/lib/schemes";
 import { pick, useLang, type Lang } from "@/lib/lang";
-import LangToggle from "@/components/LangToggle";
 import ScamSafetyCard from "@/components/ScamSafetyCard";
 import Icon from "@/components/ui/Icon";
+import ScreenHeader from "@/components/ui/ScreenHeader";
 
 type Filter = "all" | "state" | "central";
 
@@ -101,17 +101,7 @@ export default function SchemesScreen() {
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-md pb-28 text-ink">
-      <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-hero-brand-from to-hero-brand-to px-5 pb-6 pt-4 text-white shadow-hero">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">🏛️ {pick(lang, "ప్రభుత్వ పథకాలు", "Govt schemes")}</h1>
-            <p className="mt-0.5 text-sm text-white/90">
-              {pick(lang, "రైతులకు ఉపయోగపడే పథకాలు", "Benefits for farmers")}
-            </p>
-          </div>
-          <LangToggle light />
-        </div>
-      </header>
+      <ScreenHeader title={`🏛️ ${pick(lang, "ప్రభుత్వ పథకాలు", "Govt schemes")}`} subtitle={pick(lang, "రైతులకు ఉపయోగపడే పథకాలు", "Benefits for farmers")} />
 
       {/* filter tabs */}
       <div className="flex gap-2 px-4 pt-5 pb-2">
