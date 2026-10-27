@@ -44,10 +44,10 @@ export function withTimeout(signal: AbortSignal | undefined, ms: number): AbortS
 }
 
 /** fetch() against the API with our timeout; network failures become ApiUnavailable. */
-export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+export async function apiFetch(path: string, init: RequestInit = {}, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Response> {
   const signal = init.signal ?? undefined;
   try {
-    return await fetch(`${API_BASE}${path}`, { ...init, signal: withTimeout(signal, REQUEST_TIMEOUT_MS) });
+    return await fetch(`${API_BASE}${path}`, { ...init, signal: withTimeout(signal, timeoutMs) });
   } catch (err) {
     if (signal?.aborted) throw err; // superseded, not a failure
     throw new ApiUnavailable(`network: ${String(err)}`);

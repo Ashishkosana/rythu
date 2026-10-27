@@ -42,7 +42,7 @@
  {
   "id": "fertilizer.bag_prices",
   "kind": "price",
-  "title": "What a fertilizer bag should cost (MRP)",
+  "title": "What a fertilizer bag should cost (MRP) / ఎరువు బస్తా ధర (MRP)",
   "text": "Urea / యూరియా, 45 kg bag: ₹266.5 (fixed by the government).\nDAP / డీఏపీ, 50 kg bag: about ₹1350 (company-set; check the bag).\nMOP / పొటాష్, 50 kg bag: company-set; read the MRP printed on the bag.\nNever pay more than the MRP printed on the bag, and always take the bill. Selling above MRP is an offence (Fertiliser Control Order 1985).\nOvercharged: complain with the bill to the Mandal Agriculture Officer (MAO) / AEO, or call the free Kisan Call Centre 1800-180-1551.\nPrices as of 2026-10.",
   "source": "https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2079050",
   "needs_verification": false
@@ -282,7 +282,7 @@
  {
   "id": "help.kisan_call_centre",
   "kind": "help",
-  "title": "Kisan Call Centre (free expert advice)",
+  "title": "Kisan Call Centre (free expert advice) / కిసాన్ కాల్ సెంటర్ (ఉచిత సలహా)",
   "text": "Free call 1800-180-1551, 6 am to 10 pm, Telugu spoken: agriculture graduates answer crop, pest and scheme questions. Or ask the village AEO / Rythu Vedika.",
   "source": "https://mkisan.gov.in/Home/AboutKCC",
   "needs_verification": false
@@ -290,7 +290,7 @@
  {
   "id": "help.cyber_fraud",
   "kind": "help",
-  "title": "Scams: fake apps and fraud calls",
+  "title": "Scams: fake apps and fraud calls / మోసాల నుంచి జాగ్రత్త",
   "text": "Never install an APK file sent on WhatsApp or SMS, even if it says PM-Kisan. Install apps only from the Play Store. Never share an OTP or UPI PIN. If cheated, call 1930 at once or report on cybercrime.gov.in.",
   "source": "https://cybercrime.gov.in",
   "needs_verification": false

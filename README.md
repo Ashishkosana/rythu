@@ -133,13 +133,13 @@ Note: `rule_confidence` exists internally but is **intentionally not serialised*
 
 CI (GitHub Actions) runs `ruff` + `mypy --strict` + `pytest` for the backend and `eslint` + `tsc` + `vitest` + `next build` + a production-dependency `npm audit` for the frontend on every push and PR — see the CI badge at the top. You can also reproduce the numbers locally with the commands below.
 
-- **Backend — 379 tests pass** (1 network "live" test deselected by default) across 29 files in `services/weather/tests`. 17 of them run against Azurite (the Storage emulator); CI requires it, locally they skip without it. Gate is `ruff` + `mypy --strict` + `pytest`.
+- **Backend — 452 tests pass** (1 network "live" test deselected by default) across 32 files in `services/weather/tests`, including the Azure Table contract tests, which run against Azurite (the Storage emulator): CI requires it; locally they skip without it. Gate is `ruff` + `mypy --strict` + `pytest`.
   ```bash
-  cd services/weather && uv run ruff check . && uv run mypy && uv run pytest   # -> 379 passed, 1 deselected (with Azurite)
+  cd services/weather && uv run ruff check . && uv run mypy && uv run pytest   # -> 452 passed, 1 deselected (with Azurite)
   ```
-- **Frontend — 164 tests pass** across 21 Vitest files (`apps/web/lib` and the build scripts), plus a first-load JS budget (≤ 170 KB gz per page) checked in CI.
+- **Frontend — 174 tests pass** across 23 Vitest files (`apps/web/lib` and the build scripts), plus a first-load JS budget (≤ 170 KB gz per page) checked in CI.
   ```bash
-  cd apps/web && npm run test   # vitest run -> Test Files 21 passed, Tests 164 passed
+  cd apps/web && npm run test   # vitest run -> Test Files 23 passed, Tests 174 passed
   ```
   These are lib/unit tests — no React render tests and no end-to-end tests in the repo (browser checks are run by hand during development).
 - **Android shell — 2 tests** run the real generator against the built site (`cd apps/android && npm test`).

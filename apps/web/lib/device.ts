@@ -1,12 +1,14 @@
-// This phone's anonymous Rythu account (ADR 0004). Only created once the farmer agrees to keep a
-// copy on the server (lib/profileSync.ts): until then nothing about them leaves the phone.
+// This phone's anonymous Rythu account (ADR 0004): a random number, nothing about the farmer. Created
+// when they agree to keep a copy on the server (lib/profileSync.ts), or when they ask Ask Rythu a
+// question (lib/ask.ts — the daily question limit is counted per phone). Their details still stay
+// on the phone unless they agree to the server copy.
 //
 // The device secret lives in IndexedDB; it is traded for a one-hour token kept in memory only.
 // If the server no longer knows this phone (data deleted), the stale credentials are dropped and —
 // only when asked to — a fresh account is made.
 
 import { createStore, del, get, set, type UseStore } from "idb-keyval";
-import { ApiUnavailable, apiFetch } from "./api";
+import { ApiUnavailable, REQUEST_TIMEOUT_MS, apiFetch } from "./api";
 import type { DeviceCredentials } from "./types";
 
 const CREDENTIALS = "credentials";
@@ -68,10 +70,14 @@ export async function getToken({ create }: { create: boolean }): Promise<string>
 }
 
 /** fetch() with this phone's token; one transparent retry with a fresh token on a 401. */
-export async function authedFetch(path: string, init: RequestInit, { create }: { create: boolean }): Promise<Response> {
+export async function authedFetch(
+  path: string,
+  init: RequestInit,
+  { create, timeoutMs = REQUEST_TIMEOUT_MS }: { create: boolean; timeoutMs?: number },
+): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
     const value = await getToken({ create });
-    const res = await apiFetch(path, { ...init, headers: { ...init.headers, Authorization: `Bearer ${value}` } });
+    const res = await apiFetch(path, { ...init, headers: { ...init.headers, Authorization: `Bearer ${value}` } }, timeoutMs);
     if (res.status !== 401 || attempt > 0) return res;
     token = null;
   }

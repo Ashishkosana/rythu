@@ -58,8 +58,8 @@ def _calendar_item(crop: Crop, calendar: CropCalendar, t: TaskSpec) -> CorpusIte
     else:
         when = f"days {t.start_day}–{t.end_day} after {ref}"
     text = f"When: {when}.\n{t.title_en} / {t.title_te}\n{t.detail_en}\n{t.detail_te}"
-    return CorpusItem(f"calendar.{t.id}", "calendar", f"Crop calendar ({crop.value}): {t.title_en}", text,
-                      t.source, t.needs_verification)
+    title = f"Crop calendar ({crop.value}): {t.title_en} / {t.title_te}"
+    return CorpusItem(f"calendar.{t.id}", "calendar", title, text, t.source, t.needs_verification)
 
 
 def load_corpus(web_content: Path = WEB_CONTENT) -> tuple[CorpusItem, ...]:

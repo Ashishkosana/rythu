@@ -130,3 +130,10 @@ describe("assetLinks — the Android app ↔ site link", () => {
     expect(() => assetLinks(committed)).not.toThrow();
   });
 });
+
+describe("security headers", () => {
+  it("lets only this site use location and the microphone (spoken questions), nothing use the camera or payments", () => {
+    const pp = staticWebAppConfig({ csp: "x" }).globalHeaders["Permissions-Policy"];
+    expect(pp).toBe("geolocation=(self), camera=(), microphone=(self), payment=()");
+  });
+});

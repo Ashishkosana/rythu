@@ -68,7 +68,11 @@ generated project does.
        rounded to ~1 km on the phone), not shared, required for the core feature.
      - *Device or other IDs*: the random account id — only if the farmer turns on the server copy;
        optional; app functionality.
-     - *App activity → Other user-generated content*: field names — same consent; optional.
+     - *App activity → Other user-generated content*: field names (server copy; optional) and Ask Rythu
+       questions (sent to the server and Anthropic to answer, not stored by Rythu; Anthropic deletes
+       within 30 days; optional).
+     - Voice: a spoken question is turned into text by Chrome / Google's speech service, not by Rythu —
+       Rythu receives text only.
      - Encrypted in transit: yes. Deletion: yes, in the app (*My data → Delete my data from Rythu's server*).
      - Not shared: Azure, Google push and Open-Meteo act as service providers.
 7. **Internal testing** (no review wait): *Test and release → Internal testing* → create a release,

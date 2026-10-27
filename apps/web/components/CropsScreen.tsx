@@ -3,6 +3,7 @@
 import { CROP_GUIDES } from "@/lib/crops";
 import FertilizerCalculator from "@/components/FertilizerCalculator";
 import PestGuide from "@/components/PestGuide";
+import AskEntry from "@/components/AskEntry";
 import ExpertBridge from "@/components/ExpertBridge";
 import LangToggle from "@/components/LangToggle";
 import { pick, useLang, type Lang } from "@/lib/lang";
@@ -34,6 +35,7 @@ export default function CropsScreen() {
       </header>
 
       <div className="space-y-3 p-4 pt-6">
+        <AskEntry />
         <FertilizerCalculator />
         <PestGuide />
         <ExpertBridge />

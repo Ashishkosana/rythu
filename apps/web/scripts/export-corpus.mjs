@@ -27,7 +27,7 @@ export function corpus() {
         `Bags: urea ${UREA_BAG_KG} kg, DAP and MOP ${BAG_KG} kg. The app's calculator converts the dose to bags (DAP's nitrogen is subtracted before sizing urea).`,
         `Confidence: ${d.confidence}. A soil test (Soil Health Card) changes the real need; confirm with the AEO.`,
       ), d.source, d.needsVerification)),
-    item("fertilizer.bag_prices", "price", "What a fertilizer bag should cost (MRP)", lines(
+    item("fertilizer.bag_prices", "price", "What a fertilizer bag should cost (MRP) / ఎరువు బస్తా ధర (MRP)", lines(
       ...BAG_PRICES.map((p) => `${p.name_en} / ${p.name_te}, ${p.bagKg} kg bag: ${
         p.rupees === null ? "company-set; read the MRP printed on the bag" : `${p.fixed ? "" : "about "}₹${p.rupees}${p.fixed ? " (fixed by the government)" : " (company-set; check the bag)"}`}.`),
       `Never pay more than the MRP printed on the bag, and always take the bill. Selling above MRP is an offence (Fertiliser Control Order 1985).`,
@@ -58,10 +58,10 @@ export function corpus() {
         s.honesty_en && `Note: ${s.honesty_en} / ${s.honesty_te ?? ""}`,
         `Official site: ${s.url}`,
       ), s.url, s.status === "verify" || s.status === "at_risk")),
-    item("help.kisan_call_centre", "help", "Kisan Call Centre (free expert advice)",
+    item("help.kisan_call_centre", "help", "Kisan Call Centre (free expert advice) / కిసాన్ కాల్ సెంటర్ (ఉచిత సలహా)",
       `Free call ${KISAN_CALL_CENTRE.display}, 6 am to 10 pm, Telugu spoken: agriculture graduates answer crop, pest and scheme questions. Or ask the village AEO / Rythu Vedika.`,
       KISAN_CALL_CENTRE.source),
-    item("help.cyber_fraud", "help", "Scams: fake apps and fraud calls",
+    item("help.cyber_fraud", "help", "Scams: fake apps and fraud calls / మోసాల నుంచి జాగ్రత్త",
       `Never install an APK file sent on WhatsApp or SMS, even if it says PM-Kisan. Install apps only from the Play Store. Never share an OTP or UPI PIN. If cheated, call ${CYBER_CRIME.display} at once or report on cybercrime.gov.in.`,
       CYBER_CRIME.source),
   ];

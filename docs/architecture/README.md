@@ -232,7 +232,7 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | S15 | Mandi prices + MSP comparison (after confirming data.gov.in API access) | new | planned |
 | S16 | My-Field crop calendar: `/v1/calendar` from the research's verified schedules (sourced, AEO flags kept, stage-based where no day count exists, never a spray); fields (≤ 5) in the profile; "My field" screen + "this week" card on home; 5th tab | new: what to do on my crop this week | **done** |
 | S17a | Ask Rythu, server: `POST /v1/assistant/ask` — Claude answers only from the app's own content (exported from the web app, CI drift check) + crop calendar + today's reads; cached prompt; schema-restricted citations re-checked server-side; KCC fallback, 108 for emergencies; device token, 10/phone/day + 200/day, kill switch default off, key only via Key Vault; eval set (17 cases) with oracle/null checks offline and a live runner behind `--yes-spend` | none until switched on (needs your key) | **done** |
-| S17b | Ask Rythu, app: ask screen (type or speak Telugu), answer read aloud, sources and KCC call button, privacy page updated | new: ask a question | planned |
+| S17b | Ask Rythu, app: `/ask/` (entry card on Crops): type or speak (phone speech recognition, te-IN; listening capped so it never hangs; mic allowed for this site only), a spoken question gets a spoken answer, sources with links, "confirm with AEO" where flagged, KCC call button always (prominent when not covered / limit / off / offline), questions left today; privacy page + Play Data-safety draft cover questions and voice | new: ask a question by voice or text | **done** |
 
 ## Decision records
 - [0001 — Modular monolith on Azure Functions](adr/0001-modular-monolith-on-azure-functions.md)

@@ -15,11 +15,11 @@ const SECTIONS: { te: string; en: string; body_te: string[]; body_en: string[] }
     en: "In short",
     body_te: [
       "Rythu ఏమీ అమ్మదు, ప్రకటనలు చూపదు, మిమ్మల్ని ట్రాక్ చేయదు. మీ సమాచారాన్ని ఎవరికీ అమ్మదు.",
-      "మీరు \"Rythu సర్వర్‌లో కాపీ\" ఆన్ చేయకపోతే మీ వివరాలు మీ ఫోన్‌లోనే ఉంటాయి.",
+      "మీరు పంపేవి — ఒక ప్రశ్న, లేదా \"Rythu సర్వర్‌లో కాపీ\" — తప్ప మీ వివరాలు మీ ఫోన్‌లోనే ఉంటాయి.",
     ],
     body_en: [
       "Rythu sells nothing, shows no ads and has no trackers. It never sells your data.",
-      "Unless you switch on \"Copy on Rythu's server\", your details stay on your phone.",
+      "Apart from what you choose to send — a question, or \"Copy on Rythu's server\" — your details stay on your phone.",
     ],
   },
   {
@@ -71,6 +71,22 @@ const SECTIONS: { te: string; en: string; body_te: string[]; body_en: string[] }
     ],
   },
   {
+    te: "రైతు ప్రశ్న (మీరు అడిగితేనే)",
+    en: "Ask Rythu (only when you ask)",
+    body_te: [
+      "మీ ప్రశ్న, ఈరోజు వాతావరణం కోసం మీ ఊరి గుర్తులు, పంట మా సర్వర్‌కు వెళ్తాయి. సమాధానం రాయడానికి ప్రశ్న Anthropic (Claude)కు వెళ్తుంది — Rythu సమాచారం నుంచే రాస్తుంది. Anthropic దాని వ్యాపార నిబంధనల ప్రకారం దీనిపై తన మోడళ్లకు శిక్షణ ఇవ్వదు, 30 రోజుల్లో తొలగిస్తుంది (దుర్వినియోగ తనిఖీ లేదా చట్టం కోరితే తప్ప).",
+      "మా సర్వర్ మీ ప్రశ్నను దాచదు — రోజువారీ పరిమితి కోసం ఒక యాదృచ్ఛిక పరికరం నంబరుతో రోజుకు ఎన్ని ప్రశ్నలు అడిగారో మాత్రమే లెక్కిస్తుంది. మొదటి ప్రశ్నతో ఆ నంబరు ఏర్పడుతుంది.",
+      "మీరు మాట్లాడి అడిగితే, మీ ఫోన్ మాట గుర్తింపు సేవ (Chromeలో Google) మీ మాటను అక్షరాలుగా మారుస్తుంది.",
+      "ప్రశ్నలో మీ పేరు, ఫోన్ నంబరు, ఆధార్ రాయకండి.",
+    ],
+    body_en: [
+      "Your question — plus your village's coordinates and your crop, for today's weather — goes to our server. To write the answer, the question goes to Anthropic (Claude), which answers from Rythu's content. Under its commercial terms Anthropic does not train its models on it and deletes it within 30 days (unless needed to check misuse, or the law requires).",
+      "Our server does not keep your question: it only counts how many you asked each day (for the daily limit), under a random device number that your first question creates.",
+      "If you speak your question, your phone's speech service (Google, in Chrome) turns your voice into text.",
+      "Don't put your name, phone number or Aadhaar in a question.",
+    ],
+  },
+  {
     te: "సాంకేతిక లాగ్‌లు",
     en: "Technical logs",
     body_te: [
@@ -84,11 +100,11 @@ const SECTIONS: { te: string; en: string; body_te: string[]; body_en: string[] }
     te: "ఇతరులు",
     en: "Who else is involved",
     body_te: [
-      "మా సర్వర్ Microsoft Azure మీద నడుస్తుంది. హెచ్చరికలు Google push సేవ ద్వారా వస్తాయి. యాప్ Google Play ద్వారా వస్తుంది. వీళ్లు మా తరఫున మాత్రమే పనిచేస్తారు.",
+      "మా సర్వర్ Microsoft Azure మీద నడుస్తుంది. హెచ్చరికలు Google push సేవ ద్వారా వస్తాయి. ప్రశ్నలకు సమాధానాలు Anthropic రాస్తుంది. యాప్ Google Play ద్వారా వస్తుంది. వీళ్లు మా తరఫున మాత్రమే పనిచేస్తారు.",
       "ఈ యాప్ పిల్లల కోసం కాదు.",
     ],
     body_en: [
-      "Our server runs on Microsoft Azure. Alerts travel through Google's push service. The app is distributed through Google Play. They act only on our behalf.",
+      "Our server runs on Microsoft Azure. Alerts travel through Google's push service. Anthropic writes the answers to questions. The app is distributed through Google Play. They act only on our behalf.",
       "The app is not directed at children.",
     ],
   },

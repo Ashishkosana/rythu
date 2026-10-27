@@ -116,7 +116,8 @@ export function staticWebAppConfig({ csp }) {
       "Content-Security-Policy": csp,
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "strict-origin-when-cross-origin",
-      "Permissions-Policy": "geolocation=(self), camera=(), microphone=(), payment=()",
+      // Microphone for this site only: Ask Rythu takes a spoken question (S17). Nothing else may use it.
+      "Permissions-Policy": "geolocation=(self), camera=(), microphone=(self), payment=()",
       "Strict-Transport-Security": "max-age=31536000",
       // Pages and payloads change every deploy; the service worker is what makes repeat opens instant.
       "Cache-Control": "no-cache",
