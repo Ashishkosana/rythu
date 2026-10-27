@@ -73,7 +73,7 @@ export const CROP_DOSES: readonly CropDose[] = [
     key: "red_gram",
     name_te: "కంది",
     name_en: "Red gram",
-    emoji: "🫛",
+    emoji: "🌿", // not 🫛: an empty box before Android 13
     n: 8.1,
     p: 20.2,
     k: 8.1,
@@ -149,3 +149,54 @@ export function fertilizerFor(n: number, p: number, k: number): FertResult {
 export function computeForArea(dose: CropDose, acres: number): FertResult {
   return fertilizerFor(dose.n * acres, dose.p * acres, dose.k * acres);
 }
+
+// What a bag should cost. Only urea's price is fixed by the government; DAP and MOP prices are set by
+// the companies (Nutrient Based Subsidy) and printed on every bag. Selling above the printed MRP is an
+// offence (Fertiliser Control Order 1985, under the Essential Commodities Act 1955) — so the rule we
+// show is "never pay above the MRP on the bag", and a number only where it is official.
+export interface BagPrice {
+  key: "urea" | "dap" | "mop";
+  name_te: string;
+  name_en: string;
+  bagKg: number;
+  rupees: number | null; // null: company-set — read the bag
+  fixed: boolean; // true only where the government fixes the price
+  sources: readonly string[];
+}
+
+export const PRICES_AS_OF = "2026-10";
+
+export const BAG_PRICES: readonly BagPrice[] = [
+  {
+    // ₹242 base (PIB) + neem coating + GST = ₹266.50, unchanged since 2018 (Fertiliser Minister, 2024).
+    key: "urea",
+    name_te: "యూరియా",
+    name_en: "Urea",
+    bagKg: UREA_BAG_KG,
+    rupees: 266.5,
+    fixed: true,
+    sources: [
+      "https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2079050",
+      "https://www.business-standard.com/india-news/don-t-mislead-farmers-over-neem-coated-urea-price-mandaviya-to-akhilesh-124011100392_1.html",
+    ],
+  },
+  {
+    // Decontrolled, but subsidy terms hold DAP near ₹1,350 a bag (avg ₹2,700/quintal, Dec 2024 answer).
+    key: "dap",
+    name_te: "డీఏపీ",
+    name_en: "DAP",
+    bagKg: BAG_KG,
+    rupees: 1350,
+    fixed: false,
+    sources: ["https://eparlib.sansad.in/bitstream/123456789/2987368/1/AU4185_wZJPSe.pdf"],
+  },
+  {
+    key: "mop",
+    name_te: "పొటాష్",
+    name_en: "MOP",
+    bagKg: BAG_KG,
+    rupees: null,
+    fixed: false,
+    sources: ["https://eparlib.sansad.in/bitstream/123456789/2987368/1/AU4185_wZJPSe.pdf"],
+  },
+];

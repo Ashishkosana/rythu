@@ -21,6 +21,161 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/geocode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Find a village by name (Telangana + border) */
+        get: operations["geocode_v1_geocode_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My-Field crop calendar from a sowing or transplanting date */
+        get: operations["calendar_v1_calendar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Register this phone */
+        post: operations["register_device_v1_devices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trade the device secret for a one-hour token */
+        post: operations["start_session_v1_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The profile saved by this device */
+        get: operations["get_profile_v1_me_profile_get"];
+        /** Save the profile (conditional) */
+        put: operations["put_profile_v1_me_profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/push/key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** VAPID public key for subscribing */
+        get: operations["push_key_v1_push_key_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/push-subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Subscribe this phone to alerts */
+        put: operations["put_push_subscription_v1_me_push_subscriptions_put"];
+        post?: never;
+        /** Unsubscribe a phone */
+        delete: operations["delete_push_subscription_v1_me_push_subscriptions_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete everything stored for this user */
+        delete: operations["delete_me_v1_me_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/assistant/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask Rythu: an answer only from Rythu's checked content */
+        post: operations["ask_v1_assistant_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -42,6 +197,114 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AskIn
+         * @description A farmer's question for Ask Rythu (S17). Village + crop are optional context: with them the
+         *     answer can use today's farming reads for that place.
+         */
+        AskIn: {
+            /** Question */
+            question: string;
+            /**
+             * Lang
+             * @default te
+             * @enum {string}
+             */
+            lang: "te" | "en";
+            /** Lat */
+            lat?: number | null;
+            /** Lon */
+            lon?: number | null;
+            crop?: components["schemas"]["Crop"] | null;
+            /** @default rainfed */
+            water: components["schemas"]["WaterSource"];
+        };
+        /**
+         * AskOut
+         * @description ``covered`` false → Rythu has no checked answer: show the Kisan Call Centre prominently.
+         */
+        AskOut: {
+            /** Covered */
+            covered: boolean;
+            /** Answer */
+            answer: string;
+            /** Sources */
+            sources: components["schemas"]["AskSourceOut"][];
+            /** Used Todays Weather */
+            used_todays_weather: boolean;
+            /** Remaining Today */
+            remaining_today: number;
+            helpline: components["schemas"]["HelplineOut"];
+        };
+        /** AskSourceOut */
+        AskSourceOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /** Needs Verification */
+            needs_verification: boolean;
+        };
+        /**
+         * CalendarOut
+         * @description ``GET /v1/calendar`` 200 body: the crop's tasks dated from the farmer's reference date.
+         */
+        CalendarOut: {
+            crop: components["schemas"]["Crop"];
+            /** @description Which date the offsets count from: sowing or transplanting. */
+            reference: components["schemas"]["Reference"];
+            /** Reference Date */
+            reference_date: string;
+            /** Tasks */
+            tasks: components["schemas"]["CalendarTaskOut"][];
+        };
+        /** CalendarTaskOut */
+        CalendarTaskOut: {
+            /** Id */
+            id: string;
+            kind: components["schemas"]["TaskKind"];
+            /**
+             * Start
+             * @description YYYY-MM-DD; null = stage-based (see stage_*), no reliable date.
+             */
+            start: string | null;
+            /**
+             * End
+             * @description YYYY-MM-DD, inclusive; null with a start = from then on.
+             */
+            end: string | null;
+            /**
+             * Start Day
+             * @description Days after the reference date.
+             */
+            start_day: number | null;
+            /** End Day */
+            end_day: number | null;
+            /** Title Te */
+            title_te: string;
+            /** Title En */
+            title_en: string;
+            /** Detail Te */
+            detail_te: string;
+            /** Detail En */
+            detail_en: string;
+            /** Stage Te */
+            stage_te: string | null;
+            /** Stage En */
+            stage_en: string | null;
+            /**
+             * Source
+             * @description The official source this task restates.
+             */
+            source: string;
+            /**
+             * Needs Verification
+             * @description Show the 'confirm with your AEO / Soil Health Card' note.
+             */
+            needs_verification: boolean;
+        };
         /** Coords */
         Coords: {
             /** @description The farmer's pin. */
@@ -88,8 +351,24 @@ export interface components {
             farm_note: string;
         };
         /**
+         * DeviceCredentialsOut
+         * @description ``POST /v1/devices`` 201 body. Shown once: the server keeps only a digest of the secret.
+         */
+        DeviceCredentialsOut: {
+            /**
+             * User Id
+             * @description Random 128-bit id, 32 lowercase hex characters.
+             */
+            user_id: string;
+            /**
+             * Device Secret
+             * @description 256-bit secret. Keep on the device; trade it for tokens.
+             */
+            device_secret: string;
+        };
+        /**
          * ErrorBody
-         * @description 400 body. ``code`` is stable and machine-readable; ``error`` is for humans/logs.
+         * @description 4xx/5xx body. ``code`` is stable and machine-readable; ``error`` is for humans/logs.
          */
         ErrorBody: {
             /** Error */
@@ -98,7 +377,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "bad_request" | "outside_coverage";
+            code: "bad_request" | "outside_coverage" | "upstream_unavailable" | "unauthorized" | "not_found" | "precondition_failed" | "precondition_required" | "rate_limited" | "unavailable" | "assistant_off";
         };
         /**
          * FarmAction
@@ -145,6 +424,34 @@ export interface components {
             /** Sources */
             sources: string[];
         };
+        /**
+         * FieldIO
+         * @description One of the farmer's fields (My-Field): what grows there and since when.
+         */
+        FieldIO: {
+            /**
+             * Id
+             * @description Chosen by the phone; stable across edits.
+             */
+            id: string;
+            /** Name */
+            name: string;
+            crop: components["schemas"]["Crop"];
+            /**
+             * Reference Date
+             * Format: date
+             * @description Sowing date, or transplanting date for paddy and chilli (see /v1/calendar). Not more than 400 days ago or 60 days ahead.
+             */
+            reference_date: string;
+        };
+        /**
+         * GeocodeResults
+         * @description ``GET /v1/geocode`` 200 body: places inside Rythu's coverage, best match first (may be empty).
+         */
+        GeocodeResults: {
+            /** Results */
+            results: components["schemas"]["PlaceOut"][];
+        };
         /** Health */
         Health: {
             /**
@@ -152,6 +459,13 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /** HelplineOut */
+        HelplineOut: {
+            /** Display */
+            display: string;
+            /** Tel */
+            tel: string;
         };
         /** HourlyRainOut */
         HourlyRainOut: {
@@ -183,6 +497,99 @@ export interface components {
             /** Lon */
             lon: number;
         };
+        /** PlaceOut */
+        PlaceOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Name Te
+             * @description Telugu name when OpenStreetMap has one; else null.
+             */
+            name_te: string | null;
+            /**
+             * Admin2
+             * @description District.
+             */
+            admin2: string | null;
+            /**
+             * Admin1
+             * @description State.
+             */
+            admin1: string | null;
+            /** Lat */
+            lat: number;
+            /** Lon */
+            lon: number;
+        };
+        /**
+         * ProfileIn
+         * @description What the phone saves on the server — only what alerts and the crop calendar need.
+         */
+        ProfileIn: {
+            village?: components["schemas"]["VillageIO"] | null;
+            crop?: components["schemas"]["Crop"] | null;
+            /** @default rainfed */
+            water: components["schemas"]["WaterSource"];
+            /**
+             * Lang
+             * @default te
+             * @enum {string}
+             */
+            lang: "te" | "en";
+            /** Fields */
+            fields?: components["schemas"]["FieldIO"][];
+        };
+        /** ProfileOut */
+        ProfileOut: {
+            village?: components["schemas"]["VillageIO"] | null;
+            crop?: components["schemas"]["Crop"] | null;
+            /** @default rainfed */
+            water: components["schemas"]["WaterSource"];
+            /**
+             * Lang
+             * @default te
+             * @enum {string}
+             */
+            lang: "te" | "en";
+            /** Fields */
+            fields?: components["schemas"]["FieldIO"][];
+            /**
+             * Updated At
+             * @description Server time of the last write, ISO-8601.
+             */
+            updated_at: string;
+        };
+        /** PushKeyOut */
+        PushKeyOut: {
+            /**
+             * Public Key
+             * @description VAPID application server key (base64url, 65-byte P-256 point) for PushManager.subscribe().
+             */
+            public_key: string;
+        };
+        /** PushKeysIn */
+        PushKeysIn: {
+            /** P256Dh */
+            p256dh: string;
+            /** Auth */
+            auth: string;
+        };
+        /**
+         * PushSubscriptionIn
+         * @description A browser PushSubscription (endpoint + keys). Only real browser push services are accepted.
+         */
+        PushSubscriptionIn: {
+            /** Endpoint */
+            endpoint: string;
+            keys: components["schemas"]["PushKeysIn"];
+        };
+        /**
+         * Reference
+         * @enum {string}
+         */
+        Reference: "sowing" | "transplanting";
         /** Reliability */
         Reliability: {
             /**
@@ -206,12 +613,49 @@ export interface components {
              */
             is_offline_cache: boolean;
         };
+        /** SessionIn */
+        SessionIn: {
+            /** User Id */
+            user_id: string;
+            /** Device Secret */
+            device_secret: string;
+        };
+        /** SessionOut */
+        SessionOut: {
+            /**
+             * Token
+             * @description Send as `Authorization: Bearer <token>` on /v1/me routes.
+             */
+            token: string;
+            /**
+             * Expires At
+             * @description ISO-8601; ask for a new token a little before this.
+             */
+            expires_at: string;
+        };
         /**
          * Severity
          * @description UI emphasis for a read — NOT a certainty claim about the weather.
          * @enum {string}
          */
         Severity: "info" | "caution" | "act";
+        /**
+         * TaskKind
+         * @enum {string}
+         */
+        TaskKind: "prepare" | "fertilizer" | "weeds" | "scout";
+        /** VillageIO */
+        VillageIO: {
+            /** Name */
+            name: string;
+            /**
+             * Lat
+             * @description Must be inside coverage (Telangana + border).
+             */
+            lat: number;
+            /** Lon */
+            lon: number;
+        };
         /**
          * WMOCategory
          * @description Coarse bucket for a WMO ``weather_code`` (icon/colour grouping + storm guard).
@@ -299,6 +743,455 @@ export interface operations {
             };
             /** @description Malformed request, or outside coverage (code=outside_coverage). */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    geocode_v1_geocode_get: {
+        parameters: {
+            query?: {
+                /** @description Village, town or mandal name (2-60 characters). Search on submit, not per keystroke. */
+                q?: string | null;
+            };
+            header?: {
+                /** @description Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128}). */
+                "X-Request-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Matching places inside coverage (possibly none). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeocodeResults"];
+                };
+            };
+            /** @description Query missing, too short or too long. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description No geocoding source could be asked (code=upstream_unavailable). */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    calendar_v1_calendar_get: {
+        parameters: {
+            query?: {
+                /** @description One of: cotton, paddy, red_gram, maize, chilli. Omit for crop-independent reads only. */
+                crop?: string | null;
+                /** @description YYYY-MM-DD: sowing date, or transplanting date for paddy and chilli. */
+                date?: string | null;
+            };
+            header?: {
+                /** @description Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128}). */
+                "X-Request-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The crop's tasks, dated (stage-based ones last). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarOut"];
+                };
+            };
+            /** @description Unknown crop, or a malformed / out-of-range date. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    register_device_v1_devices_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeviceCredentialsOut"];
+                };
+            };
+            /** @description Too many new devices this hour. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Accounts unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    start_session_v1_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Malformed body. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Unknown device or wrong secret. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    get_profile_v1_me_profile_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Missing or expired token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Nothing saved yet. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    put_profile_v1_me_profile_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "if-match"?: string | null;
+                "if-none-match"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Malformed body, or a village outside coverage (code=outside_coverage). */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing or expired token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description The saved profile changed since you read it (or one already exists). */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Send If-Match: <etag> to update, or If-None-Match: * to create. */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    push_key_v1_push_key_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushKeyOut"];
+                };
+            };
+            /** @description Push alerts unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    put_push_subscription_v1_me_push_subscriptions_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscriptionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a browser push service, malformed keys, or too many phones. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing or expired token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_push_subscription_v1_me_push_subscriptions_delete: {
+        parameters: {
+            query: {
+                endpoint: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_me_v1_me_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    ask_v1_assistant_ask_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskOut"];
+                };
+            };
+            /** @description No or bad device token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Today's questions are used up (this phone, or everyone). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Switched off (code=assistant_off), or the model can't answer right now. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

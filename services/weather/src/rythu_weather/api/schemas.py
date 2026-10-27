@@ -12,10 +12,12 @@ strings so the exact wire text is preserved.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from rythu_weather.domain.calendar import Reference, TaskKind
 from rythu_weather.domain.models import Crop, FarmAction, Severity, WaterSource, WMOCategory
 
 
@@ -112,11 +114,174 @@ class WeatherContract(_Strict):
 
 
 class ErrorBody(_Strict):
-    """400 body. ``code`` is stable and machine-readable; ``error`` is for humans/logs."""
+    """4xx/5xx body. ``code`` is stable and machine-readable; ``error`` is for humans/logs."""
 
     error: str
-    code: Literal["bad_request", "outside_coverage"]
+    code: Literal[
+        "bad_request",
+        "outside_coverage",
+        "upstream_unavailable",
+        "unauthorized",
+        "not_found",
+        "precondition_failed",
+        "precondition_required",
+        "rate_limited",
+        "unavailable",
+        "assistant_off",
+    ]
 
 
 class Health(_Strict):
     status: Literal["ok"]
+
+
+class PlaceOut(_Strict):
+    id: int
+    name: str
+    name_te: str | None = Field(description="Telugu name when OpenStreetMap has one; else null.")
+    admin2: str | None = Field(description="District.")
+    admin1: str | None = Field(description="State.")
+    lat: float
+    lon: float
+
+
+class GeocodeResults(_Strict):
+    """``GET /v1/geocode`` 200 body: places inside Rythu's coverage, best match first (may be empty)."""
+
+    results: list[PlaceOut]
+
+
+# ── Device accounts (ADR 0004) ──────────────────────────────────────────────────────────────────
+
+
+class DeviceCredentialsOut(_Strict):
+    """``POST /v1/devices`` 201 body. Shown once: the server keeps only a digest of the secret."""
+
+    user_id: str = Field(description="Random 128-bit id, 32 lowercase hex characters.")
+    device_secret: str = Field(description="256-bit secret. Keep on the device; trade it for tokens.")
+
+
+class SessionIn(_Strict):
+    user_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    device_secret: str = Field(min_length=20, max_length=128)
+
+
+class SessionOut(_Strict):
+    token: str = Field(description="Send as `Authorization: Bearer <token>` on /v1/me routes.")
+    expires_at: str = Field(description="ISO-8601; ask for a new token a little before this.")
+
+
+class VillageIO(_Strict):
+    name: str = Field(min_length=1, max_length=80)
+    lat: float = Field(ge=-90, le=90, description="Must be inside coverage (Telangana + border).")
+    lon: float = Field(ge=-180, le=180)
+
+
+class FieldIO(_Strict):
+    """One of the farmer's fields (My-Field): what grows there and since when."""
+
+    id: str = Field(pattern=r"^[a-z0-9]{6,16}$", description="Chosen by the phone; stable across edits.")
+    name: str = Field(min_length=1, max_length=40)
+    crop: Crop
+    reference_date: date = Field(
+        description="Sowing date, or transplanting date for paddy and chilli (see /v1/calendar). "
+        "Not more than 400 days ago or 60 days ahead."
+    )
+
+
+class ProfileIn(_Strict):
+    """What the phone saves on the server — only what alerts and the crop calendar need."""
+
+    village: VillageIO | None = None
+    crop: Crop | None = None
+    water: WaterSource = WaterSource.RAINFED
+    lang: Literal["te", "en"] = "te"
+    fields: list[FieldIO] = Field(default_factory=list, max_length=5)
+
+
+class ProfileOut(ProfileIn):
+    updated_at: str = Field(description="Server time of the last write, ISO-8601.")
+
+
+# ── Crop calendar (My-Field) ────────────────────────────────────────────────────────────────────
+
+
+class CalendarTaskOut(_Strict):
+    id: str
+    kind: TaskKind
+    start: str | None = Field(description="YYYY-MM-DD; null = stage-based (see stage_*), no reliable date.")
+    end: str | None = Field(description="YYYY-MM-DD, inclusive; null with a start = from then on.")
+    start_day: int | None = Field(description="Days after the reference date.")
+    end_day: int | None
+    title_te: str
+    title_en: str
+    detail_te: str
+    detail_en: str
+    stage_te: str | None
+    stage_en: str | None
+    source: str = Field(description="The official source this task restates.")
+    needs_verification: bool = Field(description="Show the 'confirm with your AEO / Soil Health Card' note.")
+
+
+class CalendarOut(_Strict):
+    """``GET /v1/calendar`` 200 body: the crop's tasks dated from the farmer's reference date."""
+
+    crop: Crop
+    reference: Reference = Field(description="Which date the offsets count from: sowing or transplanting.")
+    reference_date: str
+    tasks: list[CalendarTaskOut]
+
+
+# ── Push alerts (S14) ───────────────────────────────────────────────────────────────────────────
+
+
+class PushKeyOut(_Strict):
+    public_key: str = Field(description="VAPID application server key (base64url, 65-byte P-256 point) "
+                                        "for PushManager.subscribe().")
+
+
+class PushKeysIn(_Strict):
+    p256dh: str = Field(min_length=80, max_length=100, pattern=r"^[A-Za-z0-9_-]+$")
+    auth: str = Field(min_length=16, max_length=32, pattern=r"^[A-Za-z0-9_-]+$")
+
+
+class PushSubscriptionIn(_Strict):
+    """A browser PushSubscription (endpoint + keys). Only real browser push services are accepted."""
+
+    endpoint: str = Field(max_length=1000)
+    keys: PushKeysIn
+
+
+class AskIn(_Strict):
+    """A farmer's question for Ask Rythu (S17). Village + crop are optional context: with them the
+    answer can use today's farming reads for that place."""
+
+    question: str = Field(min_length=3, max_length=300)
+    lang: Literal["te", "en"] = "te"
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    crop: Crop | None = None
+    water: WaterSource = WaterSource.RAINFED
+
+
+class AskSourceOut(_Strict):
+    id: str
+    title: str
+    url: str
+    needs_verification: bool
+
+
+class HelplineOut(_Strict):
+    display: str
+    tel: str
+
+
+class AskOut(_Strict):
+    """``covered`` false → Rythu has no checked answer: show the Kisan Call Centre prominently."""
+
+    covered: bool
+    answer: str
+    sources: list[AskSourceOut]
+    used_todays_weather: bool
+    remaining_today: int
+    helpline: HelplineOut

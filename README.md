@@ -15,7 +15,7 @@
 [![backend tests](https://img.shields.io/badge/backend_tests-100_passed-brightgreen)](#tests--quality-gate)
 [![frontend tests](https://img.shields.io/badge/frontend_tests-51_passed-brightgreen)](#tests--quality-gate)
 
-> **Deployment status:** the AWS Amplify front end is currently offline, so there is no public demo URL right now. The app is a server-rendered Next.js web app and an installable PWA (add to home screen) — **not** a native mobile app. Backend infrastructure is defined in CDK and reproducible with `cdk deploy`; see [Stack](#stack) and [Run it locally](#run-it-locally-two-terminals).
+> **Deployment status:** the app is moving from AWS to Azure (plan: [`docs/architecture/README.md`](docs/architecture/README.md)). The AWS Amplify front end is offline, so there is no public demo URL right now; the Azure environment is described in Bicep and set up with [`infra/azure/README.md`](infra/azure/README.md). The app is a static Next.js export with an app-shell service worker — an installable PWA that opens instantly and works offline — and will ship to Android as a Trusted Web Activity. This README's architecture section still shows the AWS stack until the cutover (S10).
 
 ---
 
@@ -33,12 +33,12 @@
 
 | Layer | What it is |
 | --- | --- |
-| **Frontend** | Next.js 16 (App Router, SSR, `force-dynamic`), React 19, TypeScript 5, Tailwind CSS v4, Vitest for unit tests. Deployed on **AWS Amplify** (SSR hosting). |
+| **Frontend** | Next.js 16 (App Router, **static export**), React 19, TypeScript 5, Tailwind CSS v4, TanStack Query + IndexedDB, Vitest. Served by **Azure Static Web Apps** (Free) with a per-build CSP; a generated service worker precaches every page for instant, offline opens. |
 | **Backend** | Python 3.12 `rythu-weather` service in **hexagonal / ports-and-adapters** layout (`domain` / `adapters` / `app`). Single runtime dependency: `httpx`. Weather data from [Open-Meteo](https://open-meteo.com) (free, no API key). Packaged with `uv` + `hatchling`. |
 | **Infra** | **AWS CDK** (Python): API Gateway v2 **HTTP API → Lambda** (`rythu_weather.app.handler`, 256 MB, 15 s, reserved concurrency 10) **→ DynamoDB** forecast cache (`PAY_PER_REQUEST`, TTL auto-expire). |
-| **Quality gate** | Backend: `ruff` + `mypy --strict` + `pytest`. Frontend: `eslint` + `tsc` + `vitest` + `next build` + production `npm audit`. |
+| **Quality gate** | Backend: `ruff` + `mypy --strict` + `pytest` (with Azurite). Frontend: `eslint` + `tsc` + `vitest` + `next build` + first-load JS budget (≤ 170 KB gz per page) + production `npm audit`. Infra: `az bicep build` + lint. |
 
-The front end reaches the backend through a `WEATHER_API` value inlined at build time in `next.config.ts` (a workaround for Amplify not exposing env vars to the SSR runtime), with a `http://127.0.0.1:8001` fallback for local dev.
+The browser calls the API directly (CORS) at `NEXT_PUBLIC_API_BASE`, inlined at build time, with a `http://127.0.0.1:8001` fallback for local dev. Data fetching is client-side through TanStack Query, with the last answers copied to IndexedDB so the forecast paints instantly and works offline (see `docs/architecture/adr/0003-client-data-layer-tanstack-query.md`).
 
 ---
 
@@ -59,8 +59,8 @@ flowchart TD
 
     OM["Open-Meteo API<br/>free — no key"]
 
-    U -->|"HTTPS request"| AMP
-    AMP -->|"server-side fetch — WEATHER_API"| APIGW
+    U -->|"HTTPS — static app shell"| AMP
+    U -->|"browser fetch (CORS) — NEXT_PUBLIC_API_BASE"| APIGW
     APIGW --> LAMBDA
     LAMBDA -->|"read-through by grid cell"| DDB
     DDB -.->|"cache HIT: return cached forecast"| LAMBDA
@@ -75,14 +75,14 @@ flowchart TD
 
 **Request flow (weather):** the App Router page renders server-side on Amplify, does a server-side fetch to the API Gateway HTTP API, which invokes the Lambda handler. The service checks the DynamoDB read-through cache (keyed by weather grid cell, TTL); on a miss it calls Open-Meteo via the `httpx` adapter. The **domain engine + rules** build a typed `farming_read[]` plus reliability/coords, everything is serialized into one typed JSON contract, and `WeatherScreen.tsx` renders rain %, hourly bars, the 7-day outlook, and the advice cards.
 
-**Separate paths:** village search is a client → Next.js `/api/geocode` route (Node runtime) → Nominatim primary, Open-Meteo geocoding fallback, day-cached. The **crops guide, fertilizer calculator, and schemes** screens are 100% static client-side data (`lib/crops.ts`, `lib/agronomy.ts`, `lib/schemes.ts`) and do **not** call the Python backend.
+**Separate paths:** village search is the API's `GET /v1/geocode` (Nominatim primary, Open-Meteo fallback, day-cached, searched on submit per Nominatim's policy). The **crops guide, fertilizer calculator, and schemes** screens are 100% static client-side data (`lib/crops.ts`, `lib/agronomy.ts`, `lib/schemes.ts`) and do **not** call the Python backend.
 
 ### Why it's built this way (the decisions I can defend)
 
 - **Hexagonal backend with a domain-purity test.** The Open-Meteo client, the DynamoDB cache, and a fake adapter are all swappable ports; a `test_domain_purity` guard keeps the rules/engine/models free of I/O, so the advice engine is unit-testable without any HTTP. The wire shape is defined in exactly one place (`app/serialize.py`).
 - **The DynamoDB read-through cache is a cost / rate-limit decision.** `PAY_PER_REQUEST` + TTL caps Open-Meteo calls to roughly one per grid cell per window, and Lambda `reserved_concurrent_executions = 10` caps a public endpoint — both keep a free-for-farmers app inside free-tier economics.
 - **One typed JSON contract** between Python and TypeScript, and it deliberately never leaks raw upstream fields or emits a "confidence" score (see the sample below). Pydantic schemas (`api/schemas.py`, golden-tested against the serializer) → committed `services/weather/openapi.json` → generated `apps/web/lib/api.gen.ts`; CI fails if either generated file is stale, and the crop/water lists are compile-checked against the backend enums.
-- **Build-time inlining of `WEATHER_API`** works around Amplify not exposing env vars to the SSR runtime, while a localhost fallback keeps local dev friction-free.
+- **Build-time `NEXT_PUBLIC_API_BASE`** points the browser at the API, while a localhost fallback keeps local dev friction-free.
 - **Deploy packaging:** `build_lambda.sh` bundles `httpx` into `infra/build/lambda`; the CDK stack falls back to pure source so `cdk synth` still works without the bundled deps.
 
 <details>
@@ -133,15 +133,16 @@ Note: `rule_confidence` exists internally but is **intentionally not serialised*
 
 CI (GitHub Actions) runs `ruff` + `mypy --strict` + `pytest` for the backend and `eslint` + `tsc` + `vitest` + `next build` + a production-dependency `npm audit` for the frontend on every push and PR — see the CI badge at the top. You can also reproduce the numbers locally with the commands below.
 
-- **Backend — 100 tests pass** (1 network "live" test deselected by default); 95 test functions across 12 files in `services/weather/tests` (rules 27, chilli 13, engine 10, open-meteo/serialize/windows ~7–8 each, cache/handler 6, reliability/wmo 4, service 2, domain-purity 1). Gate is `ruff` + `mypy --strict` + `pytest`.
+- **Backend — 452 tests pass** (1 network "live" test deselected by default) across 32 files in `services/weather/tests`, including the Azure Table contract tests, which run against Azurite (the Storage emulator): CI requires it; locally they skip without it. Gate is `ruff` + `mypy --strict` + `pytest`.
   ```bash
-  cd services/weather && uv run ruff check . && uv run mypy && uv run pytest   # -> 100 passed, 1 deselected
+  cd services/weather && uv run ruff check . && uv run mypy && uv run pytest   # -> 452 passed, 1 deselected (with Azurite)
   ```
-- **Frontend — 51 tests pass** across 6 Vitest files, all in `apps/web/lib` (agronomy 8, geocode 11, schemes 7, speak 7, crops 4, sky 3).
+- **Frontend — 174 tests pass** across 23 Vitest files (`apps/web/lib` and the build scripts), plus a first-load JS budget (≤ 170 KB gz per page) checked in CI.
   ```bash
-  cd apps/web && npm run test   # vitest run -> Test Files 6 passed, Tests 51 passed
+  cd apps/web && npm run test   # vitest run -> Test Files 23 passed, Tests 174 passed
   ```
-  These are **pure lib/unit tests only** — there are intentionally no React render/component tests and no end-to-end tests in the repo.
+  These are lib/unit tests — no React render tests and no end-to-end tests in the repo (browser checks are run by hand during development).
+- **Android shell — 2 tests** run the real generator against the built site (`cd apps/android && npm test`).
 
 ---
 
@@ -153,7 +154,7 @@ CI (GitHub Actions) runs `ruff` + `mypy --strict` + `pytest` for the backend and
 - **Crops guide (`/crops`)** — per-crop season / water / sowing / tips, cited to PJTSAU, with an "AEO-confirm" disclaimer.
 - **Fertilizer calculator** — pick a crop + area (acre / guntha) → Urea / DAP / MOP bags & kg computed deterministically and offline from cited PJTSAU / ICAR N:P:K doses, with N-overdose-safe framing, a Telugu "Listen" text-to-speech, and an always-on soil-test / AEO fallback.
 - **5 crops wired end-to-end** (backend `Crop` enum ↔ frontend): chilli/mirchi, cotton, paddy, red gram, maize.
-- **Location picker** — browser GPS, verified pilot mandals, and per-village search via the server-side `/api/geocode` route (Nominatim primary, Open-Meteo geocoding fallback, day-cached). Location persists across crop switches; the default is the district HQ. Coverage is **Telangana plus a border margin** (the rules, doses and schemes are Telangana-specific): search only returns places inside it, and GPS or links outside it get a clear "Telangana only" screen with the picker, never a dead end.
+- **Location picker** — browser GPS, verified pilot mandals, and per-village search via the API's `/v1/geocode` (Nominatim primary, Open-Meteo geocoding fallback, day-cached; Telugu names when OpenStreetMap has them). Location persists across crop switches; the default is the district HQ. Coverage is **Telangana plus a border margin** (the rules, doses and schemes are Telangana-specific): search only returns places inside it, and GPS or links outside it get a clear "Telangana only" screen with the picker, never a dead end.
 - **Farmer-first UX** — Telugu-first (default Telugu, Telugu ⇄ English toggle), tap-to-hear Telugu voice, a first-run Welcome overlay, remembered village + language, big tap targets, PWA install, and a safe-area-aware iOS-style bottom tab nav (Weather / Crops / Schemes).
 - **Offline / degraded handling** — the DynamoDB read-through cache, an offline-cache badge, a degraded-state message, and the honest source stamp.
 
@@ -196,9 +197,11 @@ Open `http://localhost:3000`. In local dev the front end falls back to `http://1
 ## Repo layout
 
 ```
-apps/web          Next.js 16 + TypeScript + Tailwind — the SSR web app / PWA
-services/weather  Python, hexagonal — Open-Meteo -> farming-read engine -> typed JSON (runs on Lambda)
-infra             AWS CDK (Python) — API Gateway HTTP API + Lambda + DynamoDB cache
+apps/web          Next.js 16 + TypeScript + Tailwind — static export / PWA with an app-shell service worker
+apps/android      the Play Store app: a Trusted Web Activity generated from twa-manifest.json
+services/weather  Python, hexagonal — Open-Meteo -> farming-read engine -> typed JSON (Azure Functions; Lambda until S10)
+infra/azure       Bicep — Functions, Table Storage, Key Vault, queues, Static Web Apps (+ runbook)
+infra             AWS CDK (Python) — the old stack, retired at S10
 docs              problem statement, farmer research, agronomy / chilli / schemes specs,
                   the verified weather spec, and screenshots
 prototype         early HTML prototype

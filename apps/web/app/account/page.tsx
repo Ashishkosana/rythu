@@ -1,7 +1,7 @@
-import AccountScreen from "@/components/AccountScreen";
+import MyDataScreen from "@/components/MyDataScreen";
 
-export const metadata = { title: "ఖాతా · Account — Rythu" };
+export const metadata = { title: "నా వివరాలు · My data — Rythu" };
 
-export default function AccountPage() {
-  return <AccountScreen />;
+export default function MyDataPage() {
+  return <MyDataScreen />;
 }

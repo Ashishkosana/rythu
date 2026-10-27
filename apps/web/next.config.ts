@@ -1,13 +1,12 @@
 import type { NextConfig } from "next";
 
+// A static export: every page is plain HTML/JS/CSS in out/, served by Azure Static Web Apps and
+// cached by the service worker (public/sw.js). There is no Node server: data is fetched on the
+// device from the API at NEXT_PUBLIC_API_BASE (inlined at build time; lib/api.ts has the dev default).
 const nextConfig: NextConfig = {
-  // Bake the weather backend URL into the build. Amplify exposes env vars at
-  // build time but not to the SSR runtime, so inlining here (build-time replace)
-  // is what makes process.env.WEATHER_API resolve in production. Only set when
-  // present so local `next dev` keeps its 127.0.0.1 fallback in page.tsx.
-  ...(process.env.WEATHER_API
-    ? { env: { WEATHER_API: process.env.WEATHER_API } }
-    : {}),
+  output: "export",
+  // /crops/ → out/crops/index.html, which every static host serves without rewrite rules.
+  trailingSlash: true,
 };
 
 export default nextConfig;

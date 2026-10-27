@@ -16,32 +16,21 @@ export function skyKind(weatherCode: number | null, wet: boolean): SkyKind {
 }
 
 export interface SkyTheme {
-  gradient: string; // tailwind bg gradient classes
-  chip: string; // translucent control on the sky
-  soft: string; // faint text on the sky
+  gradient: string; // tailwind bg gradient classes (design tokens: hero-*)
+  chip: string; // control on the sky: a darkening veil, so white text on it stays ≥ 4.5 : 1
+  soft: string; // secondary text on the sky
 }
 
+// Every stop is checked against white, soft white and white-on-chip in lib/design/tokens.test.ts.
+// (The old clear and cloudy skies put white text on sky-400 / slate-400: 2.1–2.6 : 1.)
+const CHIP = "bg-black/15";
+const SOFT = "text-white/90";
+
 const THEMES: Record<SkyKind, SkyTheme> = {
-  clear: {
-    gradient: "bg-gradient-to-b from-sky-400 via-sky-500 to-emerald-500",
-    chip: "bg-white/25",
-    soft: "text-white/85",
-  },
-  cloudy: {
-    gradient: "bg-gradient-to-b from-slate-400 via-slate-500 to-slate-600",
-    chip: "bg-white/20",
-    soft: "text-white/80",
-  },
-  rain: {
-    gradient: "bg-gradient-to-b from-sky-700 via-blue-700 to-slate-800",
-    chip: "bg-white/20",
-    soft: "text-white/80",
-  },
-  storm: {
-    gradient: "bg-gradient-to-b from-slate-700 via-indigo-900 to-slate-900",
-    chip: "bg-white/20",
-    soft: "text-white/75",
-  },
+  clear: { gradient: "bg-gradient-to-b from-hero-clear-from to-hero-clear-to", chip: CHIP, soft: SOFT },
+  cloudy: { gradient: "bg-gradient-to-b from-hero-cloudy-from to-hero-cloudy-to", chip: CHIP, soft: SOFT },
+  rain: { gradient: "bg-gradient-to-b from-hero-rain-from via-hero-rain-via to-hero-rain-to", chip: CHIP, soft: SOFT },
+  storm: { gradient: "bg-gradient-to-b from-hero-storm-from via-hero-storm-via to-hero-storm-to", chip: CHIP, soft: SOFT },
 };
 
 export function skyTheme(weatherCode: number | null, wet: boolean): SkyTheme {

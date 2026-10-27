@@ -94,7 +94,7 @@ export const CROP_GUIDES: readonly CropGuide[] = [
     key: "red_gram",
     name_te: "కంది",
     name_en: "Red gram (pigeon pea)",
-    emoji: "🫛",
+    emoji: "🌿", // not 🫛: an empty box before Android 13
     season_te: "ఖరీఫ్ (జూన్–జూలై విత్తనం)",
     season_en: "Kharif (sow Jun–Jul)",
     water_te: "తక్కువ — కరువును తట్టుకుంటుంది",

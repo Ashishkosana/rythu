@@ -1,9 +1,12 @@
 // Rythu on Azure — one resource group per environment (dev / prod), ≈ $0/month at pilot scale.
 //
+//   Static Web App (Free) ── the static Next.js app; browsers call the API directly (CORS)
 //   Function App (Flex Consumption, Python 3.12) ── managed identity ──▶ Storage (Table cache, host, deploys)
 //        │ logs/requests                                                     ▲
 //        ▼                                                                   │ no keys: shared-key access off
 //   Application Insights ◀── Log Analytics (daily cap)                       │
+//   Key Vault (RBAC) ── the device-token signing key + the Web Push (VAPID) key, used by the app's identity only
+//   Storage Queue "alerts" ── push alerts: a timer queues them, a queue trigger sends them
 //   GitHub Actions ── OIDC (federated credential, no secret) ── deploy identity
 //   Budget alert (email) on the resource group
 //
@@ -45,6 +48,17 @@ param maximumInstanceCount int = 40
 @allowed([512, 2048, 4096])
 param instanceMemoryMB int = 512
 
+@description('Static Web Apps region: only where its control plane runs (pages are served from a global edge). Must also be allowed by your subscription policy (README step 0).')
+@allowed(['eastasia', 'westeurope', 'eastus2', 'centralus', 'westus2'])
+param webLocation string = 'eastasia'
+
+@description('Device-token signing key (ADR 0004). Leave the default: a fresh random value each deployment rotates the key — tokens live an hour and phones get a new one silently.')
+@secure()
+param tokenSigningKey string = '${newGuid()}${newGuid()}'
+
+@description('Ask Rythu (S17) kill switch. Leave false until the anthropic-api-key secret is in Key Vault (README: Ask Rythu); set false again to stop every model call at once.')
+param assistantEnabled bool = false
+
 var suffix = uniqueString(resourceGroup().id)
 var tags = { app: baseName, env: env }
 var storageName = take('st${baseName}${env}${suffix}', 24)
@@ -54,6 +68,13 @@ var deploymentContainer = 'deployments'
 // Built-in role IDs (verified against learn.microsoft.com built-in roles reference).
 var roleStorageBlobDataOwner = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
 var roleStorageTableDataContributor = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
+// Read secret values only (getSecret + readMetadata). Verified against the built-in roles reference
+// (MicrosoftDocs azure-docs: role-based-access-control/built-in-roles/security.md).
+var roleKeyVaultSecretsUser = '4633458b-17de-408a-b874-0445c86b69e6'
+// Read a key's public half + sign with it (keys/read, keys/sign/action) — the private half never leaves.
+var roleKeyVaultCryptoUser = '12338af0-0e69-4776-bea7-57ae8d297424'
+// Queue messages: add / read / process / delete (security.md and storage.md in the same reference).
+var roleStorageQueueDataContributor = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
 
 // ── Observability ────────────────────────────────────────────────────────────────────────────
 resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -115,6 +136,38 @@ resource forecast 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-0
   name: forecastTable
 }
 
+// Cells farmers use (what the pre-warm timer refreshes) and the shared hourly upstream budget.
+resource cellsTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: tableService
+  name: 'cells'
+}
+
+resource usersTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: tableService
+  name: 'users' // device accounts + profiles, one partition per user (ADR 0002/0004)
+}
+
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+resource alertQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: queueService
+  name: 'alerts'
+}
+
+// Where the Functions host moves a message after 5 failed attempts — look here when alerts go missing.
+resource alertPoisonQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: queueService
+  name: 'alerts-poison'
+}
+
+resource budgetTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
+  parent: tableService
+  name: 'budget'
+}
+
 // ── Compute: Flex Consumption Function App ──────────────────────────────────────────────────
 resource plan 'Microsoft.Web/serverfarms@2024-04-01' = {
   name: 'plan-${baseName}-${env}-${suffix}'
@@ -143,6 +196,15 @@ resource api 'Microsoft.Web/sites@2024-04-01' = {
         // Rythu settings (services/weather/src/rythu_weather/app/settings.py).
         { name: 'RYTHU_AZURE_TABLES_ENDPOINT', value: storage.properties.primaryEndpoints.table }
         { name: 'RYTHU_AZURE_FORECAST_TABLE', value: forecastTable }
+        { name: 'RYTHU_AZURE_USERS_TABLE', value: usersTable.name }
+        // Resolved by the platform with the app's identity; the value never appears in config.
+        { name: 'RYTHU_TOKEN_SIGNING_KEY', value: '@Microsoft.KeyVault(SecretUri=${signingKey.properties.secretUri})' }
+        // Not a secret: the key's address. Signing happens inside Key Vault.
+        { name: 'RYTHU_VAPID_KEY_ID', value: vapidKey.properties.keyUri }
+        // Ask Rythu (S17): needs the switch AND the secret, which you add yourself (never via Bicep or
+        // a parameter). A missing secret leaves the reference unresolved → the assistant stays off.
+        { name: 'RYTHU_ASSISTANT_ENABLED', value: string(assistantEnabled) }
+        { name: 'RYTHU_ANTHROPIC_API_KEY', value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=anthropic-api-key)' }
         { name: 'RYTHU_LOG_LEVEL', value: 'INFO' }
       ]
     }
@@ -186,10 +248,90 @@ resource apiTableContributor 'Microsoft.Authorization/roleAssignments@2022-04-01
   }
 }
 
+// ── Secrets: one Key Vault, RBAC mode, holding the device-token signing key ─────────────────
+resource vault 'Microsoft.KeyVault/vaults@2023-07-01' = {
+  name: take('kv-${baseName}-${env}-${suffix}', 24)
+  location: location
+  tags: tags
+  properties: {
+    tenantId: subscription().tenantId
+    sku: { family: 'A', name: 'standard' }
+    enableRbacAuthorization: true // access by role assignment, auditable like everything else
+    softDeleteRetentionInDays: 7 // the minimum: a torn-down pilot frees the name within a week
+  }
+}
+
+resource signingKey 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: vault
+  name: 'token-signing-key'
+  properties: {
+    value: tokenSigningKey
+    contentType: 'text/plain'
+  }
+}
+
+// Web Push (VAPID) signing key: non-exportable P-256, created here so no private key ever exists
+// outside Key Vault. Every phone's subscription is bound to this key, and redeploying is safe: ARM's
+// PUT on a key is "create if not exists" (Keys_CreateIfNotExist) — it never adds a version.
+resource vapidKey 'Microsoft.KeyVault/vaults/keys@2023-07-01' = {
+  parent: vault
+  name: 'vapid'
+  properties: {
+    kty: 'EC'
+    curveName: 'P-256'
+    keyOps: ['sign', 'verify']
+  }
+}
+
+resource apiCryptoUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(vault.id, api.id, roleKeyVaultCryptoUser)
+  scope: vault
+  properties: {
+    principalId: api.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleKeyVaultCryptoUser)
+  }
+}
+
+resource apiQueueContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storage.id, api.id, roleStorageQueueDataContributor)
+  scope: storage
+  properties: {
+    principalId: api.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleStorageQueueDataContributor)
+  }
+}
+
+resource apiSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(vault.id, api.id, roleKeyVaultSecretsUser)
+  scope: vault
+  properties: {
+    principalId: api.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleKeyVaultSecretsUser)
+  }
+}
+
+// ── Web app: the static export (apps/web/out) on Static Web Apps, Free tier ─────────────────
+// Routing, security headers and the CSP come with each deploy in staticwebapp.config.json
+// (generated by apps/web/scripts/postbuild.mjs), so this resource stays minimal.
+resource web 'Microsoft.Web/staticSites@2024-04-01' = {
+  name: 'stapp-${baseName}-${env}-${suffix}'
+  location: webLocation
+  tags: tags
+  sku: { name: 'Free', tier: 'Free' }
+  properties: {
+    allowConfigFileUpdates: true
+    stagingEnvironmentPolicy: 'Disabled' // deploys come only from main, via our own workflow
+  }
+}
+
 // ── GitHub Actions deploy identity: OIDC, no stored secret ──────────────────────────────────
 // Trusts only workflow jobs in `githubRepo` that run in the GitHub Environment named `env`.
-// Its single permission (Website Contributor on the Function App) is granted by name in the README
-// step, so this template carries no unverified role IDs.
+// Its two permissions (Website Contributor on the Function App; Contributor on the Static Web App, to
+// read the deployment token at deploy time) are granted by name in the README step, so this template
+// carries no unverified role IDs.
 resource deployer 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: 'id-${baseName}-${env}-deploy'
   location: location
@@ -237,5 +379,9 @@ output functionAppName string = api.name
 output functionAppUrl string = 'https://${api.properties.defaultHostName}'
 output functionAppId string = api.id
 output storageAccountName string = storage.name
+output keyVaultName string = vault.name
+output webAppName string = web.name
+output webAppUrl string = 'https://${web.properties.defaultHostname}'
+output webAppId string = web.id
 output deployClientId string = deployer.properties.clientId
 output deployPrincipalId string = deployer.properties.principalId

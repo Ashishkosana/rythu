@@ -90,7 +90,7 @@ contexts are Python packages, not services (Newman, *Building Microservices*; Ev
 | --- | --- | --- | --- |
 | `forecast` | cell `18.4_79.9` (0.1° ≈ model grid) | `v1` | payload, `fetchedAt`, `expiresAt` (expiry enforced in code + cleanup job) |
 | `users` | `userId` | `profile` · `field#<id>` · `push#<sha(endpoint)>` | one partition per user → batch transactions; ETag optimistic concurrency |
-| `alertlog` | `userId` | `<alertId>#<windowStartISO>` | idempotency: one send per alert window |
+| (in `users`) | `userId` | `alert_<key>` · `push_<sha256>` | alert log + push subscriptions live in the user's partition, so delete-my-data is one query (Table keys forbid `#`) |
 | `mandi` | `<commodity>#<district>` | `<invertedDate>#<market>` | newest-first range read |
 | `cells` | `cells` | cell | pre-warm set with `lastSeen` |
 
@@ -168,13 +168,15 @@ lacks `aria-expanded`, the hourly chart has no text alternative, crop chips are 
 and 🫛 (Emoji 15) renders as tofu on older Android.
 
 ### Tokens (every text/background pair ≥ 4.5 : 1, computed)
+Values live in `apps/web/lib/design/tokens.ts`; `tokens.test.ts` computes every pairing below and fails
+if `globals.css` drifts. Tailwind's default palette is switched off and eslint rejects raw palette classes.
 | Group | Tokens |
 | --- | --- |
 | Surface | `surface` #f4f2ec · `surface-raised` #fff · `surface-sunken` stone-100 |
 | Text | `text` #1c1917 · `text-secondary` stone-600 #57534e (6.81 on surface / 7.63 on white) · no tertiary |
-| Brand | `brand` green-700 (5.02) · `brand-strong` green-800 (white 7.13) · `on-brand` #fff |
+| Brand | `brand` green-700 — **fills only** (white on it 5.02; as text on the paper surface it is 4.48, just short) · `brand-ink` green-800 for brand text (7.13 on white) · `on-brand` #fff · `brand-soft` green-100 |
 | Status bg/fg | info sky-50/sky-800 (7.09) · caution amber-50/amber-900 (8.75) · act red-50/red-800 (7.60) · success green-100/green-800 (6.49) · warn orange-100/orange-800 (6.38) |
-| Sky hero | clear: sky-700→emerald-700 (5.93/5.48) · cloudy: slate-600 (7.58) · rain/storm unchanged (pass) |
+| Sky hero | clear: sky-700→emerald-700 (5.93/5.48) · cloudy: slate-600→700 (7.58) · rain/storm unchanged; soft text white/90 (≥ 4.78) · chips darken with black/15 (white text ≥ 6.99; the old white/25 frost failed at 3.40) · green screen headers green-800→900 |
 | Type (17 px base) | caption 14 · body-sm 15 · body 17 · title-sm 20 · title 24 · display 32 · hero 72; floor 14 px; Telugu line-height 1.55 |
 | Space | 4 · 8 · 12 · 16 · 24 · 32 · 48 |
 | Radius | 8 · 12 · 16 · 24 (card) · full |
@@ -210,19 +212,28 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | S4 | OpenAPI → generated TS types + CI drift check | none | **done** |
 | S5 | Repository ports + Table Storage adapter, Azurite contract tests | none (AWS still on DynamoDB) | **done** |
 | ⭐ S6 | Azure foundation: Bicep, Function App, App Insights, budget, OIDC, deploy to dev (Key Vault deferred: managed identity leaves no secret to store; it arrives with the first real secret, S15) | none (AWS live) | S6a+b **done**; S6c (first deploy) needs the runbook in `infra/azure/README.md` |
-| ⭐ S7 | Pre-warm timer, cell registry, global upstream budget | faster; ≤ 30 min staleness | planned |
-| ⭐ S8a | Client data layer behind a flag (TanStack Query, IndexedDB, on-device age) | none while off | planned |
-| S8b | Static export → Static Web Apps; app-shell service worker | SSR ends | planned |
-| S9 | `/v1/geocode`; search-on-submit (Nominatim policy) | search on tap | planned |
-| S10 | Cutover to Azure prod, 7-day dual run, `cdk destroy` (explicit approval) | none | planned |
-| S11a | Tokens + primitives at today's values + lint rule (pixel-identical) | none | planned |
-| S11b–e | Contrast, type floor, SVG icons, lang/ARIA, per-screen migration (screenshots each) | visual | planned |
-| ⭐ S12 | Android TWA → Play internal testing → father installs; start 12-tester closed test | new channel | planned |
-| S13 | Device auth + `/v1/me/profile` sync; remove Cognito | server-restored profile | planned |
-| S14 | Push alerts (subscriptions, evaluation, queue, sender, alert log) | new | planned |
+| ⭐ S7 | Pre-warm timer, cell registry, global upstream budget | faster; served copy ≤ ~20 min old; bursts get saved/degraded | **done** |
+| ⭐ S8a | Client data layer (TanStack Query, IndexedDB, on-device age); browser → API with CORS. Shipped without the flag: no front end is live (Amplify is offline), so there was nothing to protect | instant repeat opens; offline shows the saved copy (≤ 6 h) labelled; age true when read | **done** |
+| S8b | Static export → Static Web Apps (Free, per-build CSP by script hash); generated app-shell service worker (all pages precached, all-or-nothing install, hashed files reused across updates); first-load JS budget in CI | SSR ends; every page opens offline; updates show on the next launch | **done** |
+| S9 | `/v1/geocode`; search-on-submit (Nominatim policy) | search on tap; Telugu village names; "couldn't search" ≠ "not found" | **done** |
+| S10a | Production path: `deploy-env.yml` (one environment: API then web, smoke tested) called for dev after CI and for prod after dev — prod off until `AZURE_PROD_ENABLED`, behind required reviewers, with its own OIDC identity; every job refuses app names not of its environment (a missing prod variable can't fall back to dev's). AWS retirement checklist ([aws-retirement.md](aws-retirement.md)): read-only inventory, a traffic check, then deletes. No 7-day dual run: no traffic reaches AWS (Amplify offline), so it would compare nothing | none | **done** — the Azure and AWS steps are yours |
+| S10b | Delete AWS (`cdk destroy` and the rest of the checklist — your explicit OK) and remove the AWS code | none | after your OK |
+| S11a+b | Tokens with AA values (computed in tests), palette off + eslint guard, every screen migrated. Folded into one step: nothing is live, so a pixel-identical intermediate protected no one | visual: readable sunny/cloudy heroes, darker secondary text, AA buttons | **done** |
+| S11c | Type floor 14 px (33 uses below it, incl. 10–13 px chart and nav labels) + Telugu line-height 1.55 + eslint floor rule | larger small text | **done** |
+| S11d | Accessibility: axe-core 4.14 audit of every screen ×2 languages → 0 violations (was: lang fixed at te, no main/h1, opacity-dimmed schemes failing contrast); 48 px targets; disclosures with aria-expanded; chart → screen-reader table; SVG chrome icons (Lucide subset); 🫛 → 🌿; dialog semantics; visible focus | visual | **done** |
+| S11e | Primitives extracted where a pattern has real users: `ScreenHeader` (6 screens — title, subtitle, language toggle), proven pixel-identical in both languages. Not extracted: the four call buttons (each sized for its place on purpose), and no `/dev/ui` gallery (it would ship in the static export). Card and tap target were already utilities (`card`, `tap`, `hit-48`) | none (pixel-identical) | **done** |
+| S12a | Android-ready site: Digital Asset Links generated from `apps/android/twa-manifest.json` (served at `/.well-known/` via a rewrite from a plain folder; malformed keys fail the build), manifest id/scope + maskable + monochrome (notification) icons, privacy policy page (Play requirement; every line matches the code), GPS fix rounded to ~1 km before it leaves the phone (approximate, not precise, location) | GPS position sent ~1 km instead of ~11 m — same forecast | **done** |
+| ⭐ S12b | Android TWA: `apps/android/generate.mjs` (Bubblewrap core, offline — icons/manifest read from the built site), `android` workflow (every change: generate + test + Gradle; by hand: signed release `.aab` with the upload key from secrets, version = run number), Play runbook in `apps/android/README.md` (package id, upload key, App content + Data safety draft, internal testing, asset-links fingerprint, 12-tester closed test) | new channel, once the runbook's Play steps are done | **built** — Play steps are yours |
+| S13a | Device accounts API (register → 1 h HMAC token), `/v1/me/profile` with ETags, delete-my-data, IDOR tests; `users` table + Key Vault (signing key, rotated per deployment) | none yet (API only) | **done** |
+| S13b | App: "My data" screen (what is stored, consent switch, delete server copy / clear phone); consent-gated profile sync (device account made only on consent; ETag conflict → re-read and rewrite); crop + water remembered; Cognito removed (web, CSP, CDK stack) | nothing leaves the phone without consent; crop remembered across launches | **done** |
+| S14a | Push alerts, server: RFC 8291/8292 Web Push with the VAPID key inside Key Vault; timer (3×/day IST) → `alerts` queue → sender; idempotent alert log; SSRF-guarded subscriptions; act-now reads, rain ≥ 70 %, field tasks | none yet (API + jobs) | **done** |
+| S14b | Push alerts, app: service-worker push handler (alert in the farmer's language, one per topic, tap opens the right screen), "Rain & field alerts" switch (needs the server copy; turning that off or deleting data turns alerts off); 5-tab labels fit | rain / advice / field-task alerts on the phone | **done** |
+| S14c | Dry-spell rule (IMD < 2.5 mm × 7 known days, monsoon only, PJTSAU measures for rainfed; watering plan for irrigated) + weekly dry-spell alert — from the 2026 water-shortage research | new: dry-week warning on screen and phone | **done** |
+| S14d | Fertilizer bag prices in the calculator (urea ₹266.50 — the only government-fixed price; DAP ~₹1,350; MOP: read the bag), "never above MRP, take the bill", complaint route (MAO/AEO, Kisan Call Centre); scam-safety card on Schemes (no APKs from chats, Play Store only, OTP/PIN, 1930 + cybercrime.gov.in). Helpline numbers in one module so shown = dialled | new: what a bag should cost; what to do when cheated | **done** |
 | S15 | Mandi prices + MSP comparison (after confirming data.gov.in API access) | new | planned |
-| S16 | My-Field crop calendar | new | planned |
-| S17 | "Ask Rythu" grounded assistant (Telugu voice, quotas, KCC fallback, eval set) | new | planned |
+| S16 | My-Field crop calendar: `/v1/calendar` from the research's verified schedules (sourced, AEO flags kept, stage-based where no day count exists, never a spray); fields (≤ 5) in the profile; "My field" screen + "this week" card on home; 5th tab | new: what to do on my crop this week | **done** |
+| S17a | Ask Rythu, server: `POST /v1/assistant/ask` — Claude answers only from the app's own content (exported from the web app, CI drift check) + crop calendar + today's reads; cached prompt; schema-restricted citations re-checked server-side; KCC fallback, 108 for emergencies; device token, 10/phone/day + 200/day, kill switch default off, key only via Key Vault; eval set (17 cases) with oracle/null checks offline and a live runner behind `--yes-spend` | none until switched on (needs your key) | **done** |
+| S17b | Ask Rythu, app: `/ask/` (entry card on Crops): type or speak (phone speech recognition, te-IN; listening capped so it never hangs; mic allowed for this site only), a spoken question gets a spoken answer, sources with links, "confirm with AEO" where flagged, KCC call button always (prominent when not covered / limit / off / offline), questions left today; privacy page + Play Data-safety draft cover questions and voice | new: ask a question by voice or text | **done** |
 
 ## Decision records
 - [0001 — Modular monolith on Azure Functions](adr/0001-modular-monolith-on-azure-functions.md)

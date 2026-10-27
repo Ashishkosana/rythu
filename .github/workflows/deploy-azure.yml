@@ -1,7 +1,7 @@
 name: Deploy (Azure)
 
 # Code deploys only. Infrastructure (infra/azure/main.bicep) is applied by a human from Cloud Shell:
-# it creates role assignments, and this workflow's identity deliberately cannot (least privilege).
+# it creates role assignments, and the deploy identities deliberately cannot (least privilege).
 on:
   # After CI succeeds on main — deploy exactly the commit CI tested.
   workflow_run:
@@ -12,58 +12,23 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write # OIDC: exchange GitHub's token for an Azure token (no stored secret)
+  id-token: write
   contents: read
 
-concurrency:
-  group: deploy-azure-dev
-  cancel-in-progress: false # never interrupt a deployment halfway
-
 jobs:
-  deploy-dev:
-    name: deploy · dev
-    # Does nothing until the one-time setup in infra/azure/README.md has set the repo variables.
-    if: >-
-      vars.AZURE_CLIENT_ID != '' &&
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
-    runs-on: ubuntu-latest
-    environment: dev # must match the federated credential subject (repo:<owner>/<repo>:environment:dev)
-    defaults:
-      run:
-        working-directory: services/weather
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          python-version: "3.12"
-      - name: Stage the Functions package
-        run: ./scripts/package_functions.sh
-      - name: Azure login (OIDC)
-        uses: azure/login@v2
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Deploy to Flex Consumption (remote build)
-        uses: Azure/functions-action@v1
-        with:
-          app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
-          package: services/weather/dist/functions
-          remote-build: true
-      - name: Smoke test
-        env:
-          URL: ${{ vars.AZURE_FUNCTIONAPP_URL }}
-        run: |
-          # A fresh deploy can take a minute to start serving; give it up to ~2 minutes.
-          for i in $(seq 1 24); do
-            if curl -fsS "$URL/healthz" | grep -q '"ok"'; then break; fi
-            sleep 5
-          done
-          curl -fsS "$URL/healthz"
-          body=$(curl -fsS "$URL/v1/weather?crop=chilli")
-          echo "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); assert 'reliability' in d; print('weather OK, degraded =', d.get('degraded', False))"
-          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/v1/weather?lat=13.08&lon=80.27")
-          test "$code" = "400" && echo "coverage check OK (400 outside Telangana)"
+  dev:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      environment: dev
+      ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+  # Production (S10): the same commit, after dev passed its smoke tests — and after a person approves
+  # (required reviewers on the GitHub Environment "prod"). Off until AZURE_PROD_ENABLED is "true".
+  prod:
+    needs: dev
+    if: vars.AZURE_PROD_ENABLED == 'true'
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      environment: prod
+      ref: ${{ github.event.workflow_run.head_sha || github.sha }}

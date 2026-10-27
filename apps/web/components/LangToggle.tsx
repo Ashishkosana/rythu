@@ -13,8 +13,8 @@ export default function LangToggle({ light = false }: { light?: boolean }) {
       aria-label={lang === "te" ? "Switch to English" : "తెలుగులోకి మార్చు"}
       className={
         light
-          ? "h-8 rounded-full bg-white px-3 text-sm font-bold text-green-800"
-          : "h-8 rounded-full border border-stone-300 bg-white px-3 text-sm font-bold text-green-800"
+          ? "hit-48 h-8 rounded-full bg-surface-raised px-3 text-sm font-bold text-brand-ink"
+          : "hit-48 h-8 rounded-full border border-line-strong bg-surface-raised px-3 text-sm font-bold text-brand-ink"
       }
     >
       {lang === "te" ? "English" : "తెలుగు"}

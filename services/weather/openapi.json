@@ -129,6 +129,709 @@
         }
       }
     },
+    "/v1/geocode": {
+      "get": {
+        "tags": [
+          "places"
+        ],
+        "summary": "Find a village by name (Telangana + border)",
+        "operationId": "geocode_v1_geocode_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Village, town or mandal name (2-60 characters). Search on submit, not per keystroke.",
+              "title": "Q"
+            },
+            "description": "Village, town or mandal name (2-60 characters). Search on submit, not per keystroke."
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128}).",
+              "title": "X-Request-Id"
+            },
+            "description": "Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128})."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching places inside coverage (possibly none).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeocodeResults"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Query missing, too short or too long.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No geocoding source could be asked (code=upstream_unavailable).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/calendar": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "My-Field crop calendar from a sowing or transplanting date",
+        "operationId": "calendar_v1_calendar_get",
+        "parameters": [
+          {
+            "name": "crop",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One of: cotton, paddy, red_gram, maize, chilli. Omit for crop-independent reads only.",
+              "title": "Crop"
+            },
+            "description": "One of: cotton, paddy, red_gram, maize, chilli. Omit for crop-independent reads only."
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD: sowing date, or transplanting date for paddy and chilli.",
+              "title": "Date"
+            },
+            "description": "YYYY-MM-DD: sowing date, or transplanting date for paddy and chilli."
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128}).",
+              "title": "X-Request-Id"
+            },
+            "description": "Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128})."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The crop's tasks, dated (stage-based ones last).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown crop, or a malformed / out-of-range date.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/devices": {
+      "post": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Register this phone",
+        "operationId": "register_device_v1_devices_post",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceCredentialsOut"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many new devices this hour.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Accounts unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sessions": {
+      "post": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Trade the device secret for a one-hour token",
+        "operationId": "start_session_v1_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unknown device or wrong secret.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/profile": {
+      "get": {
+        "tags": [
+          "me"
+        ],
+        "summary": "The profile saved by this device",
+        "operationId": "get_profile_v1_me_profile_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Nothing saved yet.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Save the profile (conditional)",
+        "operationId": "put_profile_v1_me_profile_put",
+        "parameters": [
+          {
+            "name": "if-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-Match"
+            }
+          },
+          {
+            "name": "if-none-match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "If-None-Match"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed body, or a village outside coverage (code=outside_coverage).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "The saved profile changed since you read it (or one already exists).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Send If-Match: <etag> to update, or If-None-Match: * to create.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/push/key": {
+      "get": {
+        "tags": [
+          "me",
+          "push"
+        ],
+        "summary": "VAPID public key for subscribing",
+        "operationId": "push_key_v1_push_key_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushKeyOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Push alerts unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/push-subscriptions": {
+      "put": {
+        "tags": [
+          "me",
+          "push"
+        ],
+        "summary": "Subscribe this phone to alerts",
+        "operationId": "put_push_subscription_v1_me_push_subscriptions_put",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscriptionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Not a browser push service, malformed keys, or too many phones.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "me",
+          "push"
+        ],
+        "summary": "Unsubscribe a phone",
+        "operationId": "delete_push_subscription_v1_me_push_subscriptions_delete",
+        "parameters": [
+          {
+            "name": "endpoint",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 1000,
+              "title": "Endpoint"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or expired token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me": {
+      "delete": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Delete everything stored for this user",
+        "operationId": "delete_me_v1_me_delete",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or expired token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assistant/ask": {
+      "post": {
+        "tags": [
+          "assistant"
+        ],
+        "summary": "Ask Rythu: an answer only from Rythu's checked content",
+        "operationId": "ask_v1_assistant_ask_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No or bad device token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Today's questions are used up (this phone, or everyone).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Switched off (code=assistant_off), or the model can't answer right now.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "tags": [
@@ -153,6 +856,300 @@
   },
   "components": {
     "schemas": {
+      "AskIn": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 3,
+            "title": "Question"
+          },
+          "lang": {
+            "type": "string",
+            "enum": [
+              "te",
+              "en"
+            ],
+            "title": "Lang",
+            "default": "te"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Crop"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "water": {
+            "$ref": "#/components/schemas/WaterSource",
+            "default": "rainfed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "AskIn",
+        "description": "A farmer's question for Ask Rythu (S17). Village + crop are optional context: with them the\nanswer can use today's farming reads for that place."
+      },
+      "AskOut": {
+        "properties": {
+          "covered": {
+            "type": "boolean",
+            "title": "Covered"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/AskSourceOut"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "used_todays_weather": {
+            "type": "boolean",
+            "title": "Used Todays Weather"
+          },
+          "remaining_today": {
+            "type": "integer",
+            "title": "Remaining Today"
+          },
+          "helpline": {
+            "$ref": "#/components/schemas/HelplineOut"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "covered",
+          "answer",
+          "sources",
+          "used_todays_weather",
+          "remaining_today",
+          "helpline"
+        ],
+        "title": "AskOut",
+        "description": "``covered`` false → Rythu has no checked answer: show the Kisan Call Centre prominently."
+      },
+      "AskSourceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "needs_verification": {
+            "type": "boolean",
+            "title": "Needs Verification"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "url",
+          "needs_verification"
+        ],
+        "title": "AskSourceOut"
+      },
+      "CalendarOut": {
+        "properties": {
+          "crop": {
+            "$ref": "#/components/schemas/Crop"
+          },
+          "reference": {
+            "$ref": "#/components/schemas/Reference",
+            "description": "Which date the offsets count from: sowing or transplanting."
+          },
+          "reference_date": {
+            "type": "string",
+            "title": "Reference Date"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarTaskOut"
+            },
+            "type": "array",
+            "title": "Tasks"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "crop",
+          "reference",
+          "reference_date",
+          "tasks"
+        ],
+        "title": "CalendarOut",
+        "description": "``GET /v1/calendar`` 200 body: the crop's tasks dated from the farmer's reference date."
+      },
+      "CalendarTaskOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TaskKind"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start",
+            "description": "YYYY-MM-DD; null = stage-based (see stage_*), no reliable date."
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End",
+            "description": "YYYY-MM-DD, inclusive; null with a start = from then on."
+          },
+          "start_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Day",
+            "description": "Days after the reference date."
+          },
+          "end_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Day"
+          },
+          "title_te": {
+            "type": "string",
+            "title": "Title Te"
+          },
+          "title_en": {
+            "type": "string",
+            "title": "Title En"
+          },
+          "detail_te": {
+            "type": "string",
+            "title": "Detail Te"
+          },
+          "detail_en": {
+            "type": "string",
+            "title": "Detail En"
+          },
+          "stage_te": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage Te"
+          },
+          "stage_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage En"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "The official source this task restates."
+          },
+          "needs_verification": {
+            "type": "boolean",
+            "title": "Needs Verification",
+            "description": "Show the 'confirm with your AEO / Soil Health Card' note."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "start",
+          "end",
+          "start_day",
+          "end_day",
+          "title_te",
+          "title_en",
+          "detail_te",
+          "detail_en",
+          "stage_te",
+          "stage_en",
+          "source",
+          "needs_verification"
+        ],
+        "title": "CalendarTaskOut"
+      },
       "Coords": {
         "properties": {
           "requested": {
@@ -296,6 +1293,28 @@
         ],
         "title": "DailyOut"
       },
+      "DeviceCredentialsOut": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "title": "User Id",
+            "description": "Random 128-bit id, 32 lowercase hex characters."
+          },
+          "device_secret": {
+            "type": "string",
+            "title": "Device Secret",
+            "description": "256-bit secret. Keep on the device; trade it for tokens."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "device_secret"
+        ],
+        "title": "DeviceCredentialsOut",
+        "description": "``POST /v1/devices`` 201 body. Shown once: the server keeps only a digest of the secret."
+      },
       "ErrorBody": {
         "properties": {
           "error": {
@@ -306,7 +1325,15 @@
             "type": "string",
             "enum": [
               "bad_request",
-              "outside_coverage"
+              "outside_coverage",
+              "upstream_unavailable",
+              "unauthorized",
+              "not_found",
+              "precondition_failed",
+              "precondition_required",
+              "rate_limited",
+              "unavailable",
+              "assistant_off"
             ],
             "title": "Code"
           }
@@ -318,7 +1345,7 @@
           "code"
         ],
         "title": "ErrorBody",
-        "description": "400 body. ``code`` is stable and machine-readable; ``error`` is for humans/logs."
+        "description": "4xx/5xx body. ``code`` is stable and machine-readable; ``error`` is for humans/logs."
       },
       "FarmAction": {
         "type": "string",
@@ -442,6 +1469,59 @@
         ],
         "title": "FarmingReadOut"
       },
+      "FieldIO": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]{6,16}$",
+            "title": "Id",
+            "description": "Chosen by the phone; stable across edits."
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "crop": {
+            "$ref": "#/components/schemas/Crop"
+          },
+          "reference_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Reference Date",
+            "description": "Sowing date, or transplanting date for paddy and chilli (see /v1/calendar). Not more than 400 days ago or 60 days ahead."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "crop",
+          "reference_date"
+        ],
+        "title": "FieldIO",
+        "description": "One of the farmer's fields (My-Field): what grows there and since when."
+      },
+      "GeocodeResults": {
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceOut"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "title": "GeocodeResults",
+        "description": "``GET /v1/geocode`` 200 body: places inside Rythu's coverage, best match first (may be empty)."
+      },
       "Health": {
         "properties": {
           "status": {
@@ -456,6 +1536,25 @@
           "status"
         ],
         "title": "Health"
+      },
+      "HelplineOut": {
+        "properties": {
+          "display": {
+            "type": "string",
+            "title": "Display"
+          },
+          "tel": {
+            "type": "string",
+            "title": "Tel"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "display",
+          "tel"
+        ],
+        "title": "HelplineOut"
       },
       "HourlyRainOut": {
         "properties": {
@@ -572,6 +1671,247 @@
         ],
         "title": "LatLon"
       },
+      "PlaceOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "name_te": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name Te",
+            "description": "Telugu name when OpenStreetMap has one; else null."
+          },
+          "admin2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin2",
+            "description": "District."
+          },
+          "admin1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admin1",
+            "description": "State."
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "name_te",
+          "admin2",
+          "admin1",
+          "lat",
+          "lon"
+        ],
+        "title": "PlaceOut"
+      },
+      "ProfileIn": {
+        "properties": {
+          "village": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VillageIO"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Crop"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "water": {
+            "$ref": "#/components/schemas/WaterSource",
+            "default": "rainfed"
+          },
+          "lang": {
+            "type": "string",
+            "enum": [
+              "te",
+              "en"
+            ],
+            "title": "Lang",
+            "default": "te"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/FieldIO"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Fields"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ProfileIn",
+        "description": "What the phone saves on the server — only what alerts and the crop calendar need."
+      },
+      "ProfileOut": {
+        "properties": {
+          "village": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VillageIO"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Crop"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "water": {
+            "$ref": "#/components/schemas/WaterSource",
+            "default": "rainfed"
+          },
+          "lang": {
+            "type": "string",
+            "enum": [
+              "te",
+              "en"
+            ],
+            "title": "Lang",
+            "default": "te"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/FieldIO"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Fields"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At",
+            "description": "Server time of the last write, ISO-8601."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "updated_at"
+        ],
+        "title": "ProfileOut"
+      },
+      "PushKeyOut": {
+        "properties": {
+          "public_key": {
+            "type": "string",
+            "title": "Public Key",
+            "description": "VAPID application server key (base64url, 65-byte P-256 point) for PushManager.subscribe()."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "public_key"
+        ],
+        "title": "PushKeyOut"
+      },
+      "PushKeysIn": {
+        "properties": {
+          "p256dh": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 80,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "P256Dh"
+          },
+          "auth": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 16,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Auth"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "p256dh",
+          "auth"
+        ],
+        "title": "PushKeysIn"
+      },
+      "PushSubscriptionIn": {
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Endpoint"
+          },
+          "keys": {
+            "$ref": "#/components/schemas/PushKeysIn"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "endpoint",
+          "keys"
+        ],
+        "title": "PushSubscriptionIn",
+        "description": "A browser PushSubscription (endpoint + keys). Only real browser push services are accepted."
+      },
+      "Reference": {
+        "type": "string",
+        "enum": [
+          "sowing",
+          "transplanting"
+        ],
+        "title": "Reference"
+      },
       "Reliability": {
         "properties": {
           "show_confidence_rating": {
@@ -610,6 +1950,49 @@
         ],
         "title": "Reliability"
       },
+      "SessionIn": {
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$",
+            "title": "User Id"
+          },
+          "device_secret": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 20,
+            "title": "Device Secret"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "device_secret"
+        ],
+        "title": "SessionIn"
+      },
+      "SessionOut": {
+        "properties": {
+          "token": {
+            "type": "string",
+            "title": "Token",
+            "description": "Send as `Authorization: Bearer <token>` on /v1/me routes."
+          },
+          "expires_at": {
+            "type": "string",
+            "title": "Expires At",
+            "description": "ISO-8601; ask for a new token a little before this."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "token",
+          "expires_at"
+        ],
+        "title": "SessionOut"
+      },
       "Severity": {
         "type": "string",
         "enum": [
@@ -619,6 +2002,47 @@
         ],
         "title": "Severity",
         "description": "UI emphasis for a read — NOT a certainty claim about the weather."
+      },
+      "TaskKind": {
+        "type": "string",
+        "enum": [
+          "prepare",
+          "fertilizer",
+          "weeds",
+          "scout"
+        ],
+        "title": "TaskKind"
+      },
+      "VillageIO": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "description": "Must be inside coverage (Telangana + border)."
+          },
+          "lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "lat",
+          "lon"
+        ],
+        "title": "VillageIO"
       },
       "WMOCategory": {
         "type": "string",

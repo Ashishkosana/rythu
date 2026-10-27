@@ -1,0 +1,298 @@
+[
+ {
+  "id": "fertilizer.paddy",
+  "kind": "fertilizer",
+  "title": "Fertilizer dose: Paddy / వరి",
+  "text": "N:P2O5:K2O per acre = 48.6 : 24.3 : 16.2 kg (source figure: 120 : 60 : 40 kg/ha (PJTSAU)).\nSplit / timing (te): P, K మొత్తం దుక్కిలో (basal). N ను 3 సమ భాగాలుగా — నాట్లు, పిలకల దశ (25–30 రోజులు), కంకి దశ (55–60 రోజులు).\nBags: urea 45 kg, DAP and MOP 50 kg. The app's calculator converts the dose to bags (DAP's nitrogen is subtracted before sizing urea).\nConfidence: high. A soil test (Soil Health Card) changes the real need; confirm with the AEO.",
+  "source": "https://pjtsau.edu.in",
+  "needs_verification": false
+ },
+ {
+  "id": "fertilizer.cotton",
+  "kind": "fertilizer",
+  "title": "Fertilizer dose: Cotton / పత్తి",
+  "text": "N:P2O5:K2O per acre = 48 : 24 : 24 kg (source figure: 48 : 24 : 24 kg/acre (ANGRAU/PJTSAU-lineage)).\nSplit / timing (te): P మొత్తం దుక్కిలో. N, K లను 3 సమ భాగాలుగా — విత్తిన 30, 60, 90 రోజులకు.\nBags: urea 45 kg, DAP and MOP 50 kg. The app's calculator converts the dose to bags (DAP's nitrogen is subtracted before sizing urea).\nConfidence: medium. A soil test (Soil Health Card) changes the real need; confirm with the AEO.",
+  "source": "https://tnaucottondatabase.wordpress.com",
+  "needs_verification": true
+ },
+ {
+  "id": "fertilizer.maize",
+  "kind": "fertilizer",
+  "title": "Fertilizer dose: Maize / మొక్కజొన్న",
+  "text": "N:P2O5:K2O per acre = 81 : 24.3 : 24.3 kg (source figure: 200 : 60 : 60 kg/ha (ICAR-IIMR; TNAU lists higher)).\nSplit / timing (te): P, K మొత్తం + N లో పావు వంతు దుక్కిలో. మిగతా N ను మోకాలి ఎత్తు (~25 రోజులు), పూత ముందు (~45 రోజులు) వేయండి.\nBags: urea 45 kg, DAP and MOP 50 kg. The app's calculator converts the dose to bags (DAP's nitrogen is subtracted before sizing urea).\nConfidence: low. A soil test (Soil Health Card) changes the real need; confirm with the AEO.",
+  "source": "https://icar.org.in",
+  "needs_verification": true
+ },
+ {
+  "id": "fertilizer.red_gram",
+  "kind": "fertilizer",
+  "title": "Fertilizer dose: Red gram / కంది",
+  "text": "N:P2O5:K2O per acre = 8.1 : 20.2 : 8.1 kg (source figure: 20 : 50 : 20 kg/ha (ZREAC/RARS; K unresolved)).\nSplit / timing (te): మొత్తం మోతాదు విత్తనం వేసేటప్పుడు దుక్కిలో (basal). పైపాటు అవసరం లేదు. విత్తనానికి రైజోబియం పట్టించండి.\nBags: urea 45 kg, DAP and MOP 50 kg. The app's calculator converts the dose to bags (DAP's nitrogen is subtracted before sizing urea).\nConfidence: medium. A soil test (Soil Health Card) changes the real need; confirm with the AEO.",
+  "source": "https://www.rarstpt.org",
+  "needs_verification": true
+ },
+ {
+  "id": "fertilizer.chilli",
+  "kind": "fertilizer",
+  "title": "Fertilizer dose: Chilli / మిర్చి",
+  "text": "N:P2O5:K2O per acre = 24.3 : 24.3 : 12.1 kg (source figure: 60 : 60 : 30 kg/ha (TNAU; sources differ on N)).\nSplit / timing (te): పశువుల ఎరువు + P, K మొత్తం, సగం N దుక్కిలో. మిగతా N ను 30, 60, 90 రోజులకు వేయండి.\nBags: urea 45 kg, DAP and MOP 50 kg. The app's calculator converts the dose to bags (DAP's nitrogen is subtracted before sizing urea).\nConfidence: low. A soil test (Soil Health Card) changes the real need; confirm with the AEO.",
+  "source": "https://agritech.tnau.ac.in",
+  "needs_verification": true
+ },
+ {
+  "id": "fertilizer.bag_prices",
+  "kind": "price",
+  "title": "What a fertilizer bag should cost (MRP) / ఎరువు బస్తా ధర (MRP)",
+  "text": "Urea / యూరియా, 45 kg bag: ₹266.5 (fixed by the government).\nDAP / డీఏపీ, 50 kg bag: about ₹1350 (company-set; check the bag).\nMOP / పొటాష్, 50 kg bag: company-set; read the MRP printed on the bag.\nNever pay more than the MRP printed on the bag, and always take the bill. Selling above MRP is an offence (Fertiliser Control Order 1985).\nOvercharged: complain with the bill to the Mandal Agriculture Officer (MAO) / AEO, or call the free Kisan Call Centre 1800-180-1551.\nPrices as of 2026-10.",
+  "source": "https://www.pib.gov.in/PressReleseDetailm.aspx?PRID=2079050",
+  "needs_verification": false
+ },
+ {
+  "id": "pest.paddy_bph",
+  "kind": "pest",
+  "title": "Pest: Brown planthopper / సుడి దోమ on వరి",
+  "text": "Symptoms (te): మొక్క అడుగున గోధుమ రంగు దోమలు గుంపులుగా. పైరు మచ్చలుగా ఎండి 'సుడి తెగులు (hopper burn)' ఏర్పడుతుంది.\nWhen to act — threshold (te): పిలకల దశ నుంచి మొక్క అడుగున నీటి పైన చూడండి. సాలీడు (మిత్ర పురుగు) లేకపోతే పిలకకు 1 దోమ, ఉంటే పిలకకు 2 దోమలు దాటితేనే చర్య.\nFirst, without chemicals (te): మొదట్లో విస్తృత మందులు (పైరెత్రాయిడ్స్) వాడకండి — పురుగు మరింత పెరుగుతుంది. నీటిని కొన్ని రోజులు తీసేయండి; వేప నూనె 3% పిచికారీ.\nOnly above the threshold (te): ETL దాటితే మొక్క అడుగుకు: ఇమిడాక్లోప్రిడ్ 17.8% SL 40–50 మి.లీ/ఎకరం, లేదా పైమెట్రోజిన్ 50% WG 120 గ్రా/ఎకరం, లేదా బుప్రోఫెజిన్ 25% SC 320 మి.లీ/ఎకరం.\nBefore any spray: photograph it and confirm with the AEO / Kisan Call Centre.",
+  "source": "https://agritech.tnau.ac.in",
+  "needs_verification": false
+ },
+ {
+  "id": "pest.cotton_pbw",
+  "kind": "pest",
+  "title": "Pest: Pink bollworm / గులాబీ కాయతొలుచు పురుగు on పత్తి",
+  "text": "Symptoms (te): పూత 'రోసెట్'గా మూసుకుపోవడం; కాయలో గింజలు తినేసి రంధ్రాలు.\nWhen to act — threshold (te): 45 రోజుల నుంచి ఎకరానికి 5 ఫిరమోన్ ట్రాప్‌లు. వరుసగా 3 రాత్రులు ట్రాప్‌కు 8 రెక్కల పురుగులు, లేదా 10% కాయలు దెబ్బతింటే చర్య.\nFirst, without chemicals (te): రోసెట్ పూలను తీసి నాశనం చేయండి (గట్టుపై వేయవద్దు). ట్రైకోగ్రామా విడుదల; వేప (అజాడిరాక్టిన్).\nOnly above the threshold (te): ETL దాటితేనే — థయోడికార్బ్ 75% WP లేదా క్లోరాంట్రానిలిప్రోల్ 18.5% SC. ఖచ్చితమైన మోతాదును AEOతో నిర్ధారించుకోండి.\nBefore any spray: photograph it and confirm with the AEO / Kisan Call Centre.",
+  "source": "https://niphm.gov.in",
+  "needs_verification": true
+ },
+ {
+  "id": "pest.maize_faw",
+  "kind": "pest",
+  "title": "Pest: Fall armyworm / కత్తెర పురుగు on మొక్కజొన్న",
+  "text": "Symptoms (te): ఆకుల్లో వరుస రంధ్రాలు; సుడి (whorl)లో పురుగు, రెట్టలు కనిపిస్తాయి.\nWhen to act — threshold (te): ~5–10% సుడి ఆకులు దెబ్బతింటే చర్య. వారానికోసారి 'W' ఆకారంలో 20 మొక్కలు పరిశీలించండి. కంకి దశ దాటాక మందు వద్దు.\nFirst, without chemicals (te): గుడ్ల సముదాయాలను చేతితో తీసి నాశనం చేయండి. సుడిలో ఇసుక+సున్నం వేయండి.\nOnly above the threshold (te): లేత సుడి దశలో ETL దాటితే: స్పినెటోరమ్ 11.7% SC / ఎమామెక్టిన్ బెంజోయేట్ 5% SG / క్లోరాంట్రానిలిప్రోల్ 18.5% SC — సుడిలోకి. మోతాదును AEOతో నిర్ధారించుకోండి.\nBefore any spray: photograph it and confirm with the AEO / Kisan Call Centre.",
+  "source": "https://agriculture.vikaspedia.in",
+  "needs_verification": true
+ },
+ {
+  "id": "pest.redgram_podborer",
+  "kind": "pest",
+  "title": "Pest: Gram pod borer / కాయతొలుచు పురుగు on కంది",
+  "text": "Symptoms (te): పూత, కాయల్లో రంధ్రాలు; లోపలి గింజలు తినేస్తుంది.\nWhen to act — threshold (te): ఎకరానికి 4–5 ట్రాప్‌లు, రోజుకు ట్రాప్‌కు 10 రెక్కల పురుగులు; పూత దశలో మొక్కకు 2 గుడ్లు/పురుగులు లేదా 2 మొక్కలకు 1 పురుగు.\nFirst, without chemicals (te): పక్షి స్థావరాలు (ఎకరానికి ~8), HaNPV, వేప గింజ కషాయం (NSKE).\nOnly above the threshold (te): ETL దాటితే: క్లోరాంట్రానిలిప్రోల్ 18.5% SC, లేదా ఇండాక్సాకార్బ్/స్పినోసాడ్, లేదా ఎసిటామిప్రిడ్. ఖచ్చిత మోతాదును AEOతో నిర్ధారించుకోండి.\nBefore any spray: photograph it and confirm with the AEO / Kisan Call Centre.",
+  "source": "https://niphm.gov.in",
+  "needs_verification": true
+ },
+ {
+  "id": "pest.chilli_thrips",
+  "kind": "pest",
+  "title": "Pest: Thrips / తామర పురుగు (త్రిప్స్) on మిర్చి",
+  "text": "Symptoms (te): ఆకులు పైకి ముడుచుకుని పడవలా మారడం; ఆకుల అడుగున వెండి రంగు. ఆకుముడత వైరస్ వ్యాప్తి.\nWhen to act — threshold (te): ⚠ అధికారిక ETL అందుబాటులో లేదు — సాధారణంగా ఆకుకు ~6 పురుగులు. AEO/PJTSAUతో నిర్ధారించుకోండి. త్రిప్స్‌ను ముందుగానే గమనించండి.\nFirst, without chemicals (te): నీలం/తెలుపు జిగురు అట్టలు అమర్చండి; తరచూ పరిశీలించండి.\nOnly above the threshold (te): TNAU నమోదిత: ఫిప్రోనిల్ 5% SC 1.5 మి.లీ/లీ, లేదా స్పినోసాడ్ 45% SC 3.2 మి.లీ/10లీ. మోతాదును AEOతో నిర్ధారించుకోండి.\nBefore any spray: photograph it and confirm with the AEO / Kisan Call Centre.",
+  "source": "https://agritech.tnau.ac.in",
+  "needs_verification": true
+ },
+ {
+  "id": "pest.chilli_mite",
+  "kind": "pest",
+  "title": "Pest: Yellow mite / పసుపు నల్లి on మిర్చి",
+  "text": "Symptoms (te): లేత ఆకులు కిందికి ముడుచుకోవడం, గట్టిపడటం, చిన్నవిగా మారడం.\nWhen to act — threshold (te): ⚠ అధికారిక ETL అందుబాటులో లేదు — సాధారణంగా ఆకుకు ~5–10 నల్లులు. AEOతో నిర్ధారించుకోండి.\nFirst, without chemicals (te): ముందుగా గమనించి, ఎక్కువ ప్రభావిత ఆకులను తీసివేయండి.\nOnly above the threshold (te): TNAU నమోదిత: బుప్రోఫెజిన్ 25% SC 8 మి.లీ/10లీ, లేదా క్లోర్‌ఫెనాపిర్ 10% SC 1.5 మి.లీ/లీ; నీటిలో కరిగే గంధకం.\nBefore any spray: photograph it and confirm with the AEO / Kisan Call Centre.",
+  "source": "https://agritech.tnau.ac.in",
+  "needs_verification": true
+ },
+ {
+  "id": "crop.paddy",
+  "kind": "crop",
+  "title": "Crop guide: Paddy (rice) / వరి",
+  "text": "Season: Kharif (nursery Jun–Jul) / ఖరీఫ్ (జూన్–జూలై నారు)\nWater: High — needs assured irrigation / standing water / ఎక్కువ నీరు — నిశ్చిత నీటిపారుదల అవసరం\nSowing: Raise nursery with monsoon onset; transplant at 20–25 days / నైరుతి రుతుపవనాలతో నారు పోసి, 20–25 రోజులకు నాటాలి\nTip: Keep ~1 inch standing water in the field / పొలంలో నీటి మట్టం ఒక అంగుళం చుట్టూ ఉంచండి\nTip: First 40 days are critical for weed control / కలుపు నివారణకు మొదటి 40 రోజులు ముఖ్యం\nTip: Cover harvested grain if rain is forecast / పంట కోత సమయంలో వర్షం ఉంటే ధాన్యం కప్పి ఉంచండి",
+  "source": "https://pjtsau.edu.in",
+  "needs_verification": false
+ },
+ {
+  "id": "crop.cotton",
+  "kind": "crop",
+  "title": "Crop guide: Cotton / పత్తి",
+  "text": "Season: Kharif (sow Jun–Jul) / ఖరీఫ్ (జూన్–జూలై విత్తనం)\nWater: Moderate — grows well rainfed / మధ్యస్థం — వర్షాధారంగా పండుతుంది\nSowing: Sow in rows once the monsoon has settled / రుతుపవనాలు స్థిరపడ్డాక సాళ్లలో విత్తండి\nTip: Scout regularly for pink bollworm / గులాబీ రంగు కాయతొలుచు పురుగు (pink bollworm) కోసం ఎప్పటికప్పుడు చూడండి\nTip: Maintain row and plant spacing / వరుస దూరం, మొక్కల దూరం పాటించండి\nTip: Avoid spraying in high humidity / అధిక తేమలో పిచికారీ నివారించండి",
+  "source": "https://pjtsau.edu.in",
+  "needs_verification": false
+ },
+ {
+  "id": "crop.maize",
+  "kind": "crop",
+  "title": "Crop guide: Maize / మొక్కజొన్న",
+  "text": "Season: Kharif (sow Jun–Jul) / ఖరీఫ్ (జూన్–జూలై విత్తనం)\nWater: Moderate — avoid waterlogging / మధ్యస్థం — నీరు నిలవకుండా చూడండి\nSowing: Sow at proper depth after a good rain / మంచి వర్షం తర్వాత తగిన లోతులో విత్తండి\nTip: Drain excess water — maize hates waterlogging / నీరు నిలిస్తే కాలువలు తీసి బయటకు పంపండి\nTip: Watch for fall armyworm / కత్తెర పురుగు (fall armyworm) కోసం చూడండి",
+  "source": "https://pjtsau.edu.in",
+  "needs_verification": false
+ },
+ {
+  "id": "crop.red_gram",
+  "kind": "crop",
+  "title": "Crop guide: Red gram (pigeon pea) / కంది",
+  "text": "Season: Kharif (sow Jun–Jul) / ఖరీఫ్ (జూన్–జూలై విత్తనం)\nWater: Low — drought-tolerant / తక్కువ — కరువును తట్టుకుంటుంది\nSowing: Sow in rows as a rainfed crop / వర్షాధార పంటగా సాళ్లలో విత్తండి\nTip: Ridge planting helps drainage / నీరు నిలవకుండా ఎత్తు సాళ్లు మేలు\nTip: Watch for pod borer at flowering / పూత దశలో కాయతొలుచు పురుగును గమనించండి",
+  "source": "https://pjtsau.edu.in",
+  "needs_verification": false
+ },
+ {
+  "id": "crop.chilli",
+  "kind": "crop",
+  "title": "Crop guide: Chilli (mirchi) / మిర్చి",
+  "text": "Season: Kharif — nursery then transplant / ఖరీఫ్ — నారు పోసి నాటాలి\nWater: Needs irrigation / నీటిపారుదల అవసరం\nSowing: Raise a nursery and transplant healthy seedlings / నారు పెంచి, ఆరోగ్యకరమైన మొక్కలను నాటండి\nTip: High humidity raises anthracnose (fruit rot) risk / ఎక్కువ తేమ ఉంటే ఆంత్రాక్నోస్ (కాయకుళ్ళు) ప్రమాదం\nTip: Protect drying pods from rain / పండ్లు ఆరబెట్టేటప్పుడు వర్షం రాకుండా చూడండి",
+  "source": "https://pjtsau.edu.in",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.rythu_bharosa",
+  "kind": "scheme",
+  "title": "Scheme: Rythu Bharosa / రైతు భరోసా",
+  "text": "Level: state. Status: active (as of 2026-07).\nWhat: Crop investment support (relaunched 2025). First-acre priority, phased. / పంట పెట్టుబడి సాయం (2025లో పునఃప్రారంభం). మొదటి ఎకరానికి ప్రాధాన్యం, దశలవారీగా.\nWho: Farmers with land recorded in Bhu Bharathi. / భూ భారతిలో నమోదైన సాగు భూమి ఉన్న రైతులు.\nHow: Check via your village AEO / Rythu Vedika. / మీ గ్రామ AEO / రైతు వేదిక ద్వారా వివరాలు తెలుసుకోండి.\nNote: Tenant & patta-less farmers are usually not eligible. Check the current amount on the portal. / కౌలుదారులు, పట్టా లేని రైతులు చాలావరకు అర్హులు కాదు. ప్రస్తుత మొత్తాన్ని పోర్టల్‌లో చూడండి.\nOfficial site: https://rythubharosa.telangana.gov.in/",
+  "source": "https://rythubharosa.telangana.gov.in/",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.rythu_bima",
+  "kind": "scheme",
+  "title": "Scheme: Rythu Bima (life insurance) / రైతు బీమా",
+  "text": "Level: state. Status: active (as of 2026-07).\nWhat: Life-insurance payout to the family if a farmer dies — free (state pays the premium). / రైతు మరణిస్తే కుటుంబానికి జీవిత బీమా పరిహారం — ఉచితం (ప్రభుత్వమే ప్రీమియం కడుతుంది).\nWho: Enrolled land-owning farmers (age limits apply). / నమోదైన సాగు భూమి ఉన్న రైతులు (వయో పరిమితి వర్తిస్తుంది).\nHow: Enrol via your AEO / Rythu Vedika. / నమోదు కోసం మీ AEO / రైతు వేదికను సంప్రదించండి.\nNote: Tied to land title — tenants may not qualify. Watch enrolment windows. / భూమి పట్టాతో ముడిపడి ఉంది — కౌలుదారులు అర్హులు కాకపోవచ్చు. నమోదు గడువులు గమనించండి.\nOfficial site: https://www.myscheme.gov.in/schemes/rythu-bima",
+  "source": "https://www.myscheme.gov.in/schemes/rythu-bima",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.free_ag_power",
+  "kind": "scheme",
+  "title": "Scheme: Free agricultural power / ఉచిత వ్యవసాయ విద్యుత్",
+  "text": "Level: state. Status: active (as of 2026-07).\nWhat: 24-hour free electricity for farm pumpsets. / వ్యవసాయ పంపుసెట్లకు 24 గంటల ఉచిత విద్యుత్.\nWho: Farmers with an agricultural power connection. / వ్యవసాయ విద్యుత్ కనెక్షన్ ఉన్న రైతులు.\nHow: Contact your local electricity (DISCOM) office. / మీ స్థానిక విద్యుత్ శాఖ / DISCOM కార్యాలయాన్ని సంప్రదించండి.\nOfficial site: https://tgsouthernpower.org/",
+  "source": "https://tgsouthernpower.org/",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.indiramma_atmiya_bharosa",
+  "kind": "scheme",
+  "title": "Scheme: Indiramma Atmiya Bharosa / ఇందిరమ్మ ఆత్మీయ భరోసా",
+  "text": "Level: state. Status: verify (as of 2026-07).\nWhat: Yearly support for landless farm labourers — for those who don't get Rythu Bharosa. / భూమి లేని వ్యవసాయ కూలీలకు ఏటా సాయం — రైతు భరోసా అందని వారికి.\nWho: Landless agricultural-labour families. / భూమి లేని వ్యవసాయ కూలీ కుటుంబాలు.\nHow: Check eligibility via Gram Sabha / AEO. / గ్రామ సభ / AEO ద్వారా అర్హత తెలుసుకోండి.\nNote: Needs ≥20 days of MGNREGS work that year — many miss out on this condition. / ఆ ఏడాది కనీసం 20 రోజులు ఉపాధి హామీ (MGNREGS) పని చేసి ఉండాలి — చాలామంది ఇక్కడే అనర్హులవుతారు.\nOfficial site: https://www.telangana.gov.in/",
+  "source": "https://www.telangana.gov.in/",
+  "needs_verification": true
+ },
+ {
+  "id": "scheme.paddy_bonus",
+  "kind": "scheme",
+  "title": "Scheme: Fine-rice (paddy) bonus / సన్న వరి బోనస్",
+  "text": "Level: state. Status: at_risk (as of 2026-07).\nWhat: Extra bonus per quintal for farmers growing fine-variety paddy. / సన్న రకం వరి పండించే రైతులకు క్వింటాల్‌కు అదనపు బోనస్.\nWho: Farmers growing notified fine paddy and selling at a procurement centre. / నోటిఫై చేసిన సన్న వరి రకాలు పండించి, కొనుగోలు కేంద్రంలో అమ్మిన రైతులు.\nHow: Register when selling at an IKP / PACS procurement centre. / IKP / PACS కొనుగోలు కేంద్రంలో అమ్మేటప్పుడు నమోదు చేసుకోండి.\nNote: This bonus may not run every season — confirm it's active this season. / ఈ బోనస్ ప్రతి సీజన్‌లో ఉండకపోవచ్చు — ఈ సీజన్‌లో అమల్లో ఉందో లేదో నిర్ధారించుకోండి.\nOfficial site: https://civilsupplies.telangana.gov.in/",
+  "source": "https://civilsupplies.telangana.gov.in/",
+  "needs_verification": true
+ },
+ {
+  "id": "scheme.tseed",
+  "kind": "scheme",
+  "title": "Scheme: Subsidised seed (T-SEED) / సబ్సిడీ విత్తనాలు (T-SEED)",
+  "text": "Level: state. Status: active (as of 2026-07).\nWhat: Quality seed at a subsidised price, ahead of the season. / తక్కువ ధరకు నాణ్యమైన విత్తనాలు — సీజన్‌కు ముందు.\nWho: Farmers with a land passbook. / పాస్‌బుక్ ఉన్న రైతులు.\nHow: Go to the mandal seed sale point with your passbook + Aadhaar. / పాస్‌బుక్ + ఆధార్‌తో మండల విత్తన విక్రయ కేంద్రానికి వెళ్లండి.\nOfficial site: https://kisan.telangana.gov.in/",
+  "source": "https://kisan.telangana.gov.in/",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.podu_rofr",
+  "kind": "scheme",
+  "title": "Scheme: Podu / forest-land pattas (ROFR) / పోడు / అటవీ భూమి పట్టాలు (ROFR)",
+  "text": "Level: state. Status: verify (as of 2026-07).\nWhat: Land-right title (patta) for tribal farmers cultivating forest land. / అటవీ భూమి సాగు చేసే గిరిజన రైతులకు హక్కు పత్రం (పట్టా).\nWho: Tribal / forest-fringe farmers eligible under the Forest Rights Act. / అటవీ హక్కుల చట్టం కింద అర్హులైన గిరిజన / అటవీ-సమీప రైతులు.\nHow: Contact ITDA / Tribal Welfare Department. / ITDA / గిరిజన సంక్షేమ శాఖను సంప్రదించండి.\nNote: No confirmed new application round right now — check first, don't assume you can apply now. / ప్రస్తుతం కొత్త దరఖాస్తుల రౌండ్ నిర్ధారించబడలేదు — 'ఇప్పుడు దరఖాస్తు చేయండి' అని కాదు, ముందు ఆరా తీయండి.\nOfficial site: https://tribal.telangana.gov.in/",
+  "source": "https://tribal.telangana.gov.in/",
+  "needs_verification": true
+ },
+ {
+  "id": "scheme.crop_loan_waiver",
+  "kind": "scheme",
+  "title": "Scheme: Crop loan waiver (2024) / పంట రుణ మాఫీ (2024)",
+  "text": "Level: state. Status: closed (as of 2026-07).\nWhat: A one-time crop-loan waiver done in 2024. / 2024లో ఒకసారి చేసిన పంట రుణ మాఫీ.\nWho: Farmers with eligible crop loans (as of then). / అర్హత గల పంట రుణాలు తీసుకున్న రైతులు (ఆ నాటికి).\nHow: No new application — check with your bank whether it was credited. / కొత్త దరఖాస్తు లేదు — మీ ఖాతాకు జమ అయిందో లేదో బ్యాంకులో చూసుకోండి.\nOfficial site: https://clw.telangana.gov.in/",
+  "source": "https://clw.telangana.gov.in/",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.sheep_distribution",
+  "kind": "scheme",
+  "title": "Scheme: Sheep distribution / గొర్రెల పంపిణీ",
+  "text": "Level: state. Status: suspended (as of 2026-07).\nWhat: Subsidised sheep-unit distribution scheme. / సబ్సిడీపై గొర్రెల యూనిట్ల పంపిణీ పథకం.\nWho: Members of shepherd cooperative societies. / గొర్రెల కాపరుల సొసైటీ సభ్యులు.\nHow: Currently suspended — do not apply; wait for an update. / ప్రస్తుతం నిలిపివేయబడింది — దరఖాస్తు చేయవద్దు; అప్‌డేట్ కోసం వేచి ఉండండి.\nOfficial site: https://ossds.telangana.gov.in/",
+  "source": "https://ossds.telangana.gov.in/",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.pm_kisan",
+  "kind": "scheme",
+  "title": "Scheme: PM-KISAN / పీఎం-కిసాన్",
+  "text": "Level: central. Status: active (as of 2026-07).\nWhat: ₹6,000/year from the centre (3 × ₹2,000) straight to your bank. / కేంద్రం నుంచి ఏటా ₹6,000 (₹2,000 చొప్పున 3 విడతలు) నేరుగా ఖాతాలో.\nWho: Small & marginal land-holding farmer families. / భూమి ఉన్న చిన్న, సన్నకారు రైతు కుటుంబాలు.\nHow: pmkisan.gov.in → Farmers Corner, or CSC / AEO. Helpline 155261. / pmkisan.gov.in → Farmers Corner, లేదా CSC / AEO. హెల్ప్‌లైన్ 155261.\nNote: e-KYC + Aadhaar-bank link are mandatory — else payment stops. Check 'Know Your Status'. / e-KYC + ఆధార్-బ్యాంక్ లింక్ తప్పనిసరి — లేకపోతే డబ్బు ఆగిపోతుంది. 'Know Your Status'లో చూసుకోండి.\nOfficial site: https://pmkisan.gov.in",
+  "source": "https://pmkisan.gov.in",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.pmfby",
+  "kind": "scheme",
+  "title": "Scheme: Crop Insurance (PMFBY) / పంట బీమా (PMFBY)",
+  "text": "Level: central. Status: verify (as of 2026-07).\nWhat: Insurance payout if your crop fails due to drought, flood, or pests. / వర్షాభావం, వరదలు, తెగుళ్ల వల్ల పంట నష్టపోతే బీమా పరిహారం.\nWho: Farmers growing notified crops in notified areas that season. / ఆ సీజన్‌లో నోటిఫై చేసిన పంటలు, నోటిఫై చేసిన ప్రాంతంలో సాగు చేసే రైతులు.\nHow: Enrol before the cut-off via bank / CSC / pmfby.gov.in. / గడువులోగా బ్యాంక్ / CSC / pmfby.gov.in ద్వారా నమోదు చేసుకోండి.\nNote: Don't assume you're covered — confirm this season's district notification with the AEO. / 'మీకు బీమా ఉంది' అని అనుకోవద్దు — ఈ సీజన్ జిల్లా నోటిఫికేషన్‌ను AEOతో నిర్ధారించుకోండి.\nOfficial site: https://pmfby.gov.in",
+  "source": "https://pmfby.gov.in",
+  "needs_verification": true
+ },
+ {
+  "id": "scheme.kcc",
+  "kind": "scheme",
+  "title": "Scheme: Kisan Credit Card (KCC) / కిసాన్ క్రెడిట్ కార్డు (KCC)",
+  "text": "Level: central. Status: active (as of 2026-07).\nWhat: Low-interest crop loan — about 4% effective if repaid on time. / తక్కువ వడ్డీకి పంట రుణం — సకాలంలో చెల్లిస్తే వడ్డీ దాదాపు 4%.\nWho: Farmers, tenant farmers & sharecroppers. / రైతులు, కౌలుదారులు, భాగస్వామ్య రైతులు.\nHow: Bank branch / JanSamarth portal. Simplified form for PM-KISAN beneficiaries. / బ్యాంక్ శాఖ / JanSamarth పోర్టల్. PM-KISAN రైతులకు సులభ దరఖాస్తు.\nNote: Collateral-free up to ₹2 lakh. Confirm the ceiling your bank applies. / ₹2 లక్షల వరకు హామీ (collateral) అవసరం లేదు. మీ బ్యాంక్ వర్తించే పరిమితిని నిర్ధారించుకోండి.\nOfficial site: https://www.myscheme.gov.in/schemes/kcc",
+  "source": "https://www.myscheme.gov.in/schemes/kcc",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.soil_health",
+  "kind": "scheme",
+  "title": "Scheme: Soil Health Card / భూసార కార్డు",
+  "text": "Level: central. Status: active (as of 2026-07).\nWhat: A free card showing your soil's nutrients and how much fertiliser to use — cuts costs. / మీ నేలలో పోషకాలు, ఎంత ఎరువు వాడాలో తెలిపే ఉచిత కార్డు — ఖర్చు తగ్గుతుంది.\nWho: Any farmer — get it by submitting a soil sample. / ఏ రైతైనా — నమూనా ఇచ్చి పొందవచ్చు.\nHow: Submit a sample via your AEO / KVK / soil-testing lab. / AEO / KVK / మట్టి పరీక్ష కేంద్రం ద్వారా నమూనా ఇవ్వండి.\nOfficial site: https://www.soilhealth.dac.gov.in",
+  "source": "https://www.soilhealth.dac.gov.in",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.pmksy_pdmc",
+  "kind": "scheme",
+  "title": "Scheme: Micro-irrigation (drip / sprinkler) / సూక్ష్మ నీటిపారుదల (డ్రిప్/స్ప్రింక్లర్)",
+  "text": "Level: central. Status: verify (as of 2026-07).\nWhat: Subsidy for drip / sprinkler systems — saves water and cost. / డ్రిప్ / స్ప్రింక్లర్ ఏర్పాటుకు సబ్సిడీ — నీరు, ఖర్చు ఆదా.\nWho: Land-owning / lessee farmers; priority to small & marginal. / భూమి ఉన్న / కౌలు రైతులు; చిన్న, సన్నకారు రైతులకు ప్రాధాన్యం.\nHow: Apply via the Agriculture / Horticulture Department or KVK. / వ్యవసాయ / ఉద్యానవన శాఖ లేదా KVK ద్వారా దరఖాస్తు చేయండి.\nNote: Subsidy % varies by state & crop — confirm the current Telangana figure. / సబ్సిడీ శాతం రాష్ట్రం, పంటను బట్టి మారుతుంది — ప్రస్తుత తెలంగాణ శాతాన్ని నిర్ధారించుకోండి.\nOfficial site: https://pmksy.gov.in",
+  "source": "https://pmksy.gov.in",
+  "needs_verification": true
+ },
+ {
+  "id": "scheme.pm_kmy",
+  "kind": "scheme",
+  "title": "Scheme: Farmer pension (PM-KMY) / రైతు పింఛను (PM-KMY)",
+  "text": "Level: central. Status: active (as of 2026-07).\nWhat: ₹3,000/month pension after age 60. / 60 ఏళ్ల తర్వాత నెలకు ₹3,000 పింఛను.\nWho: Small & marginal farmers aged 18–40 (up to 2 ha). / 18–40 ఏళ్ల చిన్న, సన్నకారు రైతులు (2 హెక్టార్ల లోపు).\nHow: Enrol via CSC / portal with Aadhaar + auto-debit. Helpline 1800-3000-3468. / CSC / పోర్టల్‌లో ఆధార్ + ఆటో-డెబిట్‌తో నమోదు. హెల్ప్‌లైన్ 1800-3000-3468.\nNote: You pay a small monthly amount (by entry age) — the govt matches it. / నెలవారీ చిన్న మొత్తం మీరు కట్టాలి (వయసును బట్టి) — ప్రభుత్వం సరిసమానంగా కలుపుతుంది.\nOfficial site: https://pmkmy.gov.in",
+  "source": "https://pmkmy.gov.in",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.smam",
+  "kind": "scheme",
+  "title": "Scheme: Farm mechanisation (SMAM) / వ్యవసాయ యంత్రీకరణ (SMAM)",
+  "text": "Level: central. Status: active (as of 2026-07).\nWhat: Subsidy on machines/tools; custom-hiring centres (CHCs) to rent equipment. / ట్రాక్టర్లు, పరికరాలపై సబ్సిడీ; అద్దెకు యంత్రాల కేంద్రాలు (CHC).\nWho: Farmers (higher subsidy for small/marginal, women, SC/ST), SHGs, FPOs. / రైతులు (చిన్న/సన్నకారు, మహిళలు, SC/STకు ఎక్కువ సబ్సిడీ), SHGలు, FPOలు.\nHow: Apply via the Telangana agri portal (agrimachinery.nic.in). / తెలంగాణ వ్యవసాయ పోర్టల్ (agrimachinery.nic.in) ద్వారా దరఖాస్తు.\nNote: Application windows open periodically — renting via a CHC (not buying) suits small farmers. / దరఖాస్తు విండోలు అప్పుడప్పుడే తెరుస్తారు — కొనకుండా అద్దెకు (CHC) తీసుకోవడం చిన్న రైతులకు మేలు.\nOfficial site: https://agrimachinery.nic.in",
+  "source": "https://agrimachinery.nic.in",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.enam",
+  "kind": "scheme",
+  "title": "Scheme: e-NAM (national market) / ఈ-నామ్ (జాతీయ మార్కెట్)",
+  "text": "Level: central. Status: active (as of 2026-07).\nWhat: Online market — fairer price, payment straight to your account, less middleman dependence. / ఆన్‌లైన్ మార్కెట్ — మంచి ధర, నేరుగా ఖాతాకు చెల్లింపు, దళారుల ఆధారం తగ్గుతుంది.\nWho: Farmers registered at a linked APMC mandi. / అనుసంధానిత మార్కెట్ (APMC)లో నమోదైన రైతులు.\nHow: Register as a 'Farmer' on enam.gov.in / the e-NAM app. / enam.gov.in / e-NAM యాప్‌లో 'Farmer'గా నమోదు చేసుకోండి.\nNote: Confirm a nearby mandi is on e-NAM. This is not a cash grant. / మీ దగ్గరి మార్కెట్ ఈ-నామ్‌లో ఉందో లేదో నిర్ధారించుకోండి. నగదు గ్రాంట్ కాదు.\nOfficial site: https://enam.gov.in",
+  "source": "https://enam.gov.in",
+  "needs_verification": false
+ },
+ {
+  "id": "scheme.pm_kusum",
+  "kind": "scheme",
+  "title": "Scheme: Solar pumps (PM-KUSUM) / సౌర పంపుసెట్లు (PM-KUSUM)",
+  "text": "Level: central. Status: verify (as of 2026-07).\nWhat: Subsidised solar pumpsets — cuts diesel / power cost. / సబ్సిడీపై సౌర విద్యుత్ పంపుసెట్లు — డీజిల్/కరెంటు ఖర్చు తగ్గుతుంది.\nWho: Individual farmers, farmer groups, FPOs. / వ్యక్తిగత రైతులు, రైతు గ్రూపులు, FPOలు.\nHow: Apply via the Telangana state portal (TGREDCO). Helpline 1800-180-3333. / తెలంగాణ రాష్ట్ర పోర్టల్ (TGREDCO) ద్వారా దరఖాస్తు. హెల్ప్‌లైన్ 1800-180-3333.\nNote: ⚠️ No registration fee — sites asking an 'application fee' are scams. Confirm the current subsidy split. / ⚠️ నమోదు రుసుము లేదు — 'application fee' అడిగే సైట్‌లు మోసం. ప్రస్తుత సబ్సిడీ శాతం నిర్ధారించుకోండి.\nOfficial site: https://pmkusum.telangana.gov.in/",
+  "source": "https://pmkusum.telangana.gov.in/",
+  "needs_verification": true
+ },
+ {
+  "id": "help.kisan_call_centre",
+  "kind": "help",
+  "title": "Kisan Call Centre (free expert advice) / కిసాన్ కాల్ సెంటర్ (ఉచిత సలహా)",
+  "text": "Free call 1800-180-1551, 6 am to 10 pm, Telugu spoken: agriculture graduates answer crop, pest and scheme questions. Or ask the village AEO / Rythu Vedika.",
+  "source": "https://mkisan.gov.in/Home/AboutKCC",
+  "needs_verification": false
+ },
+ {
+  "id": "help.cyber_fraud",
+  "kind": "help",
+  "title": "Scams: fake apps and fraud calls / మోసాల నుంచి జాగ్రత్త",
+  "text": "Never install an APK file sent on WhatsApp or SMS, even if it says PM-Kisan. Install apps only from the Play Store. Never share an OTP or UPI PIN. If cheated, call 1930 at once or report on cybercrime.gov.in.",
+  "source": "https://cybercrime.gov.in",
+  "needs_verification": false
+ }
+]

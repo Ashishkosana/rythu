@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { loadLang, saveLang } from "./prefs";
 
 export type Lang = "te" | "en";
@@ -25,6 +25,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   );
   const [override, setOverride] = useState<Lang | null>(null);
   const lang: Lang = override ?? saved ?? "te";
+
+  // Screen readers pick their voice from <html lang>, and browsers their line-breaking and fonts.
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const setLang = (l: Lang) => {
     saveLang(l);

@@ -81,7 +81,10 @@ async def test_healthz_is_dependency_free():
 
 async def test_openapi_documents_v1_and_hides_the_legacy_alias():
     doc = (await _api(FakeProvider(_FC), "/openapi.json", {})).json()
-    assert set(doc["paths"]) == {"/v1/weather", "/healthz"}
+    assert set(doc["paths"]) == {
+        "/v1/weather", "/v1/geocode", "/v1/calendar", "/v1/devices", "/v1/sessions", "/v1/me/profile", "/v1/me",
+        "/v1/push/key", "/v1/me/push-subscriptions", "/v1/assistant/ask", "/healthz",
+    }
     op = doc["paths"]["/v1/weather"]["get"]
     assert {p["name"] for p in op["parameters"]} == {"lat", "lon", "crop", "water", "X-Request-Id"}
     ok = op["responses"]["200"]["content"]["application/json"]["schema"]
@@ -111,3 +114,23 @@ async def test_openapi_documents_only_responses_that_can_happen():
     # …and garbage input really does get the documented 400, not a 422.
     resp = await _api(FakeProvider(_FC), "/v1/weather", {"lat": "x", "lon": "y", "crop": "?" * 500})
     assert resp.status_code == 400
+
+
+async def test_browser_can_call_cross_origin_without_a_preflight_and_read_the_request_id():
+    transport = httpx.ASGITransport(app=create_app(FakeProvider(_FC)))
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/v1/weather", params={"crop": "chilli"}, headers={"Origin": "https://rythu.example"})
+        assert resp.status_code == 200
+        assert resp.headers["Access-Control-Allow-Origin"] == "*"
+        assert "x-request-id" in resp.headers["Access-Control-Expose-Headers"].lower()
+
+        pre = await client.options(
+            "/v1/weather",
+            headers={
+                "Origin": "https://rythu.example",
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "x-request-id",
+            },
+        )
+        assert pre.status_code == 200
+        assert pre.headers["Access-Control-Max-Age"] == "7200"

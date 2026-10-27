@@ -1,5 +1,7 @@
 # Rythu — Status & Roadmap
 
+> **Superseded (2026-10):** the current plan is [`docs/architecture/README.md`](architecture/README.md). Kept for history; e.g. Cognito login below was replaced by anonymous device accounts (ADR 0004).
+
 _An honest self-review: what's built, what's missing, and what to do next. Grounded in the verified research in this folder (`farmer-needs-research.md`, `schemes-research.md`, `agronomy-data.md`)._
 
 ## Built & live (PWA on AWS Amplify + Python/AWS serverless backend)
