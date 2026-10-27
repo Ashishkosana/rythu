@@ -6,7 +6,8 @@ pilot's near-zero usage, and a budget alert emails you at $4 (80 % of $5).
 
 What `main.bicep` creates in one resource group: a Static Web App (Free) for the web app, a Flex
 Consumption Function App (Python 3.12, managed identity) for the API, a Key Vault holding the
-device-token signing key (generated at deploy time, readable only by the app's identity), a storage account with **shared-key access disabled** (identity-only: no keys exist to leak),
+device-token signing key (generated at deploy time, readable only by the app's identity) and the Web
+Push signing key (non-exportable; the app may only ask Key Vault to sign), an `alerts` queue, a storage account with **shared-key access disabled** (identity-only: no keys exist to leak),
 the `forecast` table, Application Insights + Log Analytics with a 0.1 GB/day cap, a budget alert, and a
 user-assigned identity that GitHub Actions can log in as via OIDC (no stored secret).
 
@@ -106,6 +107,7 @@ Open the `AZURE_STATICWEBAPP_URL` on a phone: that is the app.
 | Web app headers / CSP | generated per build into `staticwebapp.config.json` (`apps/web/scripts/postbuild.mjs`) |
 | Change infra | edit `main.bicep`, run step 1's `what-if`, then `create` again (idempotent) |
 | Cost | Portal → Cost Management; the budget emails at 80 % actual / 100 % forecast |
+| Alerts not arriving | App Insights: `traces \| where message has "alerts."` (evaluated / delivered / retry / refused); failed messages land in the `alerts-poison` queue after 5 tries |
 | Rotate the token key | re-run step 1's `create` (each deployment draws a new key; phones re-authenticate silently) |
 | Accounts say "unavailable" | App Insights: `traces \| where message has "accounts.disabled"` — the reason names the fix (usually the Key Vault role still propagating after a first deploy: restart the app a few minutes later) |
 | Tear down | `az group delete -n rg-rythu-dev` (deletes everything in this runbook). The Key Vault stays soft-deleted for 7 days and keeps its name: `az keyvault purge -n <name>` to recreate sooner |

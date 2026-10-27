@@ -40,6 +40,7 @@ if TYPE_CHECKING:  # types only — the Azure SDK is never imported on the Lambd
     from azure.core.credentials_async import AsyncTokenCredential
 
     from rythu_weather.adapters.azure_table import TableAuth
+    from rythu_weather.app.webpush import VapidSigner  # push crypto: never on the Lambda path
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,3 +150,31 @@ def build_accounts(settings: Settings | None = None) -> Accounts | None:
         log_event(_log, logging.WARNING, "accounts.ephemeral_key", note="dev only: tokens die with this process")
         key = secrets.token_bytes(32)
     return Accounts(users, TokenSigner(key), registrations, s.device_registrations_per_hour)
+
+
+@dataclass(frozen=True, slots=True)
+class Push:
+    """Web Push alerts (S14): who signs, and on whose behalf."""
+
+    signer: VapidSigner
+    subject: str
+
+
+def build_push(settings: Settings | None = None) -> Push | None:
+    """None = push alerts switched off (the routes answer 503; nothing else is affected)."""
+    s = settings or get_settings()
+    if s.vapid_key_id:
+        from rythu_weather.adapters.keyvault_vapid import KeyVaultVapidSigner
+
+        auth = _azure_auth(s)
+        if auth.credential is None:
+            raise ValueError("RYTHU_VAPID_KEY_ID needs managed identity (RYTHU_AZURE_TABLES_ENDPOINT), not a key")
+        return Push(KeyVaultVapidSigner(s.vapid_key_id, auth.credential), s.vapid_subject)
+    if s.uses_azure_tables and s.azure_tables_endpoint:
+        # In Azure every instance must sign with the same key, or subscriptions break at random.
+        log_event(_log, logging.ERROR, "push.disabled", reason="RYTHU_VAPID_KEY_ID not set")
+        return None
+    from rythu_weather.app.webpush import LocalVapidSigner
+
+    log_event(_log, logging.WARNING, "push.ephemeral_key", note="dev only: subscriptions die with this process")
+    return Push(LocalVapidSigner(), s.vapid_subject)

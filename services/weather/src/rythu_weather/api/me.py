@@ -5,6 +5,9 @@
     GET    /v1/me/profile   the saved profile, with its ETag
     PUT    /v1/me/profile   save it: If-None-Match: * to create, If-Match: <etag> to update
     DELETE /v1/me           erase everything stored for this user (DPDP Act: delete my data)
+    GET    /v1/push/key                the VAPID public key browsers subscribe with
+    PUT    /v1/me/push-subscriptions   this phone's push subscription (≤ 3 per user)
+    DELETE /v1/me/push-subscriptions   …and removing it
 
 The user is ALWAYS the one in the verified token; no route takes a user id from the path or body
 (tests/test_accounts_api.py checks that A cannot touch B). Private data is never cached (no-store).
@@ -20,14 +23,32 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import Annotated, Any, NoReturn
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, Query
 from fastapi.responses import JSONResponse, Response
 
 from rythu_weather.adapters.budget import BudgetContention, window_key
-from rythu_weather.api.schemas import DeviceCredentialsOut, ErrorBody, ProfileIn, ProfileOut, SessionIn, SessionOut
-from rythu_weather.app.accounts import PreconditionFailed, Unauthorized, new_credentials, secret_digest, utc_now
+from rythu_weather.api.schemas import (
+    DeviceCredentialsOut,
+    ErrorBody,
+    ProfileIn,
+    ProfileOut,
+    PushKeyOut,
+    PushSubscriptionIn,
+    SessionIn,
+    SessionOut,
+)
+from rythu_weather.app.accounts import (
+    MAX_PUSH_SUBSCRIPTIONS,
+    PreconditionFailed,
+    Unauthorized,
+    new_credentials,
+    secret_digest,
+    utc_now,
+)
 from rythu_weather.app.calendar_request import IST, reference_date_problem
-from rythu_weather.app.composition import Accounts
+from rythu_weather.app.composition import Accounts, Push
+from rythu_weather.app.push_subscription import Subscription
+from rythu_weather.app.webpush import b64url, endpoint_allowed
 from rythu_weather.domain.coverage import in_coverage
 from rythu_weather.observability import log_event
 
@@ -62,7 +83,9 @@ def _err(description: str) -> dict[str, Any]:
     return {"model": ErrorBody, "description": description}
 
 
-def accounts_router(accounts: Accounts | None, clock: Callable[[], datetime] = utc_now) -> APIRouter:
+def accounts_router(
+    accounts: Accounts | None, clock: Callable[[], datetime] = utc_now, push: Push | None = None
+) -> APIRouter:
     router = APIRouter(tags=["me"])
 
     def enabled() -> Accounts:
@@ -180,6 +203,51 @@ def accounts_router(accounts: Accounts | None, clock: Callable[[], datetime] = u
         except PreconditionFailed as exc:
             raise ApiError(412, "precondition_failed", "the saved profile changed — read it again") from exc
         return JSONResponse(stored, headers={**_PRIVATE, "ETag": etag})
+
+    def push_enabled() -> Push:
+        if push is None:
+            raise ApiError(503, "unavailable", "alerts are not available right now")
+        return push
+
+    @router.get(
+        "/v1/push/key", response_model=PushKeyOut, tags=["push"], summary="VAPID public key for subscribing",
+        responses={503: _err("Push alerts unavailable.")},
+    )
+    async def push_key() -> JSONResponse:
+        key = await guarded("vapid_public_key", push_enabled().signer.public_key())
+        return JSONResponse({"public_key": b64url(key)}, headers={"Cache-Control": "public, max-age=3600"})
+
+    @router.put(
+        "/v1/me/push-subscriptions", status_code=204, tags=["push"], summary="Subscribe this phone to alerts",
+        responses={
+            400: _err("Not a browser push service, malformed keys, or too many phones."),
+            401: _err("Missing or expired token."),
+        },
+    )
+    async def put_push_subscription(body: PushSubscriptionIn, user: User) -> Response:
+        acc = enabled()
+        push_enabled()
+        # The server will POST to this URL: only real browser push services (SSRF guard).
+        if not endpoint_allowed(body.endpoint):
+            raise ApiError(400, "bad_request", "endpoint: not a supported browser push service")
+        if await guarded("secret_hash", acc.users.secret_hash(user)) is None:
+            _unauthorized()
+        existing = await guarded("push_list", acc.users.push_subscriptions(user))
+        others = [s for s in existing if s.endpoint != body.endpoint]
+        if len(others) >= MAX_PUSH_SUBSCRIPTIONS:
+            raise ApiError(400, "bad_request", f"at most {MAX_PUSH_SUBSCRIPTIONS} phones per account")
+        sub = Subscription(body.endpoint, body.keys.p256dh, body.keys.auth)
+        await guarded("push_put", acc.users.put_push_subscription(user, sub, clock()))
+        return Response(status_code=204, headers=_PRIVATE)
+
+    @router.delete(
+        "/v1/me/push-subscriptions", status_code=204, tags=["push"], summary="Unsubscribe a phone",
+        responses={401: _err("Missing or expired token.")},
+    )
+    async def delete_push_subscription(user: User, endpoint: Annotated[str, Query(max_length=1000)]) -> Response:
+        acc = enabled()
+        await guarded("push_delete", acc.users.delete_push_subscription(user, endpoint))
+        return Response(status_code=204, headers=_PRIVATE)
 
     @router.delete(
         "/v1/me", status_code=204, summary="Delete everything stored for this user",

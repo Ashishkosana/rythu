@@ -308,6 +308,21 @@ wheels = [
 ]
 
 [[package]]
+name = "azure-keyvault-keys"
+version = "4.11.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "cryptography" },
+    { name = "isodate" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6e/d4/e0ba8e8d661fcb2f536e1ba572369053aa37e3bc5c0bdb9aaab6603248ab/azure_keyvault_keys-4.11.3.tar.gz", hash = "sha256:abe258a46937ab69b148d1832150192f6a300578451d69304a0c3be24b9881aa", size = 279998, upload-time = "2026-10-02T23:09:56.188Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c9/8c/068322e5b6803cf2babde45a9a20d61697bc584a52710ac1f75d1c350bcb/azure_keyvault_keys-4.11.3-py3-none-any.whl", hash = "sha256:c492fa29cc2f437d1ad2464e7ddf5f40196c8ec8e25fad94dae5d474e0432d0a", size = 202493, upload-time = "2026-10-02T23:09:58.018Z" },
+]
+
+[[package]]
 name = "certifi"
 version = "2026.6.17"
 source = { registry = "https://pypi.org/simple" }
@@ -727,6 +742,15 @@ sdist = { url = "https://files.pythonhosted.org/packages/01/ee/02a2c011bdab74c6f
 wheels = [
     { url = "https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86", size = 37515, upload-time = "2025-04-24T03:35:24.344Z" },
 ]
+
+[[package]]
+name = "http-ece"
+version = "1.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7c/af/249d1576653b69c20b9ac30e284b63bd94af6a175d72d87813235caf2482/http_ece-1.2.1.tar.gz", hash = "sha256:8c6ab23116bbf6affda894acfd5f2ca0fb8facbcbb72121c11c75c33e7ce8cff", size = 8830, upload-time = "2024-08-08T00:10:47.301Z" }
 
 [[package]]
 name = "httpcore"
@@ -1568,7 +1592,10 @@ dependencies = [
     { name = "aiohttp" },
     { name = "azure-data-tables" },
     { name = "azure-identity" },
+    { name = "azure-keyvault-keys" },
+    { name = "cryptography" },
     { name = "fastapi" },
+    { name = "http-ece" },
     { name = "httpx" },
 ]
 
@@ -1593,7 +1620,10 @@ requires-dist = [
     { name = "azure-functions", marker = "extra == 'dev'", specifier = ">=1.25.0,<2" },
     { name = "azure-functions", marker = "extra == 'functions'", specifier = ">=1.25.0,<2" },
     { name = "azure-identity", specifier = ">=1.26.0" },
+    { name = "azure-keyvault-keys", specifier = ">=4.11.3" },
+    { name = "cryptography", specifier = ">=50.0.2" },
     { name = "fastapi", specifier = ">=0.143.0" },
+    { name = "http-ece", specifier = ">=1.2.1" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.2" },

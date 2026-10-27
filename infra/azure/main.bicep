@@ -5,7 +5,8 @@
 //        │ logs/requests                                                     ▲
 //        ▼                                                                   │ no keys: shared-key access off
 //   Application Insights ◀── Log Analytics (daily cap)                       │
-//   Key Vault (RBAC) ── the device-token signing key, read by the app's identity only
+//   Key Vault (RBAC) ── the device-token signing key + the Web Push (VAPID) key, used by the app's identity only
+//   Storage Queue "alerts" ── push alerts: a timer queues them, a queue trigger sends them
 //   GitHub Actions ── OIDC (federated credential, no secret) ── deploy identity
 //   Budget alert (email) on the resource group
 //
@@ -67,6 +68,10 @@ var roleStorageTableDataContributor = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
 // Read secret values only (getSecret + readMetadata). Verified against the built-in roles reference
 // (MicrosoftDocs azure-docs: role-based-access-control/built-in-roles/security.md).
 var roleKeyVaultSecretsUser = '4633458b-17de-408a-b874-0445c86b69e6'
+// Read a key's public half + sign with it (keys/read, keys/sign/action) — the private half never leaves.
+var roleKeyVaultCryptoUser = '12338af0-0e69-4776-bea7-57ae8d297424'
+// Queue messages: add / read / process / delete (security.md and storage.md in the same reference).
+var roleStorageQueueDataContributor = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
 
 // ── Observability ────────────────────────────────────────────────────────────────────────────
 resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -139,6 +144,22 @@ resource usersTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023
   name: 'users' // device accounts + profiles, one partition per user (ADR 0002/0004)
 }
 
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+resource alertQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: queueService
+  name: 'alerts'
+}
+
+// Where the Functions host moves a message after 5 failed attempts — look here when alerts go missing.
+resource alertPoisonQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: queueService
+  name: 'alerts-poison'
+}
+
 resource budgetTable 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = {
   parent: tableService
   name: 'budget'
@@ -175,6 +196,8 @@ resource api 'Microsoft.Web/sites@2024-04-01' = {
         { name: 'RYTHU_AZURE_USERS_TABLE', value: usersTable.name }
         // Resolved by the platform with the app's identity; the value never appears in config.
         { name: 'RYTHU_TOKEN_SIGNING_KEY', value: '@Microsoft.KeyVault(SecretUri=${signingKey.properties.secretUri})' }
+        // Not a secret: the key's address. Signing happens inside Key Vault.
+        { name: 'RYTHU_VAPID_KEY_ID', value: vapidKey.properties.keyUri }
         { name: 'RYTHU_LOG_LEVEL', value: 'INFO' }
       ]
     }
@@ -237,6 +260,39 @@ resource signingKey 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   properties: {
     value: tokenSigningKey
     contentType: 'text/plain'
+  }
+}
+
+// Web Push (VAPID) signing key: non-exportable P-256, created here so no private key ever exists
+// outside Key Vault. Every phone's subscription is bound to this key, and redeploying is safe: ARM's
+// PUT on a key is "create if not exists" (Keys_CreateIfNotExist) — it never adds a version.
+resource vapidKey 'Microsoft.KeyVault/vaults/keys@2023-07-01' = {
+  parent: vault
+  name: 'vapid'
+  properties: {
+    kty: 'EC'
+    curveName: 'P-256'
+    keyOps: ['sign', 'verify']
+  }
+}
+
+resource apiCryptoUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(vault.id, api.id, roleKeyVaultCryptoUser)
+  scope: vault
+  properties: {
+    principalId: api.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleKeyVaultCryptoUser)
+  }
+}
+
+resource apiQueueContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storage.id, api.id, roleStorageQueueDataContributor)
+  scope: storage
+  properties: {
+    principalId: api.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleStorageQueueDataContributor)
   }
 }
 

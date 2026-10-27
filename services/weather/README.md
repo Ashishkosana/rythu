@@ -109,6 +109,19 @@ the threshold, never sprays — `tests/test_calendar.py` pins the offsets to the
 task names a pesticide. The answer depends only on crop and date, so it is public and cacheable; the
 farmer's own fields (≤ 5) travel inside their profile.
 
+## Push alerts (S14)
+
+Web Push straight on the standards (RFC 8291 encryption, RFC 8188 `aes128gcm`, RFC 8292 VAPID), no
+vendor SDK. The VAPID private key is a non-exportable P-256 key in Key Vault: the app asks Key Vault to
+sign and never holds it. A timer at 06:45 / 12:45 / 17:45 IST works out, for every farmer who agreed to
+a server copy AND subscribed a phone, what is due (`app/alerts.py`, most urgent first, ≤ 3 per run):
+the weather engine's own "act now" reads for their crop, rain ≥ 70 % in the next 12 hours, and
+My-Field tasks starting today or tomorrow. Each becomes a message on the `alerts` queue; a queue
+trigger sends it (`app/alert_jobs.py`). Delivery is idempotent — an alert key is claimed in the
+farmer's partition before sending, so a retried message never buzzes twice — and dead subscriptions
+(404/410) are dropped. Endpoints must belong to a real browser push service: the server POSTs to them,
+so anything else would be an SSRF hole. `DELETE /v1/me` removes subscriptions and the alert log too.
+
 ## Device accounts (S13, ADR 0004)
 
 No sign-up: a phone registers once (`POST /v1/devices` → random user id + 256-bit device secret; the

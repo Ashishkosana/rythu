@@ -73,3 +73,27 @@ def test_accounts_switch_off_in_azure_without_a_key_but_weather_is_unaffected(ca
     assert "Key Vault Secrets User" in record.fields["reason"]  # type: ignore[attr-defined]
     local = build_accounts(Settings.from_env({}))  # local dev: a throwaway key, in-memory users
     assert local is not None
+
+
+def test_vapid_key_id_must_be_a_key_vault_key():
+    ok = "https://kv-rythu-dev-abc.vault.azure.net/keys/vapid"
+    assert Settings.from_env({"RYTHU_VAPID_KEY_ID": ok}).vapid_key_id == ok
+    assert Settings.from_env({}).vapid_key_id is None
+    for bad in ("http://kv.vault.azure.net/keys/vapid", "https://evil.example/keys/vapid", "https://kv.vault.azure.net/secrets/x"):
+        with pytest.raises(ValueError, match="Key Vault key URL"):
+            Settings.from_env({"RYTHU_VAPID_KEY_ID": bad})
+
+
+def test_vapid_subject_is_a_contact_url():
+    assert Settings.from_env({}).vapid_subject.startswith("https://")
+    mail = "mailto:pilot@example.com"
+    assert Settings.from_env({"RYTHU_VAPID_SUBJECT": mail}).vapid_subject == mail
+    with pytest.raises(ValueError, match="RFC 8292"):
+        Settings.from_env({"RYTHU_VAPID_SUBJECT": "pilot@example.com"})
+
+
+def test_push_is_off_in_azure_without_a_key_and_ephemeral_locally():
+    from rythu_weather.app.composition import build_push
+
+    assert build_push(Settings.from_env({"RYTHU_AZURE_TABLES_ENDPOINT": "https://x.table.core.windows.net"})) is None
+    assert build_push(Settings.from_env({})) is not None

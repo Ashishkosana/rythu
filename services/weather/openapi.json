@@ -565,6 +565,152 @@
         }
       }
     },
+    "/v1/push/key": {
+      "get": {
+        "tags": [
+          "me",
+          "push"
+        ],
+        "summary": "VAPID public key for subscribing",
+        "operationId": "push_key_v1_push_key_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushKeyOut"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Push alerts unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me/push-subscriptions": {
+      "put": {
+        "tags": [
+          "me",
+          "push"
+        ],
+        "summary": "Subscribe this phone to alerts",
+        "operationId": "put_push_subscription_v1_me_push_subscriptions_put",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscriptionIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "400": {
+            "description": "Not a browser push service, malformed keys, or too many phones.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or expired token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "me",
+          "push"
+        ],
+        "summary": "Unsubscribe a phone",
+        "operationId": "delete_push_subscription_v1_me_push_subscriptions_delete",
+        "parameters": [
+          {
+            "name": "endpoint",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 1000,
+              "title": "Endpoint"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Missing or expired token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/me": {
       "delete": {
         "tags": [
@@ -1461,6 +1607,66 @@
           "updated_at"
         ],
         "title": "ProfileOut"
+      },
+      "PushKeyOut": {
+        "properties": {
+          "public_key": {
+            "type": "string",
+            "title": "Public Key",
+            "description": "VAPID application server key (base64url, 65-byte P-256 point) for PushManager.subscribe()."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "public_key"
+        ],
+        "title": "PushKeyOut"
+      },
+      "PushKeysIn": {
+        "properties": {
+          "p256dh": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 80,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "P256Dh"
+          },
+          "auth": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 16,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Auth"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "p256dh",
+          "auth"
+        ],
+        "title": "PushKeysIn"
+      },
+      "PushSubscriptionIn": {
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Endpoint"
+          },
+          "keys": {
+            "$ref": "#/components/schemas/PushKeysIn"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "endpoint",
+          "keys"
+        ],
+        "title": "PushSubscriptionIn",
+        "description": "A browser PushSubscription (endpoint + keys). Only real browser push services are accepted."
       },
       "Reference": {
         "type": "string",

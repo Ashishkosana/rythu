@@ -22,6 +22,10 @@ Variables (all optional):
 * ``RYTHU_AZURE_USERS_TABLE`` — table for device accounts and profiles (default ``users``).
 * ``RYTHU_DEVICE_REGISTRATIONS_PER_HOUR`` — new device accounts allowed per hour, all instances
   together (default 30): a pilot needs a handful; a script filling the table does not get far.
+* ``RYTHU_VAPID_KEY_ID`` — Key Vault key (``https://<vault>.vault.azure.net/keys/<name>``) that signs
+  Web Push VAPID tokens; the private key never leaves Key Vault. Unset locally → a throwaway key per
+  process; unset in Azure → push alerts are switched off.
+* ``RYTHU_VAPID_SUBJECT`` — contact for push services (``https://…`` or ``mailto:…``; default the repo).
 
 Quota arithmetic (Open-Meteo free tier ≈ 10,000 calls/day; tests keep the worst case under 80 %):
 pre-warm 60 cells × 3 runs/h × 24 h = 4,320 + on-demand 120/h × 24 h = 2,880 → 7,200/day.
@@ -49,6 +53,7 @@ DEFAULT_AZURE_FORECAST_TABLE = "forecast"
 DEFAULT_AZURE_USERS_TABLE = "users"
 DEFAULT_DEVICE_REGISTRATIONS_PER_HOUR = 30
 MIN_TOKEN_KEY_CHARS = 32
+DEFAULT_VAPID_SUBJECT = "https://github.com/Ashishkosana/rythu"
 # Azure table names: 3–63 alphanumerics, starting with a letter.
 _AZURE_TABLE_NAME = re.compile(r"[A-Za-z][A-Za-z0-9]{2,62}")
 
@@ -70,6 +75,8 @@ class Settings:
     token_signing_key_problem: str | None = None
     azure_users_table: str = DEFAULT_AZURE_USERS_TABLE
     device_registrations_per_hour: int = DEFAULT_DEVICE_REGISTRATIONS_PER_HOUR
+    vapid_key_id: str | None = None
+    vapid_subject: str = DEFAULT_VAPID_SUBJECT
 
     @property
     def uses_azure_tables(self) -> bool:
@@ -110,6 +117,8 @@ class Settings:
             device_registrations_per_hour=_bounded_int(
                 e, "RYTHU_DEVICE_REGISTRATIONS_PER_HOUR", DEFAULT_DEVICE_REGISTRATIONS_PER_HOUR, 1, 1000
             ),
+            vapid_key_id=_vapid_key_id(e),
+            vapid_subject=_vapid_subject(e),
         )
 
 
@@ -129,6 +138,22 @@ def _signing_key(env: Mapping[str, str]) -> bytes | None:
     if len(raw) < MIN_TOKEN_KEY_CHARS:
         raise ValueError(f"RYTHU_TOKEN_SIGNING_KEY must be at least {MIN_TOKEN_KEY_CHARS} characters")
     return raw.encode("utf-8")
+
+
+def _vapid_key_id(env: Mapping[str, str]) -> str | None:
+    raw = (env.get("RYTHU_VAPID_KEY_ID") or "").strip()
+    if not raw:
+        return None
+    if not re.fullmatch(r"https://[a-z0-9-]+\.vault\.azure\.net/keys/[A-Za-z0-9-]+(/[0-9a-f]{32})?", raw):
+        raise ValueError("RYTHU_VAPID_KEY_ID must be a Key Vault key URL (https://<vault>.vault.azure.net/keys/<name>)")
+    return raw
+
+
+def _vapid_subject(env: Mapping[str, str]) -> str:
+    raw = (env.get("RYTHU_VAPID_SUBJECT") or DEFAULT_VAPID_SUBJECT).strip()
+    if not (raw.startswith("https://") or raw.startswith("mailto:")):
+        raise ValueError("RYTHU_VAPID_SUBJECT must start with https:// or mailto: (RFC 8292)")
+    return raw
 
 
 def _unresolved_reference(raw: str) -> bool:

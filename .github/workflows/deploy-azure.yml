@@ -75,6 +75,9 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/v1/me/profile" -H "Authorization: Bearer $token")
           test "$code" = "404" && echo "accounts OK (fresh device has no profile)"
           curl -fsS -X DELETE "$URL/v1/me" -H "Authorization: Bearer $token" && echo "test device erased"
+          # Push alerts: the app can read its VAPID key in Key Vault (a 65-byte P-256 point).
+          curl -fsS "$URL/v1/push/key" | python3 -c "import base64,json,sys; k=json.load(sys.stdin)['public_key']; \
+            raw=base64.urlsafe_b64decode(k+'='*(-len(k)%4)); assert len(raw)==65 and raw[0]==4; print('push key OK')"
 
   deploy-web:
     name: deploy · web (dev)

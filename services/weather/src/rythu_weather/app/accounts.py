@@ -16,11 +16,15 @@ import hashlib
 import hmac
 import re
 import secrets
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
 
+from rythu_weather.app.push_subscription import Subscription
+
 TOKEN_TTL = timedelta(hours=1)
+MAX_PUSH_SUBSCRIPTIONS = 3  # per user: a phone or two, not a fan-out list
 _USER_ID = re.compile(r"[0-9a-f]{32}")
 
 
@@ -44,6 +48,15 @@ def new_credentials() -> DeviceCredentials:
 
 def secret_digest(device_secret: str) -> str:
     return hashlib.sha256(device_secret.encode("utf-8")).hexdigest()
+
+
+def push_row(endpoint: str) -> str:
+    """Row key for a push subscription. (Table keys may not contain '#', '/', '\\' or '?'.)"""
+    return "push_" + hashlib.sha256(endpoint.encode("utf-8")).hexdigest()[:40]
+
+
+def alert_row(key: str) -> str:
+    return "alert_" + key
 
 
 def is_user_id(value: str) -> bool:
@@ -109,6 +122,29 @@ class UserStore(Protocol):
         """Remove everything stored for the user; returns how many records went."""
         ...
 
+    def profiles(self) -> AsyncIterator[tuple[str, dict[str, Any]]]:
+        """Every (user id, profile) — for the alert evaluator. A full scan: fine for a pilot; an index
+        partition replaces it when users number in the thousands."""
+        ...
+
+    async def push_subscriptions(self, user_id: str) -> list[Subscription]: ...
+
+    async def put_push_subscription(self, user_id: str, sub: Subscription, now: datetime) -> None: ...
+
+    async def delete_push_subscription(self, user_id: str, endpoint: str) -> None: ...
+
+    async def claim_alert(self, user_id: str, key: str, now: datetime) -> bool:
+        """Record that this alert is being sent; False if it already was (idempotency)."""
+        ...
+
+    async def has_alert(self, user_id: str, key: str) -> bool: ...
+
+    async def release_alert(self, user_id: str, key: str) -> None:
+        """Forget a claim whose sending failed, so a retry may send it."""
+        ...
+
+    async def prune_alerts(self, user_id: str, before: datetime) -> int: ...
+
 
 class InMemoryUserStore:
     """Dev/test store with the same semantics as the Table Storage one (see the contract tests)."""
@@ -147,6 +183,42 @@ class InMemoryUserStore:
 
     async def delete_user(self, user_id: str) -> int:
         return len(self._rows.pop(user_id, {}))
+
+    async def profiles(self) -> AsyncIterator[tuple[str, dict[str, Any]]]:
+        for user_id, rows in list(self._rows.items()):
+            if "profile" in rows:
+                yield user_id, dict(rows["profile"][0])
+
+    async def push_subscriptions(self, user_id: str) -> list[Subscription]:
+        rows = self._rows.get(user_id, {})
+        return [Subscription(**v[0]["sub"]) for k, v in sorted(rows.items()) if k.startswith("push_")]
+
+    async def put_push_subscription(self, user_id: str, sub: Subscription, now: datetime) -> None:
+        sub_dict = {"endpoint": sub.endpoint, "p256dh": sub.p256dh, "auth": sub.auth}
+        self._rows.setdefault(user_id, {})[push_row(sub.endpoint)] = ({"sub": sub_dict, "at": now}, self._etag())
+
+    async def delete_push_subscription(self, user_id: str, endpoint: str) -> None:
+        self._rows.get(user_id, {}).pop(push_row(endpoint), None)
+
+    async def claim_alert(self, user_id: str, key: str, now: datetime) -> bool:
+        rows = self._rows.setdefault(user_id, {})
+        if alert_row(key) in rows:
+            return False
+        rows[alert_row(key)] = ({"at": now}, self._etag())
+        return True
+
+    async def has_alert(self, user_id: str, key: str) -> bool:
+        return alert_row(key) in self._rows.get(user_id, {})
+
+    async def release_alert(self, user_id: str, key: str) -> None:
+        self._rows.get(user_id, {}).pop(alert_row(key), None)
+
+    async def prune_alerts(self, user_id: str, before: datetime) -> int:
+        rows = self._rows.get(user_id, {})
+        old = [k for k, v in rows.items() if k.startswith("alert_") and v[0]["at"] < before]
+        for k in old:
+            del rows[k]
+        return len(old)
 
 
 def utc_now() -> datetime:

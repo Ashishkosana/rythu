@@ -90,7 +90,7 @@ contexts are Python packages, not services (Newman, *Building Microservices*; Ev
 | --- | --- | --- | --- |
 | `forecast` | cell `18.4_79.9` (0.1° ≈ model grid) | `v1` | payload, `fetchedAt`, `expiresAt` (expiry enforced in code + cleanup job) |
 | `users` | `userId` | `profile` · `field#<id>` · `push#<sha(endpoint)>` | one partition per user → batch transactions; ETag optimistic concurrency |
-| `alertlog` | `userId` | `<alertId>#<windowStartISO>` | idempotency: one send per alert window |
+| (in `users`) | `userId` | `alert_<key>` · `push_<sha256>` | alert log + push subscriptions live in the user's partition, so delete-my-data is one query (Table keys forbid `#`) |
 | `mandi` | `<commodity>#<district>` | `<invertedDate>#<market>` | newest-first range read |
 | `cells` | `cells` | cell | pre-warm set with `lastSeen` |
 
@@ -224,7 +224,8 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | ⭐ S12 | Android TWA → Play internal testing → father installs; start 12-tester closed test | new channel | planned |
 | S13a | Device accounts API (register → 1 h HMAC token), `/v1/me/profile` with ETags, delete-my-data, IDOR tests; `users` table + Key Vault (signing key, rotated per deployment) | none yet (API only) | **done** |
 | S13b | App: "My data" screen (what is stored, consent switch, delete server copy / clear phone); consent-gated profile sync (device account made only on consent; ETag conflict → re-read and rewrite); crop + water remembered; Cognito removed (web, CSP, CDK stack) | nothing leaves the phone without consent; crop remembered across launches | **done** |
-| S14 | Push alerts (subscriptions, evaluation, queue, sender, alert log) | new | planned |
+| S14a | Push alerts, server: RFC 8291/8292 Web Push with the VAPID key inside Key Vault; timer (3×/day IST) → `alerts` queue → sender; idempotent alert log; SSRF-guarded subscriptions; act-now reads, rain ≥ 70 %, field tasks | none yet (API + jobs) | **done** |
+| S14b | Push alerts, app: service-worker push handler, "Alerts" switch | rain / task alerts on the phone | planned |
 | S15 | Mandi prices + MSP comparison (after confirming data.gov.in API access) | new | planned |
 | S16 | My-Field crop calendar: `/v1/calendar` from the research's verified schedules (sourced, AEO flags kept, stage-based where no day count exists, never a spray); fields (≤ 5) in the profile; "My field" screen + "this week" card on home; 5th tab | new: what to do on my crop this week | **done** |
 | S17 | "Ask Rythu" grounded assistant (Telugu voice, quotas, KCC fallback, eval set) | new | planned |

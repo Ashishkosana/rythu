@@ -26,7 +26,7 @@ import contextlib
 import gzip
 import json
 import random
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
@@ -45,7 +45,8 @@ from azure.data.tables.aio import TableClient
 
 from rythu_weather.adapters.budget import BudgetContention
 from rythu_weather.adapters.cache import MAX_STALE
-from rythu_weather.app.accounts import PreconditionFailed
+from rythu_weather.app.accounts import PreconditionFailed, alert_row, push_row
+from rythu_weather.app.push_subscription import Subscription
 
 # Bump to orphan every entry at once if the payload format ever changes incompatibly.
 ROW_KEY = "v1"
@@ -232,10 +233,13 @@ class AzureTableUpstreamBudget:
 class AzureTableUserStore:
     """``UserStore`` on Table Storage — one partition per user (ADR 0002):
 
-        PartitionKey = user id    RowKey = "device"   secretHash, createdAt
-                                  RowKey = "profile"  data (JSON), conditional writes on the row's ETag
+        PartitionKey = user id    RowKey = "device"          secretHash, createdAt
+                                  RowKey = "profile"         data (JSON), conditional writes on the row's ETag
+                                  RowKey = "push_<sha256>"   one browser push subscription
+                                  RowKey = "alert_<key>"     an alert already sent (idempotency), pruned
 
-    Later rows (fields, push subscriptions) join the same partition, so deleting a user is one query.
+    Everything about a user is one partition, so deleting a user is one query. (Table keys may not
+    contain '#', '/', '\\' or '?', hence the underscores.)
     """
 
     auth: TableAuth
@@ -309,3 +313,65 @@ class AzureTableUserStore:
                 with contextlib.suppress(ResourceNotFoundError):
                     await client.delete_entity(user_id, row_key)
         return len(keys)
+
+    async def profiles(self) -> AsyncIterator[tuple[str, dict[str, Any]]]:
+        async with self.auth.client(self.table_name) as client:
+            try:
+                async for e in client.query_entities("RowKey eq 'profile'", select=["PartitionKey", "data"]):
+                    yield str(e["PartitionKey"]), json.loads(e["data"])
+            except ResourceNotFoundError:
+                return
+
+    async def _rows_with_prefix(self, client: TableClient, user_id: str, prefix: str) -> list[dict[str, Any]]:
+        # RowKey range [prefix, prefix + '\x7f'): every key starting with the prefix.
+        flt = "PartitionKey eq @u and RowKey ge @lo and RowKey lt @hi"
+        try:
+            return [dict(e) async for e in client.query_entities(
+                flt, parameters={"u": user_id, "lo": prefix, "hi": prefix + "\x7f"})]
+        except ResourceNotFoundError:
+            return []
+
+    async def push_subscriptions(self, user_id: str) -> list[Subscription]:
+        async with self.auth.client(self.table_name) as client:
+            rows = await self._rows_with_prefix(client, user_id, "push_")
+        return [Subscription(str(r["endpoint"]), str(r["p256dh"]), str(r["auth"])) for r in rows]
+
+    async def put_push_subscription(self, user_id: str, sub: Subscription, now: datetime) -> None:
+        entity = {"PartitionKey": user_id, "RowKey": push_row(sub.endpoint), "endpoint": sub.endpoint,
+                  "p256dh": sub.p256dh, "auth": sub.auth, "at": now}
+        async with self.auth.client(self.table_name) as client:
+            await client.upsert_entity(entity, mode=UpdateMode.REPLACE)
+
+    async def delete_push_subscription(self, user_id: str, endpoint: str) -> None:
+        async with self.auth.client(self.table_name) as client:
+            with contextlib.suppress(ResourceNotFoundError):
+                await client.delete_entity(user_id, push_row(endpoint))
+
+    async def claim_alert(self, user_id: str, key: str, now: datetime) -> bool:
+        async with self.auth.client(self.table_name) as client:
+            try:
+                await client.create_entity({"PartitionKey": user_id, "RowKey": alert_row(key), "at": now})
+            except ResourceExistsError:
+                return False
+        return True
+
+    async def has_alert(self, user_id: str, key: str) -> bool:
+        async with self.auth.client(self.table_name) as client:
+            try:
+                await client.get_entity(user_id, alert_row(key), select=["RowKey"])
+            except ResourceNotFoundError:
+                return False
+        return True
+
+    async def release_alert(self, user_id: str, key: str) -> None:
+        async with self.auth.client(self.table_name) as client:
+            with contextlib.suppress(ResourceNotFoundError):
+                await client.delete_entity(user_id, alert_row(key))
+
+    async def prune_alerts(self, user_id: str, before: datetime) -> int:
+        async with self.auth.client(self.table_name) as client:
+            rows = [r for r in await self._rows_with_prefix(client, user_id, "alert_") if r["at"] < before]
+            for r in rows:
+                with contextlib.suppress(ResourceNotFoundError):
+                    await client.delete_entity(user_id, str(r["RowKey"]))
+        return len(rows)

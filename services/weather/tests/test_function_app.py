@@ -49,11 +49,31 @@ def test_entry_point_registers_one_anonymous_catch_all_http_function(restore_log
     assert trigger.auth_level == func.AuthLevel.ANONYMOUS
 
 
+def _functions(app):
+    """name → {binding type: binding}. (get_functions() re-registers the HTTP function on every call,
+    so call it once per app.)"""
+    return {f.get_function_name(): {b.type: b for b in f.get_bindings()} for f in app.get_functions()}
+
+
 def test_prewarm_timer_runs_every_20_minutes(restore_logging):
     """20 min + a 15 min refresh threshold keeps a served forecast inside the 30 min freshness target."""
-    [timer] = _triggers(_load_function_app().app, "timerTrigger")
+    timer = _functions(_load_function_app().app)["prewarm_cells"]["timerTrigger"]
     assert timer.schedule == "0 */20 * * * *"
     assert timer.run_on_startup is False  # never a burst of upstream calls on every cold start
+
+
+def test_alerts_are_evaluated_by_day_and_sent_through_a_queue(restore_logging):
+    """Times are UTC in NCRONTAB: 01:15 / 07:15 / 12:15 UTC = 06:45 / 12:45 / 17:45 IST — never at night."""
+    functions = _functions(_load_function_app().app)
+    evaluate = functions["evaluate_alerts"]
+    assert evaluate["timerTrigger"].schedule == "0 15 1,7,12 * * *"
+    assert evaluate["queue"].queue_name == "alerts"  # output binding
+    send = functions["send_alert"]
+    assert send["queueTrigger"].queue_name == "alerts"
+    assert send["queueTrigger"].connection == evaluate["queue"].connection == "AzureWebJobsStorage"
+    for hour_utc in (1, 7, 12):
+        ist = (hour_utc * 60 + 15 + 330) % (24 * 60)
+        assert 6 * 60 <= ist <= 18 * 60  # between 06:00 and 18:00 IST
 
 
 def test_host_json_keeps_api_paths_unprefixed():

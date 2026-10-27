@@ -107,6 +107,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/push/key": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** VAPID public key for subscribing */
+        get: operations["push_key_v1_push_key_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/push-subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Subscribe this phone to alerts */
+        put: operations["put_push_subscription_v1_me_push_subscriptions_put"];
+        post?: never;
+        /** Unsubscribe a phone */
+        delete: operations["delete_push_subscription_v1_me_push_subscriptions_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -451,6 +486,30 @@ export interface components {
              * @description Server time of the last write, ISO-8601.
              */
             updated_at: string;
+        };
+        /** PushKeyOut */
+        PushKeyOut: {
+            /**
+             * Public Key
+             * @description VAPID application server key (base64url, 65-byte P-256 point) for PushManager.subscribe().
+             */
+            public_key: string;
+        };
+        /** PushKeysIn */
+        PushKeysIn: {
+            /** P256Dh */
+            p256dh: string;
+            /** Auth */
+            auth: string;
+        };
+        /**
+         * PushSubscriptionIn
+         * @description A browser PushSubscription (endpoint + keys). Only real browser push services are accepted.
+         */
+        PushSubscriptionIn: {
+            /** Endpoint */
+            endpoint: string;
+            keys: components["schemas"]["PushKeysIn"];
         };
         /**
          * Reference
@@ -875,6 +934,108 @@ export interface operations {
             };
             /** @description Send If-Match: <etag> to update, or If-None-Match: * to create. */
             428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    push_key_v1_push_key_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PushKeyOut"];
+                };
+            };
+            /** @description Push alerts unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    put_push_subscription_v1_me_push_subscriptions_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PushSubscriptionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a browser push service, malformed keys, or too many phones. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Missing or expired token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    delete_push_subscription_v1_me_push_subscriptions_delete: {
+        parameters: {
+            query: {
+                endpoint: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Missing or expired token. */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

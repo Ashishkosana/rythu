@@ -129,3 +129,50 @@ async def test_users_are_isolated_and_delete_removes_everything(users) -> None:
     assert await users.get_profile(a) is None
     assert (await users.get_profile(b))[0] == {"lang": b[:2]}  # untouched
     assert await users.delete_user(a) == 0
+
+
+# --- push subscriptions, profile scan, alert claims (same contract, both stores) -------------------
+
+from rythu_weather.app.push_subscription import Subscription  # noqa: E402
+
+SUB_A = Subscription("https://fcm.googleapis.com/fcm/send/aaa", "p" * 87, "a" * 22)
+SUB_B = Subscription("https://fcm.googleapis.com/fcm/send/bbb", "q" * 87, "b" * 22)
+
+
+async def test_push_subscriptions_upsert_by_endpoint_and_delete(users) -> None:
+    uid = new_credentials().user_id
+    await users.create_user(uid, "ab" * 32, NOW)
+    assert await users.push_subscriptions(uid) == []
+    await users.put_push_subscription(uid, SUB_A, NOW)
+    await users.put_push_subscription(uid, SUB_A, NOW)  # same endpoint: replaced, not duplicated
+    await users.put_push_subscription(uid, SUB_B, NOW)
+    assert sorted(s.endpoint for s in await users.push_subscriptions(uid)) == [SUB_A.endpoint, SUB_B.endpoint]
+    await users.delete_push_subscription(uid, SUB_A.endpoint)
+    await users.delete_push_subscription(uid, SUB_A.endpoint)  # already gone: fine
+    assert await users.push_subscriptions(uid) == [SUB_B]
+    assert await users.delete_user(uid) == 2  # device + subscription: delete-my-data covers it
+
+
+async def test_profiles_lists_only_users_with_a_profile(users) -> None:
+    with_profile, without = new_credentials().user_id, new_credentials().user_id
+    for uid in (with_profile, without):
+        await users.create_user(uid, "ab" * 32, NOW)
+    await users.put_profile(with_profile, {"lang": "te"}, if_match=None, create_only=True)
+    found = {uid: p async for uid, p in users.profiles()}
+    assert found.get(with_profile) == {"lang": "te"}
+    assert without not in found
+
+
+async def test_alert_claims_are_idempotent_releasable_and_pruned(users) -> None:
+    uid = new_credentials().user_id
+    await users.create_user(uid, "ab" * 32, NOW)
+    key = "rain.2026-10-27.am"
+    assert not await users.has_alert(uid, key)
+    assert await users.claim_alert(uid, key, NOW) is True
+    assert await users.claim_alert(uid, key, NOW) is False  # already sent (or being sent)
+    assert await users.has_alert(uid, key)
+    await users.release_alert(uid, key)  # sending failed: a retry may claim again
+    assert await users.claim_alert(uid, key, NOW) is True
+    await users.claim_alert(uid, "task.f1a2b3.cotton.split1", NOW - timedelta(days=40))
+    assert await users.prune_alerts(uid, NOW - timedelta(days=30)) == 1
+    assert await users.has_alert(uid, key)  # the recent one stays

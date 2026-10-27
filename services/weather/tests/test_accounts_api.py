@@ -41,7 +41,7 @@ def accounts() -> Accounts:
 
 @pytest.fixture
 async def client(accounts, clock):
-    app = create_app(FakeProvider(None), object(), accounts, clock)  # type: ignore[arg-type]
+    app = create_app(FakeProvider(None), object(), accounts, clock, None)  # type: ignore[arg-type]
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
@@ -215,3 +215,62 @@ async def test_a_profile_saved_before_fields_existed_reads_with_none(client, acc
     old = {**PROFILE, "updated_at": "2026-10-01T00:00:00+00:00"}  # no "fields" key at all
     await accounts.users.put_profile(uid, old, if_match=None, create_only=True)
     assert (await client.get("/v1/me/profile", headers=auth)).json()["fields"] == []
+
+
+# --- push subscriptions ----------------------------------------------------------------------------
+
+SUBSCRIPTION = {
+    "endpoint": "https://fcm.googleapis.com/fcm/send/phone1",
+    "keys": {"p256dh": "B" * 87, "auth": "a" * 22},
+}
+
+
+@pytest.fixture
+async def push_client(accounts, clock):
+    from rythu_weather.app.composition import Push
+    from rythu_weather.app.webpush import LocalVapidSigner
+
+    app = create_app(FakeProvider(None), object(), accounts, clock, Push(LocalVapidSigner(), "https://x.example"))  # type: ignore[arg-type]
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as c:
+        yield c
+
+
+async def test_push_key_is_the_public_vapid_key(push_client) -> None:
+    from rythu_weather.app.webpush import b64url_decode
+
+    resp = await push_client.get("/v1/push/key")
+    raw = b64url_decode(resp.json()["public_key"])
+    assert len(raw) == 65 and raw[0] == 4  # uncompressed P-256 point, as PushManager.subscribe wants
+    assert resp.headers["Cache-Control"].startswith("public")
+
+
+async def test_subscribe_unsubscribe_and_limits(push_client, accounts) -> None:
+    uid, auth = await _device(push_client)
+    assert (await push_client.put("/v1/me/push-subscriptions", json=SUBSCRIPTION, headers=auth)).status_code == 204
+    assert (await push_client.put("/v1/me/push-subscriptions", json=SUBSCRIPTION, headers=auth)).status_code == 204
+    assert len(await accounts.users.push_subscriptions(uid)) == 1  # same phone: replaced
+    for i in (2, 3):
+        sub = {**SUBSCRIPTION, "endpoint": f"https://fcm.googleapis.com/fcm/send/phone{i}"}
+        assert (await push_client.put("/v1/me/push-subscriptions", json=sub, headers=auth)).status_code == 204
+    fourth = {**SUBSCRIPTION, "endpoint": "https://fcm.googleapis.com/fcm/send/phone4"}
+    resp = await push_client.put("/v1/me/push-subscriptions", json=fourth, headers=auth)
+    assert resp.status_code == 400 and "at most 3" in resp.json()["error"]
+    params = {"endpoint": SUBSCRIPTION["endpoint"]}
+    gone = await push_client.delete("/v1/me/push-subscriptions", params=params, headers=auth)
+    assert gone.status_code == 204
+    assert len(await accounts.users.push_subscriptions(uid)) == 2
+
+
+@pytest.mark.parametrize(
+    "endpoint", ["https://evil.example/x", "http://fcm.googleapis.com/x", "https://169.254.169.254/latest"],
+)
+async def test_subscriptions_cannot_point_the_server_anywhere(push_client, endpoint) -> None:
+    _, auth = await _device(push_client)
+    resp = await push_client.put("/v1/me/push-subscriptions", json={**SUBSCRIPTION, "endpoint": endpoint}, headers=auth)
+    assert (resp.status_code, resp.json()["code"]) == (400, "bad_request")
+
+
+async def test_push_needs_a_token_and_is_503_when_switched_off(client, push_client) -> None:
+    assert (await push_client.put("/v1/me/push-subscriptions", json=SUBSCRIPTION)).status_code == 401
+    off = await client.get("/v1/push/key")  # the plain `client` fixture builds the app with push=None
+    assert (off.status_code, off.json()["code"]) == (503, "unavailable")

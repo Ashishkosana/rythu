@@ -229,3 +229,23 @@ class CalendarOut(_Strict):
     reference: Reference = Field(description="Which date the offsets count from: sowing or transplanting.")
     reference_date: str
     tasks: list[CalendarTaskOut]
+
+
+# ── Push alerts (S14) ───────────────────────────────────────────────────────────────────────────
+
+
+class PushKeyOut(_Strict):
+    public_key: str = Field(description="VAPID application server key (base64url, 65-byte P-256 point) "
+                                        "for PushManager.subscribe().")
+
+
+class PushKeysIn(_Strict):
+    p256dh: str = Field(min_length=80, max_length=100, pattern=r"^[A-Za-z0-9_-]+$")
+    auth: str = Field(min_length=16, max_length=32, pattern=r"^[A-Za-z0-9_-]+$")
+
+
+class PushSubscriptionIn(_Strict):
+    """A browser PushSubscription (endpoint + keys). Only real browser push services are accepted."""
+
+    endpoint: str = Field(max_length=1000)
+    keys: PushKeysIn

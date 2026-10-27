@@ -25,7 +25,7 @@ from rythu_weather.api.me import ApiError, accounts_router, error_response
 from rythu_weather.api.schemas import CalendarOut, ErrorBody, GeocodeResults, Health, WeatherContract
 from rythu_weather.app.accounts import utc_now
 from rythu_weather.app.calendar_request import answer_calendar
-from rythu_weather.app.composition import Accounts, build_accounts, build_geocoder, build_provider
+from rythu_weather.app.composition import Accounts, Push, build_accounts, build_geocoder, build_provider, build_push
 from rythu_weather.app.geocode_request import MAX_QUERY, MIN_QUERY, answer_geocode
 from rythu_weather.app.weather_request import answer_weather
 from rythu_weather.domain.models import Crop, WaterSource, WeatherProvider
@@ -64,11 +64,13 @@ def create_app(
     geocoder: Geocoder | None = None,
     accounts: Accounts | None = _BUILD,
     clock: Callable[[], datetime] = utc_now,
+    push: Push | None = _BUILD,
 ) -> FastAPI:
     """Build the app. Pass fakes in tests; production builds them from settings, once."""
     weather_provider = provider or build_provider()
     place_search = geocoder or build_geocoder()
     device_accounts = build_accounts() if accounts is _BUILD else accounts
+    web_push = build_push() if push is _BUILD else push
     app = FastAPI(
         title="Rythu API",
         version="1",
@@ -125,7 +127,7 @@ def create_app(
         summary="My-Field crop calendar from a sowing or transplanting date",
     )
 
-    app.include_router(accounts_router(device_accounts, clock))
+    app.include_router(accounts_router(device_accounts, clock, web_push))
 
     async def on_api_error(_request: Request, exc: Exception) -> JSONResponse:
         assert isinstance(exc, ApiError)
