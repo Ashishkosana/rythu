@@ -1,0 +1,82 @@
+name: android
+
+# The Play Store app is a Trusted Web Activity: a thin Android shell around the site. Every change to
+# it is built here (unsigned check). A release — run by hand — needs the real host in
+# apps/android/twa-manifest.json and the upload key in secrets; it produces a signed .aab to upload in
+# Play Console. Never an APK to pass around: Rythu itself tells farmers not to install those.
+
+on:
+  push:
+    paths:
+      - apps/android/**
+      - apps/web/app/manifest.ts
+      - apps/web/public/icon*
+      - .github/workflows/android.yml
+  pull_request:
+    paths:
+      - apps/android/**
+      - apps/web/app/manifest.ts
+      - apps/web/public/icon*
+      - .github/workflows/android.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: android · generate + gradle (${{ github.event_name == 'workflow_dispatch' && 'signed release' || 'check' }})
+    runs-on: ubuntu-latest
+    env:
+      RELEASE: ${{ github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            apps/web/package-lock.json
+            apps/android/package-lock.json
+      - name: Build the site (the app's icons and web manifest come from it)
+        working-directory: apps/web
+        run: npm ci && npm run build
+      - name: Generate the Android project
+        working-directory: apps/android
+        env:
+          RYTHU_VERSION_CODE: ${{ github.run_number }}
+          RYTHU_VERSION_NAME: 1.0.${{ github.run_number }}
+        run: |
+          npm ci
+          npm test
+          node generate.mjs ${{ env.RELEASE == 'true' && '--release' || '' }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Build the app bundle
+        working-directory: apps/android/build/project
+        run: ./gradlew --no-daemon bundleRelease
+      - name: Sign with the upload key
+        if: env.RELEASE == 'true'
+        working-directory: apps/android/build/project
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_B64" || { echo "::error::ANDROID_UPLOAD_KEYSTORE_B64 is not set (see apps/android/README.md)"; exit 1; }
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/upload.keystore"
+          aab=app/build/outputs/bundle/release/app-release.aab
+          jarsigner -keystore "$RUNNER_TEMP/upload.keystore" -storepass:env KEYSTORE_PASSWORD -keypass:env KEY_PASSWORD \
+            -sigalg SHA256withRSA -digestalg SHA-256 "$aab" upload
+          jarsigner -verify "$aab" | grep -q "jar verified"
+          rm -f "$RUNNER_TEMP/upload.keystore"
+          mv "$aab" "$GITHUB_WORKSPACE/rythu-${{ github.run_number }}.aab"
+      - name: Keep the signed bundle (upload it in Play Console)
+        if: env.RELEASE == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rythu-${{ github.run_number }}-aab
+          path: rythu-${{ github.run_number }}.aab
+          retention-days: 30

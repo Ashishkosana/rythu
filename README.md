@@ -133,15 +133,16 @@ Note: `rule_confidence` exists internally but is **intentionally not serialised*
 
 CI (GitHub Actions) runs `ruff` + `mypy --strict` + `pytest` for the backend and `eslint` + `tsc` + `vitest` + `next build` + a production-dependency `npm audit` for the frontend on every push and PR — see the CI badge at the top. You can also reproduce the numbers locally with the commands below.
 
-- **Backend — 100 tests pass** (1 network "live" test deselected by default); 95 test functions across 12 files in `services/weather/tests` (rules 27, chilli 13, engine 10, open-meteo/serialize/windows ~7–8 each, cache/handler 6, reliability/wmo 4, service 2, domain-purity 1). Gate is `ruff` + `mypy --strict` + `pytest`.
+- **Backend — 379 tests pass** (1 network "live" test deselected by default) across 29 files in `services/weather/tests`. 17 of them run against Azurite (the Storage emulator); CI requires it, locally they skip without it. Gate is `ruff` + `mypy --strict` + `pytest`.
   ```bash
-  cd services/weather && uv run ruff check . && uv run mypy && uv run pytest   # -> 100 passed, 1 deselected
+  cd services/weather && uv run ruff check . && uv run mypy && uv run pytest   # -> 379 passed, 1 deselected (with Azurite)
   ```
-- **Frontend — 51 tests pass** across 6 Vitest files, all in `apps/web/lib` (agronomy 8, geocode 11, schemes 7, speak 7, crops 4, sky 3).
+- **Frontend — 164 tests pass** across 21 Vitest files (`apps/web/lib` and the build scripts), plus a first-load JS budget (≤ 170 KB gz per page) checked in CI.
   ```bash
-  cd apps/web && npm run test   # vitest run -> Test Files 6 passed, Tests 51 passed
+  cd apps/web && npm run test   # vitest run -> Test Files 21 passed, Tests 164 passed
   ```
-  These are **pure lib/unit tests only** — there are intentionally no React render/component tests and no end-to-end tests in the repo.
+  These are lib/unit tests — no React render tests and no end-to-end tests in the repo (browser checks are run by hand during development).
+- **Android shell — 2 tests** run the real generator against the built site (`cd apps/android && npm test`).
 
 ---
 
@@ -196,9 +197,11 @@ Open `http://localhost:3000`. In local dev the front end falls back to `http://1
 ## Repo layout
 
 ```
-apps/web          Next.js 16 + TypeScript + Tailwind — the SSR web app / PWA
-services/weather  Python, hexagonal — Open-Meteo -> farming-read engine -> typed JSON (runs on Lambda)
-infra             AWS CDK (Python) — API Gateway HTTP API + Lambda + DynamoDB cache
+apps/web          Next.js 16 + TypeScript + Tailwind — static export / PWA with an app-shell service worker
+apps/android      the Play Store app: a Trusted Web Activity generated from twa-manifest.json
+services/weather  Python, hexagonal — Open-Meteo -> farming-read engine -> typed JSON (Azure Functions; Lambda until S10)
+infra/azure       Bicep — Functions, Table Storage, Key Vault, queues, Static Web Apps (+ runbook)
+infra             AWS CDK (Python) — the old stack, retired at S10
 docs              problem statement, farmer research, agronomy / chilli / schemes specs,
                   the verified weather spec, and screenshots
 prototype         early HTML prototype
