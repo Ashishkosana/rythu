@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BAG_KG, CROP_DOSES, UREA_BAG_KG, computeForArea, fertilizerFor } from "./agronomy";
+import { BAG_KG, BAG_PRICES, CROP_DOSES, UREA_BAG_KG, computeForArea, fertilizerFor } from "./agronomy";
 
 describe("fertilizerFor — NPK kg → Urea/DAP/MOP", () => {
   it("matches the verified paddy worked example (per acre 48.6:24.3:16.2)", () => {
@@ -73,6 +73,27 @@ describe("CROP_DOSES data integrity", () => {
     expect(paddy.needsVerification).toBe(false);
     for (const c of CROP_DOSES.filter((x) => x.key !== "paddy")) {
       expect(c.needsVerification, c.key).toBe(true);
+    }
+  });
+});
+
+describe("BAG_PRICES — what a bag should cost", () => {
+  it("states a fixed price only for urea, per 45 kg bag", () => {
+    const fixed = BAG_PRICES.filter((p) => p.fixed);
+    expect(fixed.map((p) => p.key)).toEqual(["urea"]);
+    expect(fixed[0]).toMatchObject({ bagKg: UREA_BAG_KG, rupees: 266.5 });
+  });
+
+  it("never invents a number for a company-set price", () => {
+    const mop = BAG_PRICES.find((p) => p.key === "mop")!;
+    expect(mop.rupees).toBeNull();
+    expect(BAG_PRICES.find((p) => p.key === "dap")).toMatchObject({ bagKg: BAG_KG, fixed: false });
+  });
+
+  it("cites a source for every price", () => {
+    for (const p of BAG_PRICES) {
+      expect(p.sources.length).toBeGreaterThan(0);
+      for (const url of p.sources) expect(url).toMatch(/^https:\/\//);
     }
   });
 });

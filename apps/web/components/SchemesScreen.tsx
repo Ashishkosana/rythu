@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { SCHEMES, type Scheme, type SchemeStatus } from "@/lib/schemes";
 import { pick, useLang, type Lang } from "@/lib/lang";
 import LangToggle from "@/components/LangToggle";
+import ScamSafetyCard from "@/components/ScamSafetyCard";
 import Icon from "@/components/ui/Icon";
 
 type Filter = "all" | "state" | "central";
@@ -131,6 +132,7 @@ export default function SchemesScreen() {
       </div>
 
       <div className="space-y-3 p-4 pt-1">
+        <ScamSafetyCard />
         {shown.map((s) => (
           <SchemeCard key={s.key} s={s} lang={lang} />
         ))}

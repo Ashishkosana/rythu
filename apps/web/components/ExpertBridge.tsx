@@ -4,6 +4,7 @@
 // FREE expert by voice. Kisan Call Centre (1800-180-1551) + the local Rythu
 // Vedika / AEO. No funnel, no charge — on-brand ("we sell you nothing").
 
+import { KISAN_CALL_CENTRE } from "@/lib/helplines";
 import { pick, useLang } from "@/lib/lang";
 
 export default function ExpertBridge() {
@@ -27,10 +28,10 @@ export default function ExpertBridge() {
       </p>
 
       <a
-        href="tel:18001801551"
+        href={KISAN_CALL_CENTRE.tel}
         className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-brand py-3.5 text-lg font-bold text-white"
       >
-        📞 1800-180-1551
+        📞 {KISAN_CALL_CENTRE.display}
       </a>
 
       <p className="mt-3 text-caption leading-relaxed text-ink-secondary">

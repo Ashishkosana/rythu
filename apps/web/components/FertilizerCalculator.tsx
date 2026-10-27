@@ -1,14 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CROP_DOSES, GUNTHA_PER_ACRE, computeForArea } from "@/lib/agronomy";
+import { BAG_PRICES, CROP_DOSES, GUNTHA_PER_ACRE, PRICES_AS_OF, computeForArea, type BagPrice } from "@/lib/agronomy";
+import { KISAN_CALL_CENTRE } from "@/lib/helplines";
 import { speak } from "@/lib/speak";
-import { pick, useLang } from "@/lib/lang";
+import { pick, useLang, type Lang } from "@/lib/lang";
 import Icon from "@/components/ui/Icon";
 
 // Fertilizer calculator: pick crop + area → exact Urea/DAP/MOP bags, from cited
 // PJTSAU/ICAR norms (never company formulas). Deterministic + offline. Honest:
-// always shows the soil-test/AEO fallback, prominently for unverified crops.
+// always shows the soil-test/AEO fallback, prominently for unverified crops. Below the doses: what a
+// bag should cost — a number only where the government fixes it — and where to complain when a
+// dealer asks for more (2026: over-MRP urea and DAP sales were reported across Telangana).
 
 type Unit = "acre" | "guntha";
 
@@ -30,7 +33,7 @@ export default function FertilizerCalculator() {
   function listen() {
     const line =
       acres > 0
-        ? `${dose.name_te} కోసం, ${r.ureaBags} బస్తాల యూరియా, ${r.dapBags} బస్తాల డీఏపీ, ${r.mopBags} బస్తాల పొటాష్ వేయండి. మీ నేల పరీక్ష ప్రకారం నిర్ధారించుకోండి.`
+        ? `${dose.name_te} కోసం, ${r.ureaBags} బస్తాల యూరియా, ${r.dapBags} బస్తాల డీఏపీ, ${r.mopBags} బస్తాల పొటాష్ వేయండి. మీ నేల పరీక్ష ప్రకారం నిర్ధారించుకోండి. బస్తాపై ఉన్న ధర కంటే ఎక్కువ ఇవ్వకండి.`
         : "దయచేసి విస్తీర్ణం నమోదు చేయండి.";
     speak(line, "te");
   }
@@ -112,6 +115,8 @@ export default function FertilizerCalculator() {
         </p>
       )}
 
+      <BagPrices lang={lang} />
+
       {/* honesty */}
       <p
         className={`mt-3 rounded-xl px-3 py-2 text-caption leading-relaxed ${
@@ -133,5 +138,69 @@ function Bag({ label, en, bags, kg }: { label: string; en: string; bags: number;
       <p className="mt-0.5 text-sm font-semibold">{label}</p>
       <p className="text-caption text-ink-secondary">{en} · <span className="whitespace-nowrap">{kg} kg</span></p>
     </div>
+  );
+}
+
+function rupees(n: number): string {
+  return `₹${n.toLocaleString("en-IN", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2 })}`;
+}
+
+function PriceText({ p, lang }: { p: BagPrice; lang: Lang }) {
+  if (p.rupees === null) return <>{pick(lang, "బస్తాపై ముద్రించిన ధర", "Printed on the bag")}</>;
+  return (
+    <>
+      {p.fixed ? rupees(p.rupees) : `~${rupees(p.rupees)}`}
+      <span className="block text-caption font-normal text-ink-secondary">
+        {p.fixed ? pick(lang, "ప్రభుత్వ ధర", "Fixed by govt") : pick(lang, "బస్తాపై ధర చూడండి", "Check the bag")}
+      </span>
+    </>
+  );
+}
+
+function BagPrices({ lang }: { lang: Lang }) {
+  const [year, month] = PRICES_AS_OF.split("-").map(Number);
+  const asOf = new Date(year!, month! - 1).toLocaleDateString(lang === "te" ? "te-IN" : "en-IN", {
+    month: "long",
+    year: "numeric",
+  });
+  return (
+    <section aria-labelledby="bag-prices" className="mt-3 rounded-2xl border border-line p-3">
+      <h3 id="bag-prices" className="text-base font-semibold">
+        {pick(lang, "బస్తా ధర (MRP)", "Price per bag (MRP)")}
+      </h3>
+      <dl className="mt-2 space-y-2 text-sm">
+        {BAG_PRICES.map((p) => (
+          <div key={p.key} className="flex items-baseline justify-between gap-3">
+            <dt>
+              {pick(lang, p.name_te, p.name_en)} <span className="text-caption text-ink-secondary">{p.bagKg} kg</span>
+            </dt>
+            <dd className="text-right font-semibold tabular-nums">
+              <PriceText p={p} lang={lang} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-3 rounded-xl bg-act-bg px-3 py-2 text-sm font-semibold text-act-fg">
+        {pick(
+          lang,
+          "బస్తాపై ముద్రించిన ధర (MRP) కంటే ఒక్క రూపాయి కూడా ఎక్కువ ఇవ్వకండి. బిల్లు తప్పక తీసుకోండి.",
+          "Never pay more than the MRP printed on the bag. Always take the bill.",
+        )}
+      </p>
+      <p className="mt-2 text-caption leading-relaxed text-ink-secondary">
+        {pick(
+          lang,
+          "ఎక్కువ అడిగితే: బిల్లుతో మీ మండల వ్యవసాయ అధికారి (MAO) / AEOకి ఫిర్యాదు చేయండి — MRP కంటే ఎక్కువకు అమ్మడం నేరం. ఎవరిని అడగాలో తెలియకపోతే ఉచిత కిసాన్ కాల్ సెంటర్‌కు ఫోన్ చేయండి.",
+          "Asked for more? Complain to your Mandal Agriculture Officer (MAO) / AEO with the bill — selling above MRP is an offence. Not sure whom to ask? Call the free Kisan Call Centre.",
+        )}
+      </p>
+      <a
+        href={KISAN_CALL_CENTRE.tel}
+        className="tap mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-brand py-2.5 text-sm font-semibold text-brand-ink"
+      >
+        📞 {KISAN_CALL_CENTRE.display}
+      </a>
+      <p className="mt-2 text-caption text-ink-secondary">{pick(lang, `ధరలు: ${asOf}`, `Prices as of ${asOf}`)}</p>
+    </section>
   );
 }
