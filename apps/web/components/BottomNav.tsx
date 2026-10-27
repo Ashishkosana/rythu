@@ -14,7 +14,7 @@ const TABS: readonly { href: string; icon: IconName; te: string; en: string }[] 
   { href: "/field/", icon: "calendar-days", te: "నా పొలం", en: "My field" },
   { href: "/crops/", icon: "sprout", te: "పంటలు", en: "Crops" },
   { href: "/schemes/", icon: "landmark", te: "పథకాలు", en: "Schemes" },
-  { href: "/account/", icon: "user", te: "నా సమాచారం", en: "My data" },
+  { href: "/account/", icon: "user", te: "నా వివరాలు", en: "My data" },
 ];
 
 export default function BottomNav() {
@@ -38,7 +38,7 @@ export default function BottomNav() {
             >
               <Icon name={t.icon} size={24} />
             </span>
-            <span className={`text-caption ${active ? "font-bold text-brand-ink" : "text-ink-secondary"}`}>
+            <span className={`max-w-full truncate text-caption ${active ? "font-bold text-brand-ink" : "text-ink-secondary"}`}>
               {lang === "te" ? t.te : t.en}
             </span>
           </Link>

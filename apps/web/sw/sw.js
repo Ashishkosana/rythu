@@ -99,3 +99,44 @@ self.addEventListener("fetch", (event) => {
     })(),
   );
 });
+
+// ── Push alerts (S14) ─────────────────────────────────────────────────────────────────────────
+// The server encrypts each alert for this browser (RFC 8291); the browser decrypts it before this
+// handler runs. Payload: { title, body, url, tag }. The same tag replaces an older notification.
+self.addEventListener("push", (event) => {
+  let alert = { title: "రైతు · Rythu", body: "", url: "/", tag: "rythu" };
+  try {
+    alert = { ...alert, ...event.data.json() };
+  } catch {
+    /* not JSON: show the generic title rather than nothing */
+  }
+  event.waitUntil(
+    self.registration.showNotification(alert.title, {
+      body: alert.body,
+      tag: alert.tag,
+      renotify: true, // a new alert on the same topic still buzzes
+      icon: "/icon-192.png",
+      lang: /[ఀ-౿]/.test(alert.title) ? "te" : "en",
+      data: { url: alert.url },
+    }),
+  );
+});
+
+// Tapping an alert opens the app on the screen it is about — reusing an open window if there is one.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || "/", self.location.origin);
+  if (target.origin !== self.location.origin) return; // only ever our own pages
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const w of windows) {
+        if ("focus" in w) {
+          await w.navigate(target.href).catch(() => undefined);
+          return w.focus();
+        }
+      }
+      return self.clients.openWindow(target.href);
+    })(),
+  );
+});

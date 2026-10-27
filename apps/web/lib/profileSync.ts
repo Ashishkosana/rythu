@@ -7,6 +7,7 @@
 
 import { ApiUnavailable } from "./api";
 import { NoDevice, authedFetch, forgetDevice, hasDevice } from "./device";
+import { disableAlerts } from "./push";
 import { inCoverage } from "./coverage";
 import { loadFields, type MyField } from "./fields";
 import { localDate } from "./freshness";
@@ -152,6 +153,8 @@ async function currentEtag(): Promise<string | null> {
 
 /** Turn the server copy on (and upload now) or off (stop uploading; data stays until deleted). */
 export async function setConsent(on: boolean): Promise<SyncStatus> {
+  // Alerts need the server copy: without it they stop too (and the server stops sending).
+  if (!on) await disableAlerts();
   setSyncConsent(on);
   return syncProfile();
 }
@@ -173,6 +176,7 @@ export async function deleteServerData(): Promise<boolean> {
   } catch (err) {
     if (!(err instanceof NoDevice)) return false; // NoDevice: the server had already forgotten us
   }
+  await disableAlerts({ tellServer: false }); // the server already deleted the subscription
   await forgetDevice();
   saveSyncState(null);
   setStatus({ state: "off" });

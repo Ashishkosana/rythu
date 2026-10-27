@@ -6,7 +6,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { createStore, del } from "idb-keyval";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import LangToggle from "@/components/LangToggle";
 import Icon from "@/components/ui/Icon";
 import { CROP_LABEL } from "@/lib/cropLabels";
@@ -20,6 +20,7 @@ import {
   syncConsent,
 } from "@/lib/prefs";
 import { deleteServerData, setConsent, subscribeSyncStatus, syncStatus, type SyncStatus } from "@/lib/profileSync";
+import { alertsState, disableAlerts, enableAlerts, type AlertsResult } from "@/lib/push";
 
 function subscribePrefs(cb: () => void) {
   window.addEventListener(PREFS_EVENT, cb);
@@ -76,7 +77,7 @@ export default function MyDataScreen() {
       <header className="safe-top rounded-b-[2.25rem] bg-gradient-to-b from-hero-brand-from to-hero-brand-to px-5 pb-6 pt-4 text-white shadow-hero">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">{pick(lang, "నా సమాచారం", "My data")}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{pick(lang, "నా వివరాలు", "My data")}</h1>
             <p className="mt-0.5 text-sm text-white/90">{pick(lang, "మీ సమాచారం మీదే", "Your data is yours")}</p>
           </div>
           <LangToggle light />
@@ -125,6 +126,8 @@ export default function MyDataScreen() {
           <StatusLine status={consent ? status : OFF} lang={lang} />
         </section>
 
+        <AlertsCard consent={consent} lang={lang} />
+
         <section className="card space-y-3 p-4" aria-labelledby="delete">
           <h2 id="delete" className="text-lg font-bold">
             {pick(lang, "తొలగించండి", "Delete")}
@@ -135,7 +138,7 @@ export default function MyDataScreen() {
                 onClick={() => setConfirm("server")}
                 className="tap w-full rounded-2xl border border-line-strong px-4 py-3 font-semibold text-act-fg"
               >
-                {pick(lang, "సర్వర్ నుండి నా సమాచారం తొలగించండి", "Delete my data from Rythu's server")}
+                {pick(lang, "సర్వర్ నుండి నా వివరాలు తొలగించండి", "Delete my data from Rythu's server")}
               </button>
               <button
                 onClick={() => setConfirm("phone")}
@@ -210,5 +213,73 @@ function StatusLine({ status, lang }: { status: SyncStatus; lang: "te" | "en" })
     <p role="status" className={`mt-3 flex items-center gap-1.5 text-sm font-medium ${tone}`}>
       <Icon name={icon} size={18} /> {text}
     </p>
+  );
+}
+
+
+function AlertsCard({ consent, lang }: { consent: boolean; lang: "te" | "en" }) {
+  const [state, setState] = useState<AlertsResult>("off");
+  const [busy, setBusy] = useState(false);
+  // Read the phone's real state after mount (permission can change in the phone's settings).
+  useEffect(() => {
+    const read = () => setState(alertsState());
+    read();
+    document.addEventListener("visibilitychange", read);
+    return () => document.removeEventListener("visibilitychange", read);
+  }, [consent]);
+
+  const on = state === "on" && consent;
+  const usable = consent && state !== "unsupported" && state !== "blocked";
+  const note = (() => {
+    if (!consent) return pick(lang, "ముందు పైన 'సర్వర్‌లో కాపీ' ఆన్ చేయండి — మీ ఊరు తెలిస్తేనే హెచ్చరికలు పంపగలం.", "Turn on the server copy above first — we can only alert you if we know your village.");
+    switch (state) {
+      case "on":
+        return pick(lang, "ఆన్ — ఉదయం 6:45, మధ్యాహ్నం 12:45, సాయంత్రం 5:45 కు చూస్తాం. రాత్రి ఎప్పుడూ రావు.", "On — we check at 6:45 am, 12:45 pm and 5:45 pm. Never at night.");
+      case "blocked":
+        return pick(lang, "ఫోన్ సెట్టింగ్స్‌లో Rythu నోటిఫికేషన్లు ఆపేశారు. అక్కడ అనుమతిస్తే ఇక్కడ ఆన్ చేయవచ్చు.", "Notifications for Rythu are blocked in the phone's settings. Allow them there to turn this on.");
+      case "unsupported":
+        return pick(lang, "ఈ ఫోన్/బ్రౌజర్‌లో హెచ్చరికలు రావు.", "This phone or browser can't receive alerts.");
+      case "failed":
+        return pick(lang, "ఇప్పుడు ఆన్ కాలేదు — ఇంటర్నెట్ ఉన్నప్పుడు మళ్లీ ప్రయత్నించండి.", "Couldn't turn on — try again with internet.");
+      default:
+        return pick(lang, "ఆఫ్", "Off");
+    }
+  })();
+
+  async function toggle() {
+    setBusy(true);
+    setState(on ? await disableAlerts() : await enableAlerts());
+    setBusy(false);
+  }
+
+  return (
+    <section className="card p-4" aria-labelledby="alerts">
+      <div className="flex items-start justify-between gap-3">
+        <h2 id="alerts" className="text-lg font-bold">
+          {pick(lang, "వర్షం, పొలం పనుల హెచ్చరికలు", "Rain & field alerts")}
+        </h2>
+        <button
+          role="switch"
+          aria-checked={on}
+          aria-labelledby="alerts"
+          disabled={busy || (!usable && !on)}
+          onClick={() => void toggle()}
+          className={`tap relative flex shrink-0 items-center rounded-full px-1 transition-colors disabled:opacity-50 ${on ? "bg-brand" : "bg-line-strong"}`}
+        >
+          <span className={`h-9 w-9 rounded-full bg-white shadow-1 transition-transform ${on ? "translate-x-6" : ""}`} />
+          <span className="w-6" aria-hidden />
+        </button>
+      </div>
+      <p className="mt-2 text-sm text-ink-secondary">
+        {pick(
+          lang,
+          "వర్షం వచ్చే అవకాశం ఎక్కువైతే, పిచికారీ వద్దు అనిపిస్తే, మీ పొలంలో ఎరువు/తనిఖీ రోజు వస్తే ఫోన్‌కు సందేశం.",
+          "A message when rain is likely, when spraying would be wasted, and when a fertilizer or pest-check day comes up on your field.",
+        )}
+      </p>
+      <p role="status" className={`mt-3 text-sm font-medium ${on ? "text-success-fg" : state === "failed" || state === "blocked" ? "text-caution-fg" : "text-ink-secondary"}`}>
+        {note}
+      </p>
+    </section>
   );
 }
