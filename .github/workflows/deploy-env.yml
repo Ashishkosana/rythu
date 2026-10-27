@@ -1,0 +1,171 @@
+name: Deploy one environment (Azure)
+
+# Reusable: the API (Functions) then the web app (Static Web Apps) for one environment, each smoke
+# tested. Called by deploy-azure.yml — dev after CI, prod after dev with an approval. Variables come
+# from the GitHub Environment of the same name (infra/azure/README.md steps 3 and 6).
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: dev or prod
+        required: true
+        type: string
+      ref:
+        description: the commit to deploy (the one CI tested)
+        required: true
+        type: string
+
+permissions:
+  id-token: write # OIDC: exchange GitHub's token for an Azure token (no stored secret)
+  contents: read
+
+jobs:
+  api:
+    name: deploy · api (${{ inputs.environment }})
+    # Does nothing until the one-time setup in infra/azure/README.md has set the variables.
+    if: vars.AZURE_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    # Must match the federated credential subject (repo:<owner>/<repo>:environment:<env>).
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: deploy-api-${{ inputs.environment }}
+      cancel-in-progress: false # never interrupt a deployment halfway
+    defaults:
+      run:
+        working-directory: services/weather
+    steps:
+      - name: The variables belong to this environment
+        env:
+          APP: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
+          ENV_NAME: ${{ inputs.environment }}
+        # A variable missing on the environment silently falls back to the repository's (dev) value.
+        run: |
+          case "$APP" in *-"$ENV_NAME"-*) echo "deploying to $APP" ;;
+            *) echo "::error::AZURE_FUNCTIONAPP_NAME ($APP) is not a $ENV_NAME app: set the variables on the GitHub Environment '$ENV_NAME'"; exit 1 ;;
+          esac
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Stage the Functions package
+        run: ./scripts/package_functions.sh
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy to Flex Consumption (remote build)
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
+          package: services/weather/dist/functions
+          remote-build: true
+      - name: Smoke test
+        env:
+          URL: ${{ vars.AZURE_FUNCTIONAPP_URL }}
+        run: |
+          # A fresh deploy can take a minute to start serving; give it up to ~2 minutes.
+          for i in $(seq 1 24); do
+            if curl -fsS "$URL/healthz" | grep -q '"ok"'; then break; fi
+            sleep 5
+          done
+          curl -fsS "$URL/healthz"
+          body=$(curl -fsS "$URL/v1/weather?crop=chilli")
+          echo "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); assert 'reliability' in d; print('weather OK, degraded =', d.get('degraded', False))"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/v1/weather?lat=13.08&lon=80.27")
+          test "$code" = "400" && echo "coverage check OK (400 outside Telangana)"
+          # Device accounts end to end (proves the Key Vault reference resolved), then erase the test user.
+          creds=$(curl -fsS -X POST "$URL/v1/devices")
+          token=$(curl -fsS -X POST "$URL/v1/sessions" -H 'Content-Type: application/json' -d "$creds" \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['token'])")
+          echo "::add-mask::$token"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/v1/me/profile" -H "Authorization: Bearer $token")
+          test "$code" = "404" && echo "accounts OK (fresh device has no profile)"
+          # Ask Rythu is deployed — checked with a malformed question, refused before any (paid) model call.
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL/v1/assistant/ask" \
+            -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d '{"question":"x"}')
+          test "$code" = "400" && echo "assistant route OK (validated before any model call)"
+          curl -fsS -X DELETE "$URL/v1/me" -H "Authorization: Bearer $token" && echo "test device erased"
+          # Push alerts: the app can read its VAPID key in Key Vault (a 65-byte P-256 point).
+          curl -fsS "$URL/v1/push/key" | python3 -c "import base64,json,sys; k=json.load(sys.stdin)['public_key']; \
+            raw=base64.urlsafe_b64decode(k+'='*(-len(k)%4)); assert len(raw)==65 and raw[0]==4; print('push key OK')"
+
+  web:
+    name: deploy · web (${{ inputs.environment }})
+    # Runs after the API job so the web app never points at an API that failed its smoke test.
+    needs: api
+    if: vars.AZURE_STATICWEBAPP_NAME != ''
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: deploy-web-${{ inputs.environment }}
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: The variables belong to this environment
+        env:
+          APP: ${{ vars.AZURE_STATICWEBAPP_NAME }}
+          ENV_NAME: ${{ inputs.environment }}
+        run: |
+          case "$APP" in *-"$ENV_NAME"-*) echo "deploying to $APP" ;;
+            *) echo "::error::AZURE_STATICWEBAPP_NAME ($APP) is not a $ENV_NAME app: set the variables on the GitHub Environment '$ENV_NAME'"; exit 1 ;;
+          esac
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Build the static export against the deployed API
+        run: npm run build && npm run check:budget
+        env:
+          NEXT_PUBLIC_API_BASE: ${{ vars.AZURE_FUNCTIONAPP_URL }}
+          NEXT_TELEMETRY_DISABLED: "1"
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Read the deployment token (never stored in GitHub)
+        env:
+          NAME: ${{ vars.AZURE_STATICWEBAPP_NAME }}
+        run: |
+          token=$(az staticwebapp secrets list --name "$NAME" --query properties.apiKey -o tsv)
+          echo "::add-mask::$token"
+          echo "SWA_TOKEN=$token" >> "$GITHUB_ENV"
+      - name: Upload apps/web/out to Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ env.SWA_TOKEN }}
+          action: upload
+          app_location: apps/web/out
+          skip_app_build: true
+          skip_api_build: true
+      - name: Smoke test
+        env:
+          URL: ${{ vars.AZURE_STATICWEBAPP_URL }}
+        run: |
+          for i in $(seq 1 12); do curl -fsS "$URL/" -o /tmp/index.html && grep -q "రైతు" /tmp/index.html && break; sleep 5; done
+          grep -q "రైతు" /tmp/index.html && echo "home page OK"
+          headers=$(curl -fsSI "$URL/")
+          echo "$headers" | grep -qi "^content-security-policy: .*connect-src 'self' ${{ vars.AZURE_FUNCTIONAPP_URL }}" && echo "CSP OK"
+          curl -fsSI "$URL/sw.js" | grep -qi "^cache-control: no-cache" && echo "service worker not cached OK"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/crops")
+          test "$code" = "301" -o "$code" = "308" -o "$code" = "200" && echo "/crops → $code OK"
+          curl -fsS "$URL/privacy/" | grep -q "Rythu" && echo "privacy policy OK"
+          # The Android app verifies itself against this file; once keys exist it must be served as JSON.
+          if [ -f out/well-known/assetlinks.json ]; then
+            curl -fsSI "$URL/.well-known/assetlinks.json" | grep -qi "^content-type: application/json"
+            curl -fsS "$URL/.well-known/assetlinks.json" | grep -q "handle_all_urls" && echo "asset links OK"
+          fi

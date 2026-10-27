@@ -122,6 +122,35 @@ Model and effort come from `RYTHU_ASSISTANT_MODEL` (default `claude-opus-5-5`) a
 `RYTHU_ASSISTANT_EFFORT` (default `low`); quotas from `RYTHU_ASSISTANT_PER_DEVICE_PER_DAY` and
 `RYTHU_ASSISTANT_DAILY_CAP` (`services/weather/src/rythu_weather/app/settings.py`).
 
+## 6. Production (S10) — when the pilot outgrows dev
+
+The same template with `env=prod`, in its own resource group, deployed by the same workflow **after**
+dev has passed its smoke tests and **after you approve** it. Prod has its own deploy identity, trusted
+only for the GitHub Environment `prod`, so a dev run can never touch prod.
+
+```bash
+RG=rg-rythu-prod
+az group create -n $RG -l $REGION
+az deployment group create -g $RG -n rythu-prod -f infra/azure/main.bicep \
+  -p location=$REGION webLocation=$WEB_REGION env=prod budgetContactEmail=<your email>
+out() { az deployment group show -g $RG -n rythu-prod --query "properties.outputs.$1.value" -o tsv; }
+# step 2's two role assignments, with these outputs (out deployPrincipalId, out functionAppId, out webAppId)
+gh api -X PUT repos/$REPO/environments/prod
+for v in "AZURE_CLIENT_ID $(out deployClientId)" "AZURE_FUNCTIONAPP_NAME $(out functionAppName)" \
+         "AZURE_FUNCTIONAPP_URL $(out functionAppUrl)" "AZURE_STATICWEBAPP_NAME $(out webAppName)" \
+         "AZURE_STATICWEBAPP_URL $(out webAppUrl)"; do
+  set -- $v; gh variable set "$1" --env prod -R $REPO --body "$2"   # ON THE ENVIRONMENT, not the repo
+done
+gh variable set AZURE_PROD_ENABLED -R $REPO --body true
+```
+
+Then GitHub → Settings → Environments → `prod` → **Required reviewers**: add yourself, so every prod
+deploy waits for your click. Prod variables must be set on the `prod` environment: anything missing
+there would fall back to the repository's dev value, so each deploy job first checks that the app name
+it is about to deploy to contains `-prod-` and stops otherwise. Point the Android app at the prod host
+(`apps/android/twa-manifest.json`) before the Play release; Ask Rythu stays off in prod until you set
+`assistantEnabled=true` there too.
+
 ## Operating it
 
 | Task | How |
