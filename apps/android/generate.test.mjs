@@ -25,6 +25,7 @@ test("the generated app opens the site full screen, with notifications and our i
   assert.match(gradle, new RegExp(`hostName: '${json.host.replaceAll(".", "\\.")}'`));
   assert.match(gradle, /enableNotifications: true/);
   assert.match(gradle, /targetSdkVersion 36/); // Play's 2026 target-API floor
+  assert.match(gradle, /minSdkVersion 24/); // androidbrowserhelper 2.7.4 needs ≥ 24; 21 fails the manifest merge
   const androidManifest = readFileSync(join(dir, "app/src/main/AndroidManifest.xml"), "utf8");
   assert.match(androidManifest, /android\.permission\.POST_NOTIFICATIONS/);
   for (const f of ["mipmap-xxxhdpi/ic_launcher.png", "mipmap-xxxhdpi/ic_maskable.png", "drawable-xxxhdpi/ic_notification_icon.png"]) {
