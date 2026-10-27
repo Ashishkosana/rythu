@@ -127,6 +127,7 @@ class ErrorBody(_Strict):
         "precondition_required",
         "rate_limited",
         "unavailable",
+        "assistant_off",
     ]
 
 
@@ -249,3 +250,38 @@ class PushSubscriptionIn(_Strict):
 
     endpoint: str = Field(max_length=1000)
     keys: PushKeysIn
+
+
+class AskIn(_Strict):
+    """A farmer's question for Ask Rythu (S17). Village + crop are optional context: with them the
+    answer can use today's farming reads for that place."""
+
+    question: str = Field(min_length=3, max_length=300)
+    lang: Literal["te", "en"] = "te"
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    crop: Crop | None = None
+    water: WaterSource = WaterSource.RAINFED
+
+
+class AskSourceOut(_Strict):
+    id: str
+    title: str
+    url: str
+    needs_verification: bool
+
+
+class HelplineOut(_Strict):
+    display: str
+    tel: str
+
+
+class AskOut(_Strict):
+    """``covered`` false → Rythu has no checked answer: show the Kisan Call Centre prominently."""
+
+    covered: bool
+    answer: str
+    sources: list[AskSourceOut]
+    used_todays_weather: bool
+    remaining_today: int
+    helpline: HelplineOut

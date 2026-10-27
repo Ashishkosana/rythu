@@ -97,6 +97,31 @@ web app's static export against that API URL (`NEXT_PUBLIC_API_BASE`), checks th
 `apps/web/out` to the Static Web App and smoke-tests the page, its CSP and the service worker headers.
 Open the `AZURE_STATICWEBAPP_URL` on a phone: that is the app.
 
+## 5. Ask Rythu (optional — this one costs money)
+
+Ask Rythu (S17) answers farmers' questions with Claude, only from Rythu's own checked content. It ships
+**off**: it needs both the switch and an Anthropic API key, and neither is set by default.
+
+1. Create an API key at console.anthropic.com and set a **monthly spend limit** there too — a second
+   ceiling above the app's own (10 questions per phone per day, 200 per day in total).
+2. Put the key in Key Vault — never in a parameter, a file in the repo or a GitHub secret. Writing a
+   secret needs a data-plane role on the vault (it uses RBAC):
+   ```bash
+   VAULT=<keyVaultName from step 1's output>
+   az role assignment create --role "Key Vault Secrets Officer" --assignee "$(az ad signed-in-user show --query id -o tsv)" \
+     --scope "$(az keyvault show -n $VAULT --query id -o tsv)"
+   read -rs KEY && az keyvault secret set --vault-name $VAULT --name anthropic-api-key --value "$KEY" -o none && unset KEY
+   ```
+3. Optional but cheap: run the eval first (17 questions, a few US cents each), from `services/weather`:
+   `RYTHU_ANTHROPIC_API_KEY=... uv run python scripts/eval_assistant.py --yes-spend`. Read
+   `evals/runs/<time>/summary.json`: pass rate, cost per answer, cache-read share.
+4. Switch it on: re-run step 1's `create` with `-p assistantEnabled=true` (the parameter is the durable
+   setting; a later deploy without it switches the assistant off again).
+
+Model and effort come from `RYTHU_ASSISTANT_MODEL` (default `claude-opus-5-5`) and
+`RYTHU_ASSISTANT_EFFORT` (default `low`); quotas from `RYTHU_ASSISTANT_PER_DEVICE_PER_DAY` and
+`RYTHU_ASSISTANT_DAILY_CAP` (`services/weather/src/rythu_weather/app/settings.py`).
+
 ## Operating it
 
 | Task | How |
@@ -110,4 +135,7 @@ Open the `AZURE_STATICWEBAPP_URL` on a phone: that is the app.
 | Alerts not arriving | App Insights: `traces \| where message has "alerts."` (evaluated / delivered / retry / refused); failed messages land in the `alerts-poison` queue after 5 tries |
 | Rotate the token key | re-run step 1's `create` (each deployment draws a new key; phones re-authenticate silently) |
 | Accounts say "unavailable" | App Insights: `traces \| where message has "accounts.disabled"` — the reason names the fix (usually the Key Vault role still propagating after a first deploy: restart the app a few minutes later) |
+| Stop Ask Rythu now | `az functionapp config appsettings set -g rg-rythu-dev -n <api app> --settings RYTHU_ASSISTANT_ENABLED=false` (the kill switch; the app restarts in seconds and the screen offers the Kisan Call Centre). Make it stick with `-p assistantEnabled=false` on the next `create` |
+| Ask Rythu spend | `traces \| extend d = parse_json(message) \| where d.event == "assistant.answered" \| summarize answers = count(), usd = sum(todouble(d.cost_usd)), covered = countif(tobool(d.covered)) by bin(timestamp, 1d)` |
+| Ask Rythu off unexpectedly | `traces \| where message has "assistant.disabled"` — the reason names the fix (no secret yet, or the Key Vault role still propagating) |
 | Tear down | `az group delete -n rg-rythu-dev` (deletes everything in this runbook). The Key Vault stays soft-deleted for 7 days and keeps its name: `az keyvault purge -n <name>` to recreate sooner |

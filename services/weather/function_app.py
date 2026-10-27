@@ -22,7 +22,7 @@ import httpx
 
 from rythu_weather.api.app import create_app
 from rythu_weather.app.alert_jobs import deliver, evaluate
-from rythu_weather.app.composition import build_accounts, build_push, build_services
+from rythu_weather.app.composition import build_accounts, build_assistant, build_push, build_services
 from rythu_weather.app.prewarm import prewarm
 from rythu_weather.app.settings import get_settings
 from rythu_weather.observability import configure_logging
@@ -31,11 +31,13 @@ configure_logging(get_settings().log_level, to_host=True)
 services = build_services()
 accounts = build_accounts()
 push = build_push()
+assistant = build_assistant()  # None unless switched on and keyed
 
 # ANONYMOUS: the API is public by design (no farmer data behind it yet); per-user routes in S13 bring
 # their own token check in the app, not a shared Functions key baked into a phone app.
 app = func.AsgiFunctionApp(
-    app=create_app(services.provider, accounts=accounts, push=push), http_auth_level=func.AuthLevel.ANONYMOUS
+    app=create_app(services.provider, accounts=accounts, push=push, assistant=assistant),
+    http_auth_level=func.AuthLevel.ANONYMOUS,
 )
 
 ALERT_QUEUE = "alerts"

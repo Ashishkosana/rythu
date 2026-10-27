@@ -70,6 +70,9 @@ jobs:
       # is checked by the backend's pytest). Fails if someone changed the contract without regenerating.
       - name: API types up to date (openapi-typescript --check)
         run: npm run check:api
+      # Ask Rythu answers only from the app's own content: the API's copy of it must match the screens.
+      - name: Ask Rythu corpus up to date (export-corpus --check)
+        run: npm run check:corpus
       - name: Types (tsc)
         run: npx tsc --noEmit
       - name: Tests (vitest)

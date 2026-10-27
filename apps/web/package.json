@@ -10,6 +10,8 @@
     "test": "vitest run",
     "gen:api": "openapi-typescript ../../services/weather/openapi.json -o lib/api.gen.ts",
     "check:api": "openapi-typescript ../../services/weather/openapi.json -o lib/api.gen.ts --check",
+    "gen:corpus": "node --experimental-strip-types --no-warnings scripts/export-corpus.mjs",
+    "check:corpus": "node --experimental-strip-types --no-warnings scripts/export-corpus.mjs --check",
     "check:budget": "node scripts/check-budget.mjs"
   },
   "dependencies": {

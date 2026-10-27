@@ -45,7 +45,7 @@ from azure.data.tables.aio import TableClient
 
 from rythu_weather.adapters.budget import BudgetContention
 from rythu_weather.adapters.cache import MAX_STALE
-from rythu_weather.app.accounts import PreconditionFailed, alert_row, push_row
+from rythu_weather.app.accounts import ASSISTANT_PARTITION, PreconditionFailed, alert_row, ask_row, push_row
 from rythu_weather.app.push_subscription import Subscription
 
 # Bump to orphan every entry at once if the payload format ever changes incompatibly.
@@ -237,6 +237,8 @@ class AzureTableUserStore:
                                   RowKey = "profile"         data (JSON), conditional writes on the row's ETag
                                   RowKey = "push_<sha256>"   one browser push subscription
                                   RowKey = "alert_<key>"     an alert already sent (idempotency), pruned
+                                  RowKey = "ask_<date>"      Ask Rythu questions answered that day (quota)
+        PartitionKey = "assistant"  RowKey = "<date>"        everyone's questions that day (global cap)
 
     Everything about a user is one partition, so deleting a user is one query. (Table keys may not
     contain '#', '/', '\\' or '?', hence the underscores.)
@@ -375,3 +377,44 @@ class AzureTableUserStore:
                 with contextlib.suppress(ResourceNotFoundError):
                     await client.delete_entity(user_id, str(r["RowKey"]))
         return len(rows)
+
+    async def assistant_usage(self, user_id: str, day: str) -> tuple[int, int]:
+        async with self.auth.client(self.table_name) as client:
+            return await _count(client, user_id, ask_row(day)), await _count(client, ASSISTANT_PARTITION, day)
+
+    async def record_assistant_use(self, user_id: str, day: str) -> None:
+        async with self.auth.client(self.table_name) as client:
+            await _increment(client, user_id, ask_row(day))
+            await _increment(client, ASSISTANT_PARTITION, day)
+
+
+async def _count(client: TableClient, partition: str, row: str) -> int:
+    try:
+        return int((await client.get_entity(partition, row, select=["n"]))["n"])
+    except ResourceNotFoundError:
+        return 0
+
+
+async def _increment(client: TableClient, partition: str, row: str, attempts: int = 5) -> None:
+    """+1 on a counter row with the ETag (same pattern as the upstream budget). Gives up quietly after
+    ``attempts`` conflicts: a lost count lets one extra question through, never fails an answer."""
+    for attempt in range(1, attempts + 1):
+        try:
+            entity = await client.get_entity(partition, row)
+        except ResourceNotFoundError:
+            try:
+                await client.create_entity({"PartitionKey": partition, "RowKey": row, "n": 1})
+                return
+            except ResourceExistsError:
+                await _backoff(attempt)
+                continue
+            except ResourceNotFoundError:
+                await _create_table_quietly(client)
+                continue
+        entity["n"] = int(entity["n"]) + 1
+        try:
+            await client.update_entity(entity, mode=UpdateMode.REPLACE, etag=entity.metadata["etag"],
+                                       match_condition=MatchConditions.IfNotModified)
+            return
+        except ResourceModifiedError:
+            await _backoff(attempt)

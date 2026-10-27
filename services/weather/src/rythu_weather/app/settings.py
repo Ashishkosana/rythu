@@ -26,6 +26,16 @@ Variables (all optional):
   Web Push VAPID tokens; the private key never leaves Key Vault. Unset locally → a throwaway key per
   process; unset in Azure → push alerts are switched off.
 * ``RYTHU_VAPID_SUBJECT`` — contact for push services (``https://…`` or ``mailto:…``; default the repo).
+* ``RYTHU_ASSISTANT_ENABLED`` — ``true`` switches Ask Rythu on (S17). Default ``false``: the kill
+  switch. Flip it in the app settings to stop all model calls at once.
+* ``RYTHU_ANTHROPIC_API_KEY`` — the Claude API key. SECRET: a Key Vault reference in Azure; never
+  logged, never in ``repr``. Missing or unresolved → Ask Rythu stays off whatever the switch says.
+* ``RYTHU_ASSISTANT_MODEL`` — Claude model id (default ``claude-opus-5-5``).
+* ``RYTHU_ASSISTANT_EFFORT`` — ``low`` / ``medium`` / ``high`` (default ``low``: short answers from
+  given content need little reasoning, and effort is most of the cost).
+* ``RYTHU_ASSISTANT_PER_DEVICE_PER_DAY`` — questions one phone may ask per day (default 10).
+* ``RYTHU_ASSISTANT_DAILY_CAP`` — questions everyone together may ask per day (default 200): the
+  ceiling on what one day can cost.
 
 Quota arithmetic (Open-Meteo free tier ≈ 10,000 calls/day; tests keep the worst case under 80 %):
 pre-warm 60 cells × 3 runs/h × 24 h = 4,320 + on-demand 120/h × 24 h = 2,880 → 7,200/day.
@@ -41,6 +51,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from functools import lru_cache
+from typing import Literal
 
 _LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR"})
 # A slow upstream must not eat the request: Open-Meteo normally answers in < 1 s, and the caller
@@ -54,6 +65,11 @@ DEFAULT_AZURE_USERS_TABLE = "users"
 DEFAULT_DEVICE_REGISTRATIONS_PER_HOUR = 30
 MIN_TOKEN_KEY_CHARS = 32
 DEFAULT_VAPID_SUBJECT = "https://github.com/Ashishkosana/rythu"
+DEFAULT_ASSISTANT_MODEL = "claude-opus-5-5"
+DEFAULT_ASSISTANT_EFFORT = "low"
+DEFAULT_ASSISTANT_PER_DEVICE_PER_DAY = 10
+DEFAULT_ASSISTANT_DAILY_CAP = 200
+_EFFORTS = ("low", "medium", "high")
 # Azure table names: 3–63 alphanumerics, starting with a letter.
 _AZURE_TABLE_NAME = re.compile(r"[A-Za-z][A-Za-z0-9]{2,62}")
 
@@ -77,6 +93,14 @@ class Settings:
     device_registrations_per_hour: int = DEFAULT_DEVICE_REGISTRATIONS_PER_HOUR
     vapid_key_id: str | None = None
     vapid_subject: str = DEFAULT_VAPID_SUBJECT
+    assistant_enabled: bool = False
+    # repr=False: an API key spends money.
+    anthropic_api_key: str | None = field(default=None, repr=False)
+    anthropic_api_key_problem: str | None = None
+    assistant_model: str = DEFAULT_ASSISTANT_MODEL
+    assistant_effort: Literal["low", "medium", "high"] = "low"
+    assistant_per_device_per_day: int = DEFAULT_ASSISTANT_PER_DEVICE_PER_DAY
+    assistant_daily_cap: int = DEFAULT_ASSISTANT_DAILY_CAP
 
     @property
     def uses_azure_tables(self) -> bool:
@@ -119,6 +143,18 @@ class Settings:
             ),
             vapid_key_id=_vapid_key_id(e),
             vapid_subject=_vapid_subject(e),
+            assistant_enabled=_flag(e, "RYTHU_ASSISTANT_ENABLED"),
+            anthropic_api_key=_anthropic_key(e),
+            anthropic_api_key_problem=(
+                "unresolved Key Vault reference: does the app's identity have 'Key Vault Secrets User'?"
+                if _unresolved_reference((e.get("RYTHU_ANTHROPIC_API_KEY") or "").strip()) else None
+            ),
+            assistant_model=_assistant_model(e),
+            assistant_effort=_assistant_effort(e),
+            assistant_per_device_per_day=_bounded_int(
+                e, "RYTHU_ASSISTANT_PER_DEVICE_PER_DAY", DEFAULT_ASSISTANT_PER_DEVICE_PER_DAY, 1, 100
+            ),
+            assistant_daily_cap=_bounded_int(e, "RYTHU_ASSISTANT_DAILY_CAP", DEFAULT_ASSISTANT_DAILY_CAP, 1, 10_000),
         )
 
 
@@ -154,6 +190,36 @@ def _vapid_subject(env: Mapping[str, str]) -> str:
     if not (raw.startswith("https://") or raw.startswith("mailto:")):
         raise ValueError("RYTHU_VAPID_SUBJECT must start with https:// or mailto: (RFC 8292)")
     return raw
+
+
+def _flag(env: Mapping[str, str], name: str) -> bool:
+    raw = (env.get(name) or "false").strip().lower()
+    if raw not in ("true", "false"):
+        raise ValueError(f"{name} must be true or false, got {raw!r}")
+    return raw == "true"
+
+
+def _anthropic_key(env: Mapping[str, str]) -> str | None:
+    raw = (env.get("RYTHU_ANTHROPIC_API_KEY") or "").strip()
+    return None if not raw or _unresolved_reference(raw) else raw
+
+
+def _assistant_model(env: Mapping[str, str]) -> str:
+    raw = (env.get("RYTHU_ASSISTANT_MODEL") or DEFAULT_ASSISTANT_MODEL).strip()
+    if not re.fullmatch(r"claude-[a-z0-9-]+", raw):
+        raise ValueError(f"RYTHU_ASSISTANT_MODEL must be a Claude model id (claude-…), got {raw!r}")
+    return raw
+
+
+def _assistant_effort(env: Mapping[str, str]) -> Literal["low", "medium", "high"]:
+    raw = (env.get("RYTHU_ASSISTANT_EFFORT") or DEFAULT_ASSISTANT_EFFORT).strip().lower()
+    if raw == "low":
+        return "low"
+    if raw == "medium":
+        return "medium"
+    if raw == "high":
+        return "high"
+    raise ValueError(f"RYTHU_ASSISTANT_EFFORT must be one of {list(_EFFORTS)}, got {raw!r}")
 
 
 def _unresolved_reference(raw: str) -> bool:

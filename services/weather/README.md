@@ -132,6 +132,35 @@ farmer's partition before sending, so a retried message never buzzes twice — a
 (404/410) are dropped. Endpoints must belong to a real browser push service: the server POSTs to them,
 so anything else would be an SSRF hole. `DELETE /v1/me` removes subscriptions and the alert log too.
 
+## Ask Rythu (S17)
+
+`POST /v1/assistant/ask` answers a farmer's question **only from Rythu's own checked content** — free-form
+farming chatbots are documented to hallucinate (docs/farmer-needs-research.md §6), so this is retrieval
+over a closed corpus, not a chatbot:
+
+* **Corpus** (`app/assistant.py`): the web app's fertilizer doses and bag prices, pest thresholds, crop
+  guides, schemes and helplines — exported by `apps/web/scripts/export-corpus.mjs` into
+  `content/web_content.json` (CI fails if it is stale) — plus the crop calendar. ~64 items. It is the
+  system prompt, byte-stable and cached; today's farming reads for the farmer's village + crop and the
+  question come after the cache breakpoint.
+* **Output**: JSON (`covered`, `answer`, `source_ids` restricted to corpus ids by the schema). The server
+  re-checks: unknown ids are dropped, "covered" with nothing real cited becomes "not covered", a
+  refusal / cut-off / garbled reply becomes the honest fallback. Not covered → the Kisan Call Centre.
+  Health emergencies → 108 first. Pesticides only as the pest guide gives them, never a brand.
+* **Model** (`adapters/claude.py`, the only module that imports the SDK): `claude-opus-5-5` at `low`
+  effort by default (`RYTHU_ASSISTANT_MODEL` / `_EFFORT`), refusal fallbacks on (`fallbacks: "default"`),
+  25 s deadline, one retry. Cost is estimated per answer from the API's token counts and logged.
+* **Controls**: device token required; 10 questions per phone per IST day and 200 for everyone
+  (failed answers don't count; delete-my-data removes the counts); kill switch `RYTHU_ASSISTANT_ENABLED`
+  (default **off**) and no key → `503 assistant_off`. The question text is never logged.
+* **Evals**: `evals/ask_rythu_cases.json` (17 cases, Telugu-first, both "should answer" and "must
+  decline") graded deterministically by `evals/ask_rythu_grade.py`. Offline in CI: every case cites real
+  ids, every reference answer passes the real post-processing + grader (oracle), and the honest
+  fallback fails every answerable case (null baseline). Live, with a key and `--yes-spend`:
+  `scripts/eval_assistant.py` → `evals/runs/<time>/` (results, errors kept apart, summary with cost).
+  The references were written from the corpus by the developer's coding assistant — have a person
+  (AEO / PJTSAU) check them before trusting a score.
+
 ## Device accounts (S13, ADR 0004)
 
 No sign-up: a phone registers once (`POST /v1/devices` → random user id + 256-bit device secret; the

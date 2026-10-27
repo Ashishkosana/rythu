@@ -83,7 +83,7 @@ async def test_openapi_documents_v1_and_hides_the_legacy_alias():
     doc = (await _api(FakeProvider(_FC), "/openapi.json", {})).json()
     assert set(doc["paths"]) == {
         "/v1/weather", "/v1/geocode", "/v1/calendar", "/v1/devices", "/v1/sessions", "/v1/me/profile", "/v1/me",
-        "/v1/push/key", "/v1/me/push-subscriptions", "/healthz",
+        "/v1/push/key", "/v1/me/push-subscriptions", "/v1/assistant/ask", "/healthz",
     }
     op = doc["paths"]["/v1/weather"]["get"]
     assert {p["name"] for p in op["parameters"]} == {"lat", "lon", "crop", "water", "X-Request-Id"}

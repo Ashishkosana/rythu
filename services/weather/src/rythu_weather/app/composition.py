@@ -30,6 +30,7 @@ from rythu_weather.adapters.geocode import (
 )
 from rythu_weather.adapters.open_meteo import OpenMeteoHttpProvider
 from rythu_weather.app.accounts import InMemoryUserStore, TokenSigner, UserStore
+from rythu_weather.app.assistant import Assistant, load_corpus
 from rythu_weather.app.settings import Settings, get_settings
 from rythu_weather.domain.models import WeatherProvider
 from rythu_weather.observability import log_event
@@ -178,3 +179,20 @@ def build_push(settings: Settings | None = None) -> Push | None:
 
     log_event(_log, logging.WARNING, "push.ephemeral_key", note="dev only: subscriptions die with this process")
     return Push(LocalVapidSigner(), s.vapid_subject)
+
+
+def build_assistant(settings: Settings | None = None) -> Assistant | None:
+    """None = Ask Rythu is off (the route answers 503 ``assistant_off``; nothing else is affected).
+    Off by default — ``RYTHU_ASSISTANT_ENABLED=true`` and a key are both needed."""
+    s = settings or get_settings()
+    if not s.assistant_enabled:
+        return None
+    if s.anthropic_api_key is None:
+        log_event(_log, logging.ERROR, "assistant.disabled",
+                  reason=s.anthropic_api_key_problem or "RYTHU_ANTHROPIC_API_KEY not set")
+        return None
+    from rythu_weather.adapters.claude import ClaudeAnswerModel  # the SDK: never on the Lambda path
+
+    model = ClaudeAnswerModel(s.anthropic_api_key, s.assistant_model, s.assistant_effort)
+    return Assistant(model, load_corpus(), per_device_per_day=s.assistant_per_device_per_day,
+                     daily_cap=s.assistant_daily_cap)

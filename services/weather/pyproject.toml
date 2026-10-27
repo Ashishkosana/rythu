@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "aiohttp>=3.14.5",
+    "anthropic>=2.3.0",
     "azure-data-tables>=12.7.0",
     "azure-identity>=1.26.0",
     "azure-keyvault-keys>=4.11.3",  # VAPID signing with a key that never leaves Key Vault (S14)
@@ -63,7 +64,7 @@ module = ["boto3", "boto3.*", "botocore", "botocore.*", "http_ece"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "evals"]
 testpaths = ["tests"]
 addopts = "-q -m 'not live'"
 asyncio_mode = "auto"

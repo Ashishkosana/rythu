@@ -159,6 +159,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/assistant/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask Rythu: an answer only from Rythu's checked content */
+        post: operations["ask_v1_assistant_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -180,6 +197,56 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AskIn
+         * @description A farmer's question for Ask Rythu (S17). Village + crop are optional context: with them the
+         *     answer can use today's farming reads for that place.
+         */
+        AskIn: {
+            /** Question */
+            question: string;
+            /**
+             * Lang
+             * @default te
+             * @enum {string}
+             */
+            lang: "te" | "en";
+            /** Lat */
+            lat?: number | null;
+            /** Lon */
+            lon?: number | null;
+            crop?: components["schemas"]["Crop"] | null;
+            /** @default rainfed */
+            water: components["schemas"]["WaterSource"];
+        };
+        /**
+         * AskOut
+         * @description ``covered`` false → Rythu has no checked answer: show the Kisan Call Centre prominently.
+         */
+        AskOut: {
+            /** Covered */
+            covered: boolean;
+            /** Answer */
+            answer: string;
+            /** Sources */
+            sources: components["schemas"]["AskSourceOut"][];
+            /** Used Todays Weather */
+            used_todays_weather: boolean;
+            /** Remaining Today */
+            remaining_today: number;
+            helpline: components["schemas"]["HelplineOut"];
+        };
+        /** AskSourceOut */
+        AskSourceOut: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+            /** Needs Verification */
+            needs_verification: boolean;
+        };
         /**
          * CalendarOut
          * @description ``GET /v1/calendar`` 200 body: the crop's tasks dated from the farmer's reference date.
@@ -310,7 +377,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "bad_request" | "outside_coverage" | "upstream_unavailable" | "unauthorized" | "not_found" | "precondition_failed" | "precondition_required" | "rate_limited" | "unavailable";
+            code: "bad_request" | "outside_coverage" | "upstream_unavailable" | "unauthorized" | "not_found" | "precondition_failed" | "precondition_required" | "rate_limited" | "unavailable" | "assistant_off";
         };
         /**
          * FarmAction
@@ -392,6 +459,13 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /** HelplineOut */
+        HelplineOut: {
+            /** Display */
+            display: string;
+            /** Tel */
+            tel: string;
         };
         /** HourlyRainOut */
         HourlyRainOut: {
@@ -1065,6 +1139,59 @@ export interface operations {
             };
             /** @description Missing or expired token. */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    ask_v1_assistant_ask_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskOut"];
+                };
+            };
+            /** @description No or bad device token. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Today's questions are used up (this phone, or everyone). */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+            /** @description Switched off (code=assistant_off), or the model can't answer right now. */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

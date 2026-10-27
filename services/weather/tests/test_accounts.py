@@ -176,3 +176,19 @@ async def test_alert_claims_are_idempotent_releasable_and_pruned(users) -> None:
     await users.claim_alert(uid, "task.f1a2b3.cotton.split1", NOW - timedelta(days=40))
     assert await users.prune_alerts(uid, NOW - timedelta(days=30)) == 1
     assert await users.has_alert(uid, key)  # the recent one stays
+
+
+async def test_ask_rythu_counts_per_user_per_day_and_for_everyone(users) -> None:
+    a, b = new_credentials().user_id, new_credentials().user_id
+    for uid in (a, b):
+        await users.create_user(uid, "ab" * 32, NOW)
+    day, tomorrow = "2026-10-27", "2026-10-28"
+    _, before = await users.assistant_usage(a, day)  # Azurite tables are fresh; the in-memory store too
+    for _ in range(2):
+        await users.record_assistant_use(a, day)
+    await users.record_assistant_use(b, day)
+    assert await users.assistant_usage(a, day) == (2, before + 3)
+    assert await users.assistant_usage(b, day) == (1, before + 3)
+    assert (await users.assistant_usage(a, tomorrow))[0] == 0  # a new day, a new allowance
+    await users.delete_user(a)
+    assert (await users.assistant_usage(a, day))[0] == 0  # delete-my-data takes the counts too

@@ -59,6 +59,13 @@ def alert_row(key: str) -> str:
     return "alert_" + key
 
 
+ASSISTANT_PARTITION = "assistant"  # everyone's daily question count; never a user id (32 hex characters)
+
+
+def ask_row(day: str) -> str:
+    return "ask_" + day
+
+
 def is_user_id(value: str) -> bool:
     return _USER_ID.fullmatch(value) is not None
 
@@ -145,6 +152,15 @@ class UserStore(Protocol):
 
     async def prune_alerts(self, user_id: str, before: datetime) -> int: ...
 
+    async def assistant_usage(self, user_id: str, day: str) -> tuple[int, int]:
+        """Questions answered on ``day`` (IST date): (this user, everyone)."""
+        ...
+
+    async def record_assistant_use(self, user_id: str, day: str) -> None:
+        """Count one answered question for the user and for everyone. Best effort under contention:
+        a lost count lets one extra question through, never blocks one."""
+        ...
+
 
 class InMemoryUserStore:
     """Dev/test store with the same semantics as the Table Storage one (see the contract tests)."""
@@ -219,6 +235,16 @@ class InMemoryUserStore:
         for k in old:
             del rows[k]
         return len(old)
+
+    def _count(self, partition: str, row: str) -> int:
+        return int(self._rows.get(partition, {}).get(row, ({"n": 0}, ""))[0]["n"])
+
+    async def assistant_usage(self, user_id: str, day: str) -> tuple[int, int]:
+        return self._count(user_id, ask_row(day)), self._count(ASSISTANT_PARTITION, day)
+
+    async def record_assistant_use(self, user_id: str, day: str) -> None:
+        for partition, row in ((user_id, ask_row(day)), (ASSISTANT_PARTITION, day)):
+            self._rows.setdefault(partition, {})[row] = ({"n": self._count(partition, row) + 1}, self._etag())
 
 
 def utc_now() -> datetime:

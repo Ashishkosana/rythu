@@ -56,6 +56,9 @@ param webLocation string = 'eastasia'
 @secure()
 param tokenSigningKey string = '${newGuid()}${newGuid()}'
 
+@description('Ask Rythu (S17) kill switch. Leave false until the anthropic-api-key secret is in Key Vault (README: Ask Rythu); set false again to stop every model call at once.')
+param assistantEnabled bool = false
+
 var suffix = uniqueString(resourceGroup().id)
 var tags = { app: baseName, env: env }
 var storageName = take('st${baseName}${env}${suffix}', 24)
@@ -198,6 +201,10 @@ resource api 'Microsoft.Web/sites@2024-04-01' = {
         { name: 'RYTHU_TOKEN_SIGNING_KEY', value: '@Microsoft.KeyVault(SecretUri=${signingKey.properties.secretUri})' }
         // Not a secret: the key's address. Signing happens inside Key Vault.
         { name: 'RYTHU_VAPID_KEY_ID', value: vapidKey.properties.keyUri }
+        // Ask Rythu (S17): needs the switch AND the secret, which you add yourself (never via Bicep or
+        // a parameter). A missing secret leaves the reference unresolved → the assistant stays off.
+        { name: 'RYTHU_ASSISTANT_ENABLED', value: string(assistantEnabled) }
+        { name: 'RYTHU_ANTHROPIC_API_KEY', value: '@Microsoft.KeyVault(VaultName=${vault.name};SecretName=anthropic-api-key)' }
         { name: 'RYTHU_LOG_LEVEL', value: 'INFO' }
       ]
     }

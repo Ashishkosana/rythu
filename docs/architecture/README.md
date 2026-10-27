@@ -231,7 +231,8 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | S14d | Fertilizer bag prices in the calculator (urea ₹266.50 — the only government-fixed price; DAP ~₹1,350; MOP: read the bag), "never above MRP, take the bill", complaint route (MAO/AEO, Kisan Call Centre); scam-safety card on Schemes (no APKs from chats, Play Store only, OTP/PIN, 1930 + cybercrime.gov.in). Helpline numbers in one module so shown = dialled | new: what a bag should cost; what to do when cheated | **done** |
 | S15 | Mandi prices + MSP comparison (after confirming data.gov.in API access) | new | planned |
 | S16 | My-Field crop calendar: `/v1/calendar` from the research's verified schedules (sourced, AEO flags kept, stage-based where no day count exists, never a spray); fields (≤ 5) in the profile; "My field" screen + "this week" card on home; 5th tab | new: what to do on my crop this week | **done** |
-| S17 | "Ask Rythu" grounded assistant (Telugu voice, quotas, KCC fallback, eval set) | new | planned |
+| S17a | Ask Rythu, server: `POST /v1/assistant/ask` — Claude answers only from the app's own content (exported from the web app, CI drift check) + crop calendar + today's reads; cached prompt; schema-restricted citations re-checked server-side; KCC fallback, 108 for emergencies; device token, 10/phone/day + 200/day, kill switch default off, key only via Key Vault; eval set (17 cases) with oracle/null checks offline and a live runner behind `--yes-spend` | none until switched on (needs your key) | **done** |
+| S17b | Ask Rythu, app: ask screen (type or speak Telugu), answer read aloud, sources and KCC call button, privacy page updated | new: ask a question | planned |
 
 ## Decision records
 - [0001 — Modular monolith on Azure Functions](adr/0001-modular-monolith-on-azure-functions.md)

@@ -74,13 +74,30 @@ def _unauthorized() -> NoReturn:
     raise ApiError(401, "unauthorized", "sign in again", {"WWW-Authenticate": 'Bearer error="invalid_token"'})
 
 
-def _pseudonym(user_id: str) -> str:
+def pseudonym(user_id: str) -> str:
     """For logs: enough to follow one user's requests, not the id itself."""
     return hashlib.sha256(user_id.encode()).hexdigest()[:12]
 
 
-def _err(description: str) -> dict[str, Any]:
+def err_doc(description: str) -> dict[str, Any]:
     return {"model": ErrorBody, "description": description}
+
+
+def bearer_user(accounts: Accounts | None, clock: Callable[[], datetime]) -> Callable[..., str]:
+    """FastAPI dependency: the user id from a verified device token — the ONLY source of "who" (IDOR)."""
+
+    def current_user(authorization: Annotated[str | None, Header()] = None) -> str:
+        if accounts is None:
+            raise ApiError(503, "unavailable", "accounts are not available right now")
+        scheme, _, token = (authorization or "").partition(" ")
+        if scheme.lower() != "bearer" or not token:
+            _unauthorized()
+        try:
+            return accounts.signer.verify(token.strip(), clock())
+        except Unauthorized:
+            _unauthorized()
+
+    return current_user
 
 
 def accounts_router(
@@ -103,21 +120,11 @@ def accounts_router(
             log_event(_log, logging.ERROR, "accounts.store_failed", action=action, error=repr(exc))
             raise ApiError(503, "unavailable", "please try again shortly") from exc
 
-    def current_user(authorization: Annotated[str | None, Header()] = None) -> str:
-        acc = enabled()
-        scheme, _, token = (authorization or "").partition(" ")
-        if scheme.lower() != "bearer" or not token:
-            _unauthorized()
-        try:
-            return acc.signer.verify(token.strip(), clock())
-        except Unauthorized:
-            _unauthorized()
-
-    User = Annotated[str, Depends(current_user)]
+    User = Annotated[str, Depends(bearer_user(accounts, clock))]
 
     @router.post(
         "/v1/devices", status_code=201, response_model=DeviceCredentialsOut, summary="Register this phone",
-        responses={429: _err("Too many new devices this hour."), 503: _err("Accounts unavailable.")},
+        responses={429: err_doc("Too many new devices this hour."), 503: err_doc("Accounts unavailable.")},
     )
     async def register_device() -> JSONResponse:
         acc = enabled()
@@ -134,13 +141,13 @@ def accounts_router(
             raise ApiError(429, "rate_limited", "too many new devices right now", {"Retry-After": "600"})
         creds = new_credentials()
         await guarded("create_user", acc.users.create_user(creds.user_id, secret_digest(creds.device_secret), now))
-        log_event(_log, logging.INFO, "accounts.registered", user=_pseudonym(creds.user_id))
+        log_event(_log, logging.INFO, "accounts.registered", user=pseudonym(creds.user_id))
         body = DeviceCredentialsOut(user_id=creds.user_id, device_secret=creds.device_secret)
         return JSONResponse(body.model_dump(), status_code=201, headers=_PRIVATE)
 
     @router.post(
         "/v1/sessions", response_model=SessionOut, summary="Trade the device secret for a one-hour token",
-        responses={400: _err("Malformed body."), 401: _err("Unknown device or wrong secret.")},
+        responses={400: err_doc("Malformed body."), 401: err_doc("Unknown device or wrong secret.")},
     )
     async def start_session(body: SessionIn) -> JSONResponse:
         acc = enabled()
@@ -154,7 +161,7 @@ def accounts_router(
 
     @router.get(
         "/v1/me/profile", response_model=ProfileOut, summary="The profile saved by this device",
-        responses={401: _err("Missing or expired token."), 404: _err("Nothing saved yet.")},
+        responses={401: err_doc("Missing or expired token."), 404: err_doc("Nothing saved yet.")},
     )
     async def get_profile(user: User) -> JSONResponse:
         acc = enabled()
@@ -168,10 +175,10 @@ def accounts_router(
     @router.put(
         "/v1/me/profile", response_model=ProfileOut, summary="Save the profile (conditional)",
         responses={
-            400: _err("Malformed body, or a village outside coverage (code=outside_coverage)."),
-            401: _err("Missing or expired token."),
-            412: _err("The saved profile changed since you read it (or one already exists)."),
-            428: _err("Send If-Match: <etag> to update, or If-None-Match: * to create."),
+            400: err_doc("Malformed body, or a village outside coverage (code=outside_coverage)."),
+            401: err_doc("Missing or expired token."),
+            412: err_doc("The saved profile changed since you read it (or one already exists)."),
+            428: err_doc("Send If-Match: <etag> to update, or If-None-Match: * to create."),
         },
     )
     async def put_profile(
@@ -211,7 +218,7 @@ def accounts_router(
 
     @router.get(
         "/v1/push/key", response_model=PushKeyOut, tags=["push"], summary="VAPID public key for subscribing",
-        responses={503: _err("Push alerts unavailable.")},
+        responses={503: err_doc("Push alerts unavailable.")},
     )
     async def push_key() -> JSONResponse:
         key = await guarded("vapid_public_key", push_enabled().signer.public_key())
@@ -220,8 +227,8 @@ def accounts_router(
     @router.put(
         "/v1/me/push-subscriptions", status_code=204, tags=["push"], summary="Subscribe this phone to alerts",
         responses={
-            400: _err("Not a browser push service, malformed keys, or too many phones."),
-            401: _err("Missing or expired token."),
+            400: err_doc("Not a browser push service, malformed keys, or too many phones."),
+            401: err_doc("Missing or expired token."),
         },
     )
     async def put_push_subscription(body: PushSubscriptionIn, user: User) -> Response:
@@ -242,7 +249,7 @@ def accounts_router(
 
     @router.delete(
         "/v1/me/push-subscriptions", status_code=204, tags=["push"], summary="Unsubscribe a phone",
-        responses={401: _err("Missing or expired token.")},
+        responses={401: err_doc("Missing or expired token.")},
     )
     async def delete_push_subscription(user: User, endpoint: Annotated[str, Query(max_length=1000)]) -> Response:
         acc = enabled()
@@ -251,12 +258,12 @@ def accounts_router(
 
     @router.delete(
         "/v1/me", status_code=204, summary="Delete everything stored for this user",
-        responses={401: _err("Missing or expired token.")},
+        responses={401: err_doc("Missing or expired token.")},
     )
     async def delete_me(user: User) -> Response:
         acc = enabled()
         removed = await guarded("delete_user", acc.users.delete_user(user))
-        log_event(_log, logging.INFO, "accounts.deleted", user=_pseudonym(user), records=removed)
+        log_event(_log, logging.INFO, "accounts.deleted", user=pseudonym(user), records=removed)
         return Response(status_code=204, headers=_PRIVATE)
 
     return router

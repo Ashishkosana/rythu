@@ -753,6 +753,85 @@
         }
       }
     },
+    "/v1/assistant/ask": {
+      "post": {
+        "tags": [
+          "assistant"
+        ],
+        "summary": "Ask Rythu: an answer only from Rythu's checked content",
+        "operationId": "ask_v1_assistant_ask_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AskOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No or bad device token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Today's questions are used up (this phone, or everyone).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Switched off (code=assistant_off), or the model can't answer right now.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/healthz": {
       "get": {
         "tags": [
@@ -777,6 +856,143 @@
   },
   "components": {
     "schemas": {
+      "AskIn": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 3,
+            "title": "Question"
+          },
+          "lang": {
+            "type": "string",
+            "enum": [
+              "te",
+              "en"
+            ],
+            "title": "Lang",
+            "default": "te"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Crop"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "water": {
+            "$ref": "#/components/schemas/WaterSource",
+            "default": "rainfed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "question"
+        ],
+        "title": "AskIn",
+        "description": "A farmer's question for Ask Rythu (S17). Village + crop are optional context: with them the\nanswer can use today's farming reads for that place."
+      },
+      "AskOut": {
+        "properties": {
+          "covered": {
+            "type": "boolean",
+            "title": "Covered"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/AskSourceOut"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "used_todays_weather": {
+            "type": "boolean",
+            "title": "Used Todays Weather"
+          },
+          "remaining_today": {
+            "type": "integer",
+            "title": "Remaining Today"
+          },
+          "helpline": {
+            "$ref": "#/components/schemas/HelplineOut"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "covered",
+          "answer",
+          "sources",
+          "used_todays_weather",
+          "remaining_today",
+          "helpline"
+        ],
+        "title": "AskOut",
+        "description": "``covered`` false → Rythu has no checked answer: show the Kisan Call Centre prominently."
+      },
+      "AskSourceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "needs_verification": {
+            "type": "boolean",
+            "title": "Needs Verification"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "url",
+          "needs_verification"
+        ],
+        "title": "AskSourceOut"
+      },
       "CalendarOut": {
         "properties": {
           "crop": {
@@ -1116,7 +1332,8 @@
               "precondition_failed",
               "precondition_required",
               "rate_limited",
-              "unavailable"
+              "unavailable",
+              "assistant_off"
             ],
             "title": "Code"
           }
@@ -1319,6 +1536,25 @@
           "status"
         ],
         "title": "Health"
+      },
+      "HelplineOut": {
+        "properties": {
+          "display": {
+            "type": "string",
+            "title": "Display"
+          },
+          "tel": {
+            "type": "string",
+            "title": "Tel"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "display",
+          "tel"
+        ],
+        "title": "HelplineOut"
       },
       "HourlyRainOut": {
         "properties": {

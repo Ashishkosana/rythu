@@ -97,3 +97,35 @@ def test_push_is_off_in_azure_without_a_key_and_ephemeral_locally():
 
     assert build_push(Settings.from_env({"RYTHU_AZURE_TABLES_ENDPOINT": "https://x.table.core.windows.net"})) is None
     assert build_push(Settings.from_env({})) is not None
+
+
+def test_ask_rythu_is_off_unless_switched_on_and_keyed(caplog):
+    from rythu_weather.app.composition import build_assistant
+
+    s = Settings.from_env({})
+    assert (s.assistant_enabled, s.assistant_model, s.assistant_effort) == (False, "claude-opus-5-5", "low")
+    assert (s.assistant_per_device_per_day, s.assistant_daily_cap) == (10, 200)
+    assert build_assistant(s) is None  # the default is off
+    keyed = {"RYTHU_ANTHROPIC_API_KEY": "sk-ant-api-secretvalue"}
+    assert build_assistant(Settings.from_env(keyed)) is None  # a key alone does not switch it on
+    on = Settings.from_env({**keyed, "RYTHU_ASSISTANT_ENABLED": "true"})
+    assert "secretvalue" not in repr(on)
+    bot = build_assistant(on)
+    assert bot is not None and bot.per_device_per_day == 10 and len(bot.corpus) > 50
+    ref = "@Microsoft.KeyVault(SecretUri=https://kv.vault.azure.net/secrets/anthropic-api-key)"
+    unresolved = Settings.from_env({"RYTHU_ANTHROPIC_API_KEY": ref, "RYTHU_ASSISTANT_ENABLED": "true"})
+    assert unresolved.anthropic_api_key is None and "Key Vault" in (unresolved.anthropic_api_key_problem or "")
+    assert build_assistant(unresolved) is None
+    assert "assistant.disabled" in caplog.text
+
+
+@pytest.mark.parametrize("env,match", [
+    ({"RYTHU_ASSISTANT_ENABLED": "yes"}, "true or false"),
+    ({"RYTHU_ASSISTANT_MODEL": "gpt-x"}, "Claude model id"),
+    ({"RYTHU_ASSISTANT_EFFORT": "max"}, "RYTHU_ASSISTANT_EFFORT"),
+    ({"RYTHU_ASSISTANT_PER_DEVICE_PER_DAY": "0"}, "RYTHU_ASSISTANT_PER_DEVICE_PER_DAY"),
+    ({"RYTHU_ASSISTANT_DAILY_CAP": "100000"}, "RYTHU_ASSISTANT_DAILY_CAP"),
+])
+def test_ask_rythu_settings_fail_fast(env, match):
+    with pytest.raises(ValueError, match=match):
+        Settings.from_env(env)

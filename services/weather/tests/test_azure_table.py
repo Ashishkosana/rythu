@@ -83,10 +83,10 @@ async def test_entity_layout_on_the_wire():
 
 def test_lambda_path_never_loads_the_azure_sdk():
     """build_lambda.sh bundles only httpx: the AWS handler must not import azure/aiohttp, nor the push
-    crypto (cryptography / http_ece)."""
+    crypto (cryptography / http_ece), nor the Claude SDK (anthropic / httpx2)."""
     code = (
         "import sys, rythu_weather.app.handler; "
-        "heavy = ('azure', 'aiohttp', 'fastapi', 'pydantic', 'cryptography', 'http_ece'); "
+        "heavy = ('azure', 'aiohttp', 'fastapi', 'pydantic', 'cryptography', 'http_ece', 'anthropic', 'httpx2'); "
         "print([m for m in heavy if m in sys.modules])"
     )
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
