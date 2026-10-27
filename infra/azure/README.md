@@ -4,7 +4,7 @@ Everything below runs in **Azure Cloud Shell** (portal → `>_` icon → Bash). 
 preinstalled. Commands are copy-paste; replace `<…>` placeholders. Nothing here costs money beyond the
 pilot's near-zero usage, and a budget alert emails you at $4 (80 % of $5).
 
-What `main.bicep` creates in one resource group: a Static Web App (Free) for the web app, a Flex
+What `main.bicep` creates in one resource group: a Storage static website for the web app, a Flex
 Consumption Function App (Python 3.12, managed identity) for the API, a Key Vault holding the
 device-token signing key (generated at deploy time, readable only by the app's identity) and the Web
 Push signing key (non-exportable; the app may only ask Key Vault to sign), an `alerts` queue, a storage account with **shared-key access disabled** (identity-only: no keys exist to leak),
@@ -18,15 +18,14 @@ user-assigned identity that GitHub Actions can log in as via OIDC (no stored sec
 az policy assignment list --query "[?contains(displayName,'region') || contains(displayName,'location')].parameters" -o json
 # Regions that offer Flex Consumption:
 az functionapp list-flexconsumption-locations --query "[].name" -o tsv
-# Static Web Apps runs its control plane in: eastasia westeurope eastus2 centralus westus2
 # Register the resource providers this template uses (safe to re-run):
 for p in Microsoft.Web Microsoft.Storage Microsoft.Insights Microsoft.OperationalInsights \
          Microsoft.ManagedIdentity Microsoft.Consumption Microsoft.KeyVault; do az provider register --namespace $p; done
 ```
 
 Pick a region that appears in **both** lists, preferring `centralindia` or `southindia` (closest to
-Telangana). For the web app, pick the first of `eastasia westeurope eastus2 centralus westus2` that your
-policy allows (its pages are served from a global edge either way; this only places its control plane). If **no** region is in both, or step 1 fails with "Flex Consumption … not enabled/supported
+Telangana; an Azure for Students policy may offer neither — `norwayeast` is the nearest of the usual
+five). Everything, the website included, goes in that one region. If **no** region is in both, or step 1 fails with "Flex Consumption … not enabled/supported
 for this subscription", stop and say so — the fallback is ADR 0001 option 2 (Container Apps); the app code
 (plain ASGI) does not change.
 
@@ -34,19 +33,23 @@ for this subscription", stop and say so — the fallback is ADR 0001 option 2 (C
 
 ```bash
 git clone https://github.com/Ashishkosana/rythu && cd rythu
-git checkout rearch/s7-onward                # until this work is merged to main
-REGION=<region from step 0>
-WEB_REGION=<Static Web Apps region from step 0>
+REGION=norwayeast                              # from step 0
+EMAIL="you@example.com"                        # budget alerts go here — keep the quotes
 RG=rg-rythu-dev
 az group create -n $RG -l $REGION
 
 # Preview first — read what it will create:
 az deployment group what-if -g $RG -f infra/azure/main.bicep \
-  -p location=$REGION webLocation=$WEB_REGION env=dev budgetContactEmail=<your email>
+  -p location=$REGION env=dev budgetContactEmail="$EMAIL"
 
 az deployment group create -g $RG -n rythu-dev -f infra/azure/main.bicep \
-  -p location=$REGION webLocation=$WEB_REGION env=dev budgetContactEmail=<your email> \
+  -p location=$REGION env=dev budgetContactEmail="$EMAIL" \
   --query properties.outputs -o jsonc
+
+# Turn the web storage account into a website (one time; not settable from Bicep):
+out() { az deployment group show -g $RG -n rythu-dev --query "properties.outputs.$1.value" -o tsv; }
+az storage blob service-properties update --account-name "$(out webAppName)" \
+  --static-website --index-document index.html --404-document 404.html -o none
 ```
 
 If it fails **only** on the budget (some subscription types don't support Cost Management budgets),
@@ -55,18 +58,17 @@ re-run the last command with `deployBudget=false` added and set a spending alert
 ## 2. Allow GitHub to deploy code — to these two apps only
 
 ```bash
-out() { az deployment group show -g $RG -n rythu-dev --query "properties.outputs.$1.value" -o tsv; }
 az role assignment create --assignee-object-id "$(out deployPrincipalId)" \
   --assignee-principal-type ServicePrincipal \
   --role "Website Contributor" --scope "$(out functionAppId)"
 az role assignment create --assignee-object-id "$(out deployPrincipalId)" \
   --assignee-principal-type ServicePrincipal \
-  --role "Contributor" --scope "$(out webAppId)"
+  --role "Storage Blob Data Contributor" --scope "$(out webAppId)"
 ```
 
 The deploy identity can push code to the two apps and nothing else: it cannot read data, change other
-resources, or grant permissions. Infrastructure changes stay a human step (this runbook). On the Static
-Web App it reads the deployment token at deploy time, so no token is ever stored in GitHub.
+resources, or grant permissions. Infrastructure changes stay a human step (this runbook). It uploads the
+website with its Entra ID login, so no storage key or token is ever stored in GitHub.
 
 ## 3. Tell GitHub where to deploy (repository variables, not secrets — none of these are credentials)
 
@@ -94,7 +96,7 @@ the first deploy happens once this work is merged to `main`. The workflow packag
 `services/weather` (`scripts/package_functions.sh`), logs in with OIDC, deploys with a remote build, then
 smoke-tests `/healthz`, `/v1/weather` and the coverage 400 against the live URL. A second job builds the
 web app's static export against that API URL (`NEXT_PUBLIC_API_BASE`), checks the JS budget, uploads
-`apps/web/out` to the Static Web App and smoke-tests the page, its CSP and the service worker headers.
+`apps/web/out` to the Storage static website and smoke-tests the page, its CSP and the service worker headers.
 Open the `AZURE_STATICWEBAPP_URL` on a phone: that is the app.
 
 ## 5. Ask Rythu (optional — this one costs money)
@@ -132,7 +134,9 @@ only for the GitHub Environment `prod`, so a dev run can never touch prod.
 RG=rg-rythu-prod
 az group create -n $RG -l $REGION
 az deployment group create -g $RG -n rythu-prod -f infra/azure/main.bicep \
-  -p location=$REGION webLocation=$WEB_REGION env=prod budgetContactEmail=<your email>
+  -p location=$REGION env=prod budgetContactEmail="$EMAIL"
+az storage blob service-properties update --account-name "$(az deployment group show -g $RG -n rythu-prod --query properties.outputs.webAppName.value -o tsv)" \
+  --static-website --index-document index.html --404-document 404.html -o none
 out() { az deployment group show -g $RG -n rythu-prod --query "properties.outputs.$1.value" -o tsv; }
 # step 2's two role assignments, with these outputs (out deployPrincipalId, out functionAppId, out webAppId)
 gh api -X PUT repos/$REPO/environments/prod
@@ -158,7 +162,7 @@ it is about to deploy to contains `-prod-` and stops otherwise. Point the Androi
 | See logs | App Insights → Logs: `traces \| extend d = parse_json(message) \| where d.event == "weather.request"` |
 | Errors only | `traces \| extend d = parse_json(message) \| where d.level == "ERROR"` |
 | Roll back | Actions → Deploy (Azure) → re-run the last good run (each run deploys one tested commit) |
-| Web app headers / CSP | generated per build into `staticwebapp.config.json` (`apps/web/scripts/postbuild.mjs`) |
+| Web app CSP | a `<meta>` tag in every page, generated per build (`apps/web/scripts/postbuild.mjs`); the Storage website sends no custom headers |
 | Change infra | edit `main.bicep`, run step 1's `what-if`, then `create` again (idempotent) |
 | Cost | Portal → Cost Management; the budget emails at 80 % actual / 100 % forecast |
 | Alerts not arriving | App Insights: `traces \| where message has "alerts."` (evaluated / delivered / retry / refused); failed messages land in the `alerts-poison` queue after 5 tries |

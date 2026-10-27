@@ -1,6 +1,6 @@
 name: Deploy one environment (Azure)
 
-# Reusable: the API (Functions) then the web app (Static Web Apps) for one environment, each smoke
+# Reusable: the API (Functions) then the web app (Storage static website) for one environment, each smoke
 # tested. Called by deploy-azure.yml — dev after CI, prod after dev with an approval. Variables come
 # from the GitHub Environment of the same name (infra/azure/README.md steps 3 and 6).
 on:
@@ -113,7 +113,7 @@ jobs:
           APP: ${{ vars.AZURE_STATICWEBAPP_NAME }}
           ENV_NAME: ${{ inputs.environment }}
         run: |
-          case "$APP" in *-"$ENV_NAME"-*) echo "deploying to $APP" ;;
+          case "$APP" in stweb"$ENV_NAME"*|*-"$ENV_NAME"-*) echo "deploying to $APP" ;;
             *) echo "::error::AZURE_STATICWEBAPP_NAME ($APP) is not a $ENV_NAME app: set the variables on the GitHub Environment '$ENV_NAME'"; exit 1 ;;
           esac
       - uses: actions/checkout@v4
@@ -137,32 +137,27 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - name: Read the deployment token (never stored in GitHub)
+      - name: Upload apps/web/out to the Storage static website ($web)
         env:
           NAME: ${{ vars.AZURE_STATICWEBAPP_NAME }}
+        # The deploy identity's Entra ID login (Storage Blob Data Contributor) — no key, no token.
+        # Pages and the service worker must be re-checked on every open; hashed assets never change.
         run: |
-          token=$(az staticwebapp secrets list --name "$NAME" --query properties.apiKey -o tsv)
-          echo "::add-mask::$token"
-          echo "SWA_TOKEN=$token" >> "$GITHUB_ENV"
-      - name: Upload apps/web/out to Static Web Apps
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ env.SWA_TOKEN }}
-          action: upload
-          app_location: apps/web/out
-          skip_app_build: true
-          skip_api_build: true
+          up() { az storage blob upload-batch --auth-mode login --account-name "$NAME" -d '$web' -s out --overwrite --only-show-errors "$@" -o none; }
+          up --content-cache-control "no-cache"
+          up --pattern "_next/static/*" --content-cache-control "public, max-age=31536000, immutable"
+          az storage blob upload --auth-mode login --account-name "$NAME" -c '$web' -n manifest.webmanifest \
+            -f out/manifest.webmanifest --content-type application/manifest+json --content-cache-control no-cache \
+            --overwrite --only-show-errors -o none
       - name: Smoke test
         env:
           URL: ${{ vars.AZURE_STATICWEBAPP_URL }}
         run: |
           for i in $(seq 1 12); do curl -fsS "$URL/" -o /tmp/index.html && grep -q "రైతు" /tmp/index.html && break; sleep 5; done
           grep -q "రైతు" /tmp/index.html && echo "home page OK"
-          headers=$(curl -fsSI "$URL/")
-          echo "$headers" | grep -qi "^content-security-policy: .*connect-src 'self' ${{ vars.AZURE_FUNCTIONAPP_URL }}" && echo "CSP OK"
+          grep -q "http-equiv=\"Content-Security-Policy\" content=\"[^\"]*connect-src 'self' ${{ vars.AZURE_FUNCTIONAPP_URL }}" /tmp/index.html && echo "CSP OK"
           curl -fsSI "$URL/sw.js" | grep -qi "^cache-control: no-cache" && echo "service worker not cached OK"
-          code=$(curl -s -o /dev/null -w '%{http_code}' "$URL/crops")
-          test "$code" = "301" -o "$code" = "308" -o "$code" = "200" && echo "/crops → $code OK"
+          curl -fsS "$URL/crops/" | grep -q "రైతు" && echo "/crops/ OK"
           curl -fsS "$URL/privacy/" | grep -q "Rythu" && echo "privacy policy OK"
           # The Android app verifies itself against this file; once keys exist it must be served as JSON.
           if [ -f out/well-known/assetlinks.json ]; then

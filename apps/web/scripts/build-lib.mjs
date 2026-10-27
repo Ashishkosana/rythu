@@ -107,6 +107,17 @@ export function contentSecurityPolicy({ scriptHashes, apiBase }) {
   ].join("; ");
 }
 
+/**
+ * The CSP as a <meta> tag, first thing in <head>, for hosts that cannot send headers (the Storage
+ * static website). frame-ancestors only works as a header, so it is left out here.
+ */
+export function withCspMeta(html, csp) {
+  const policy = csp.split("; ").filter((d) => !d.startsWith("frame-ancestors")).join("; ");
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${policy}"/>`;
+  if (html.includes('http-equiv="Content-Security-Policy"')) return html;
+  return html.replace(/<head([^>]*)>/, (m) => m + meta);
+}
+
 /** Azure Static Web Apps routing + headers (out/staticwebapp.config.json). */
 export function staticWebAppConfig({ csp }) {
   return {
