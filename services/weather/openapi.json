@@ -208,6 +208,93 @@
         }
       }
     },
+    "/v1/calendar": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "My-Field crop calendar from a sowing or transplanting date",
+        "operationId": "calendar_v1_calendar_get",
+        "parameters": [
+          {
+            "name": "crop",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "One of: cotton, paddy, red_gram, maize, chilli. Omit for crop-independent reads only.",
+              "title": "Crop"
+            },
+            "description": "One of: cotton, paddy, red_gram, maize, chilli. Omit for crop-independent reads only."
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD: sowing date, or transplanting date for paddy and chilli.",
+              "title": "Date"
+            },
+            "description": "YYYY-MM-DD: sowing date, or transplanting date for paddy and chilli."
+          },
+          {
+            "name": "X-Request-Id",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128}).",
+              "title": "X-Request-Id"
+            },
+            "description": "Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128})."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The crop's tasks, dated (stage-based ones last).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarOut"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown crop, or a malformed / out-of-range date.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/devices": {
       "post": {
         "tags": [
@@ -544,6 +631,163 @@
   },
   "components": {
     "schemas": {
+      "CalendarOut": {
+        "properties": {
+          "crop": {
+            "$ref": "#/components/schemas/Crop"
+          },
+          "reference": {
+            "$ref": "#/components/schemas/Reference",
+            "description": "Which date the offsets count from: sowing or transplanting."
+          },
+          "reference_date": {
+            "type": "string",
+            "title": "Reference Date"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarTaskOut"
+            },
+            "type": "array",
+            "title": "Tasks"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "crop",
+          "reference",
+          "reference_date",
+          "tasks"
+        ],
+        "title": "CalendarOut",
+        "description": "``GET /v1/calendar`` 200 body: the crop's tasks dated from the farmer's reference date."
+      },
+      "CalendarTaskOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TaskKind"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start",
+            "description": "YYYY-MM-DD; null = stage-based (see stage_*), no reliable date."
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End",
+            "description": "YYYY-MM-DD, inclusive; null with a start = from then on."
+          },
+          "start_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Day",
+            "description": "Days after the reference date."
+          },
+          "end_day": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Day"
+          },
+          "title_te": {
+            "type": "string",
+            "title": "Title Te"
+          },
+          "title_en": {
+            "type": "string",
+            "title": "Title En"
+          },
+          "detail_te": {
+            "type": "string",
+            "title": "Detail Te"
+          },
+          "detail_en": {
+            "type": "string",
+            "title": "Detail En"
+          },
+          "stage_te": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage Te"
+          },
+          "stage_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage En"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "The official source this task restates."
+          },
+          "needs_verification": {
+            "type": "boolean",
+            "title": "Needs Verification",
+            "description": "Show the 'confirm with your AEO / Soil Health Card' note."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "start",
+          "end",
+          "start_day",
+          "end_day",
+          "title_te",
+          "title_en",
+          "detail_te",
+          "detail_en",
+          "stage_te",
+          "stage_en",
+          "source",
+          "needs_verification"
+        ],
+        "title": "CalendarTaskOut"
+      },
       "Coords": {
         "properties": {
           "requested": {
@@ -862,6 +1106,41 @@
         ],
         "title": "FarmingReadOut"
       },
+      "FieldIO": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]{6,16}$",
+            "title": "Id",
+            "description": "Chosen by the phone; stable across edits."
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "crop": {
+            "$ref": "#/components/schemas/Crop"
+          },
+          "reference_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Reference Date",
+            "description": "Sowing date, or transplanting date for paddy and chilli (see /v1/calendar). Not more than 400 days ago or 60 days ahead."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "crop",
+          "reference_date"
+        ],
+        "title": "FieldIO",
+        "description": "One of the farmer's fields (My-Field): what grows there and since when."
+      },
       "GeocodeResults": {
         "properties": {
           "results": {
@@ -1112,6 +1391,14 @@
             ],
             "title": "Lang",
             "default": "te"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/FieldIO"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Fields"
           }
         },
         "additionalProperties": false,
@@ -1154,6 +1441,14 @@
             "title": "Lang",
             "default": "te"
           },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/FieldIO"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Fields"
+          },
           "updated_at": {
             "type": "string",
             "title": "Updated At",
@@ -1166,6 +1461,14 @@
           "updated_at"
         ],
         "title": "ProfileOut"
+      },
+      "Reference": {
+        "type": "string",
+        "enum": [
+          "sowing",
+          "transplanting"
+        ],
+        "title": "Reference"
       },
       "Reliability": {
         "properties": {
@@ -1257,6 +1560,16 @@
         ],
         "title": "Severity",
         "description": "UI emphasis for a read — NOT a certainty claim about the weather."
+      },
+      "TaskKind": {
+        "type": "string",
+        "enum": [
+          "prepare",
+          "fertilizer",
+          "weeds",
+          "scout"
+        ],
+        "title": "TaskKind"
       },
       "VillageIO": {
         "properties": {

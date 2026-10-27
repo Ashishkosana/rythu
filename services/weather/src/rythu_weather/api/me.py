@@ -26,6 +26,7 @@ from fastapi.responses import JSONResponse, Response
 from rythu_weather.adapters.budget import BudgetContention, window_key
 from rythu_weather.api.schemas import DeviceCredentialsOut, ErrorBody, ProfileIn, ProfileOut, SessionIn, SessionOut
 from rythu_weather.app.accounts import PreconditionFailed, Unauthorized, new_credentials, secret_digest, utc_now
+from rythu_weather.app.calendar_request import IST, reference_date_problem
 from rythu_weather.app.composition import Accounts
 from rythu_weather.domain.coverage import in_coverage
 from rythu_weather.observability import log_event
@@ -138,7 +139,8 @@ def accounts_router(accounts: Accounts | None, clock: Callable[[], datetime] = u
         if found is None:
             raise ApiError(404, "not_found", "no profile saved yet")
         profile, etag = found
-        return JSONResponse(profile, headers={**_PRIVATE, "ETag": etag})
+        # Profiles saved before fields existed simply have none.
+        return JSONResponse({"fields": [], **profile}, headers={**_PRIVATE, "ETag": etag})
 
     @router.put(
         "/v1/me/profile", response_model=ProfileOut, summary="Save the profile (conditional)",
@@ -161,6 +163,12 @@ def accounts_router(accounts: Accounts | None, clock: Callable[[], datetime] = u
             raise ApiError(428, "precondition_required", "send If-Match: <etag> or If-None-Match: *")
         if body.village is not None and not in_coverage(body.village.lat, body.village.lon):
             raise ApiError(400, "outside_coverage", "Rythu currently covers Telangana only")
+        today = clock().astimezone(IST).date()
+        for i, f in enumerate(body.fields):
+            if problem := reference_date_problem(f.reference_date, today):
+                raise ApiError(400, "bad_request", f"fields.{i}.reference_date: {problem}")
+        if len({f.id for f in body.fields}) != len(body.fields):
+            raise ApiError(400, "bad_request", "fields: ids must be unique")
         # A token outlives a deleted account by up to an hour: never write for a user who is gone.
         if await guarded("secret_hash", acc.users.secret_hash(user)) is None:
             _unauthorized()

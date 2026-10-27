@@ -5,6 +5,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
+import FieldsThisWeek from "@/components/FieldsThisWeek";
 import LocationPicker from "@/components/LocationPicker";
 import WeatherScreen from "@/components/WeatherScreen";
 import WeatherSkeleton from "@/components/WeatherSkeleton";
@@ -70,6 +71,7 @@ function Forecast({ loc, crop, water }: { loc: ResolvedLocation; crop: Crop; wat
       nowMs={now}
       offline={offline}
       adviceLoading={q.isPlaceholderData}
+      fields={<FieldsThisWeek />}
     >
       <LocationPicker currentPlace={loc.place} />
     </WeatherScreen>

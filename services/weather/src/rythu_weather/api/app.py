@@ -22,8 +22,9 @@ from fastapi.responses import JSONResponse
 
 from rythu_weather.adapters.geocode import Geocoder
 from rythu_weather.api.me import ApiError, accounts_router, error_response
-from rythu_weather.api.schemas import ErrorBody, GeocodeResults, Health, WeatherContract
+from rythu_weather.api.schemas import CalendarOut, ErrorBody, GeocodeResults, Health, WeatherContract
 from rythu_weather.app.accounts import utc_now
+from rythu_weather.app.calendar_request import answer_calendar
 from rythu_weather.app.composition import Accounts, build_accounts, build_geocoder, build_provider
 from rythu_weather.app.geocode_request import MAX_QUERY, MIN_QUERY, answer_geocode
 from rythu_weather.app.weather_request import answer_weather
@@ -44,6 +45,10 @@ PlaceQ = Annotated[
     str | None,
     Query(description=f"Village, town or mandal name ({MIN_QUERY}-{MAX_QUERY} characters). Search on submit, "
                       "not per keystroke."),
+]
+DateQ = Annotated[
+    str | None,
+    Query(description="YYYY-MM-DD: sowing date, or transplanting date for paddy and chilli."),
 ]
 RequestId = Annotated[
     str | None,
@@ -105,6 +110,19 @@ def create_app(
             503: {"model": ErrorBody, "description": "No geocoding source could be asked (code=upstream_unavailable)."},
         },
         summary="Find a village by name (Telangana + border)",
+    )
+
+    async def calendar(crop: CropQ = None, date: DateQ = None, x_request_id: RequestId = None) -> JSONResponse:
+        result = answer_calendar(crop, date, inbound_request_id=x_request_id)
+        return JSONResponse(result.body, status_code=result.status, headers=result.headers)
+
+    app.add_api_route(
+        "/v1/calendar", calendar, methods=["GET"], tags=["calendar"], response_model=None,
+        responses={
+            200: {"model": CalendarOut, "description": "The crop's tasks, dated (stage-based ones last)."},
+            400: {"model": ErrorBody, "description": "Unknown crop, or a malformed / out-of-range date."},
+        },
+        summary="My-Field crop calendar from a sowing or transplanting date",
     )
 
     app.include_router(accounts_router(device_accounts, clock))

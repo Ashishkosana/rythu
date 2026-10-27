@@ -8,6 +8,8 @@
 import { ApiUnavailable } from "./api";
 import { NoDevice, authedFetch, forgetDevice, hasDevice } from "./device";
 import { inCoverage } from "./coverage";
+import { loadFields, type MyField } from "./fields";
+import { localDate } from "./freshness";
 import {
   loadCrop,
   loadLang,
@@ -22,23 +24,47 @@ import {
 import type { Crop, ProfileIn, WaterSource } from "./types";
 
 const MAX_NAME = 80;
+// The server's window for a field's date (app/calendar_request.py): older fields are history, and
+// sending one would make the whole upload fail.
+const FIELD_MAX_PAST_DAYS = 400;
+const FIELD_MAX_AHEAD_DAYS = 60;
 
-/** Pure: the profile as the phone knows it. A place outside coverage is not sent (the API refuses it). */
+function shift(today: string, days: number): string {
+  const d = new Date(`${today}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Pure: the profile as the phone knows it. Anything the API would refuse (a place outside coverage,
+ *  a field dated outside its window) is left out rather than failing the whole upload. */
 export function buildProfile(p: {
   place: SavedPlace | null;
   crop: Crop | null;
   water: WaterSource | null;
   lang: "te" | "en" | null;
+  fields?: MyField[];
+  today?: string; // YYYY-MM-DD (IST)
 }): ProfileIn {
   const village =
     p.place && inCoverage(p.place.lat, p.place.lon)
       ? { name: p.place.place.trim().slice(0, MAX_NAME) || "—", lat: p.place.lat, lon: p.place.lon }
       : null;
-  return { village, crop: p.crop, water: p.water ?? "rainfed", lang: p.lang ?? "te" };
+  const today = p.today ?? localDate(Date.now(), "Asia/Kolkata");
+  const [from, to] = [shift(today, -FIELD_MAX_PAST_DAYS), shift(today, FIELD_MAX_AHEAD_DAYS)];
+  const fields = (p.fields ?? [])
+    .filter((f) => f.reference_date >= from && f.reference_date <= to)
+    .map((f) => ({ id: f.id, name: f.name.trim() || "—", crop: f.crop, reference_date: f.reference_date }));
+  return { village, crop: p.crop, water: p.water ?? "rainfed", lang: p.lang ?? "te", fields };
 }
 
 export function localProfile(): ProfileIn {
-  return buildProfile({ place: loadPlace(), crop: loadCrop(), water: loadWater(), lang: loadLang() });
+  return buildProfile({
+    place: loadPlace(),
+    crop: loadCrop(),
+    water: loadWater(),
+    lang: loadLang(),
+    fields: loadFields(),
+  });
 }
 
 // ── status, for the "My data" screen ──────────────────────────────────────────────────────────

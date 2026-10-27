@@ -121,6 +121,7 @@ export default function WeatherScreen({
   nowMs,
   offline,
   adviceLoading,
+  fields,
   children,
 }: {
   data: WeatherContract; // already trimmed to "now" (lib/freshness.ts asOf)
@@ -130,6 +131,7 @@ export default function WeatherScreen({
   nowMs: number; // the device clock, for the "updated N min ago" stamp
   offline: boolean; // showing a saved copy (server's or this device's)
   adviceLoading: boolean; // the advice shown belongs to the previous crop: hide it
+  fields?: ReactNode; // "this week on your fields" (a container: it fetches its own calendars)
   children?: ReactNode;
 }) {
   const { lang } = useLang(); // app-wide language
@@ -213,6 +215,7 @@ export default function WeatherScreen({
 
       {!data.degraded && (
         <div className="space-y-6 px-4 pt-6">
+          {fields}
           {/* hourly */}
           <section>
             <div className="card p-4">

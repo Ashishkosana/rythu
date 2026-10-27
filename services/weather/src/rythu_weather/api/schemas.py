@@ -12,10 +12,12 @@ strings so the exact wire text is preserved.
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from rythu_weather.domain.calendar import Reference, TaskKind
 from rythu_weather.domain.models import Crop, FarmAction, Severity, WaterSource, WMOCategory
 
 
@@ -174,6 +176,18 @@ class VillageIO(_Strict):
     lon: float = Field(ge=-180, le=180)
 
 
+class FieldIO(_Strict):
+    """One of the farmer's fields (My-Field): what grows there and since when."""
+
+    id: str = Field(pattern=r"^[a-z0-9]{6,16}$", description="Chosen by the phone; stable across edits.")
+    name: str = Field(min_length=1, max_length=40)
+    crop: Crop
+    reference_date: date = Field(
+        description="Sowing date, or transplanting date for paddy and chilli (see /v1/calendar). "
+        "Not more than 400 days ago or 60 days ahead."
+    )
+
+
 class ProfileIn(_Strict):
     """What the phone saves on the server — only what alerts and the crop calendar need."""
 
@@ -181,7 +195,37 @@ class ProfileIn(_Strict):
     crop: Crop | None = None
     water: WaterSource = WaterSource.RAINFED
     lang: Literal["te", "en"] = "te"
+    fields: list[FieldIO] = Field(default_factory=list, max_length=5)
 
 
 class ProfileOut(ProfileIn):
     updated_at: str = Field(description="Server time of the last write, ISO-8601.")
+
+
+# ── Crop calendar (My-Field) ────────────────────────────────────────────────────────────────────
+
+
+class CalendarTaskOut(_Strict):
+    id: str
+    kind: TaskKind
+    start: str | None = Field(description="YYYY-MM-DD; null = stage-based (see stage_*), no reliable date.")
+    end: str | None = Field(description="YYYY-MM-DD, inclusive; null with a start = from then on.")
+    start_day: int | None = Field(description="Days after the reference date.")
+    end_day: int | None
+    title_te: str
+    title_en: str
+    detail_te: str
+    detail_en: str
+    stage_te: str | None
+    stage_en: str | None
+    source: str = Field(description="The official source this task restates.")
+    needs_verification: bool = Field(description="Show the 'confirm with your AEO / Soil Health Card' note.")
+
+
+class CalendarOut(_Strict):
+    """``GET /v1/calendar`` 200 body: the crop's tasks dated from the farmer's reference date."""
+
+    crop: Crop
+    reference: Reference = Field(description="Which date the offsets count from: sowing or transplanting.")
+    reference_date: str
+    tasks: list[CalendarTaskOut]

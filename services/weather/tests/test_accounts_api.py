@@ -70,7 +70,7 @@ async def test_register_session_and_profile_round_trip(client) -> None:
     assert put.status_code == 200
     etag = put.headers["ETag"]
     got = await client.get("/v1/me/profile", headers=auth)
-    assert got.json() == {**PROFILE, "updated_at": "2026-10-26T06:00:00+00:00"}
+    assert got.json() == {**PROFILE, "fields": [], "updated_at": "2026-10-26T06:00:00+00:00"}
     assert got.headers["ETag"] == etag
     assert got.headers["Cache-Control"] == "no-store"
 
@@ -188,3 +188,30 @@ async def test_the_browser_may_send_what_profile_sync_needs(client) -> None:
     _, auth = await _device(client)
     put = await client.put("/v1/me/profile", json=PROFILE, headers={**auth, "If-None-Match": "*", "Origin": "https://rythu.example"})
     assert "etag" in put.headers["Access-Control-Expose-Headers"].lower()
+
+
+async def test_profile_carries_fields_and_validates_them(client) -> None:
+    _, auth = await _device(client)
+    field = {"id": "f1a2b3", "name": "తూర్పు పొలం", "crop": "cotton", "reference_date": "2026-06-20"}
+    create = {**auth, "If-None-Match": "*"}
+    put = await client.put("/v1/me/profile", json={**PROFILE, "fields": [field]}, headers=create)
+    assert put.status_code == 200
+    assert (await client.get("/v1/me/profile", headers=auth)).json()["fields"] == [field]
+
+    etag = put.headers["ETag"]
+    for bad, needle in (
+        ([{**field, "reference_date": "2027-03-01"}], "fields.0.reference_date"),  # > 60 days ahead (clock: 26 Oct)
+        ([field, field], "unique"),
+        ([{**field, "id": "X!"}], "fields"),
+        ([{**field, "id": f"f{i:05d}"} for i in range(6)], "fields"),  # at most 5
+    ):
+        resp = await client.put("/v1/me/profile", json={**PROFILE, "fields": bad}, headers={**auth, "If-Match": etag})
+        assert (resp.status_code, resp.json()["code"]) == (400, "bad_request"), bad
+        assert needle in resp.json()["error"]
+
+
+async def test_a_profile_saved_before_fields_existed_reads_with_none(client, accounts) -> None:
+    uid, auth = await _device(client)
+    old = {**PROFILE, "updated_at": "2026-10-01T00:00:00+00:00"}  # no "fields" key at all
+    await accounts.users.put_profile(uid, old, if_match=None, create_only=True)
+    assert (await client.get("/v1/me/profile", headers=auth)).json()["fields"] == []

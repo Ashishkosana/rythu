@@ -226,7 +226,7 @@ Each step is one commit; the app works after every step; AWS runs until cutover.
 | S13b | App: "My data" screen (what is stored, consent switch, delete server copy / clear phone); consent-gated profile sync (device account made only on consent; ETag conflict → re-read and rewrite); crop + water remembered; Cognito removed (web, CSP, CDK stack) | nothing leaves the phone without consent; crop remembered across launches | **done** |
 | S14 | Push alerts (subscriptions, evaluation, queue, sender, alert log) | new | planned |
 | S15 | Mandi prices + MSP comparison (after confirming data.gov.in API access) | new | planned |
-| S16 | My-Field crop calendar | new | planned |
+| S16 | My-Field crop calendar: `/v1/calendar` from the research's verified schedules (sourced, AEO flags kept, stage-based where no day count exists, never a spray); fields (≤ 5) in the profile; "My field" screen + "this week" card on home; 5th tab | new: what to do on my crop this week | **done** |
 | S17 | "Ask Rythu" grounded assistant (Telugu voice, quotas, KCC fallback, eval set) | new | planned |
 
 ## Decision records

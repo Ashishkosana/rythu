@@ -97,6 +97,18 @@ failed, or too many searches queued) the answer is **503 `upstream_unavailable`*
 Served by the FastAPI app (local + Azure) only: the AWS Lambda keeps just `/weather` — its front end
 is offline and AWS retires in S10, so the web app needs a FastAPI backend for search.
 
+## Crop calendar (S16)
+
+`GET /v1/calendar?crop=cotton&date=2026-06-20` turns the one date a farmer knows — sowing, or
+transplanting for paddy and chilli — into dated tasks: fertilizer splits, weed windows, pest-scouting
+days. Every task restates a line of `docs/agronomy-data.md` (PJTSAU / TNAU / ICAR / NIPHM), carries its
+source URL and keeps that row's `needs_verification` flag (the app then shows "confirm with your AEO /
+Soil Health Card"). Where the sources give a stage but no day count (red gram pod borer "at flowering"),
+the task stays stage-based instead of getting an invented date. Pest tasks are scouting reminders with
+the threshold, never sprays — `tests/test_calendar.py` pins the offsets to the research and fails if a
+task names a pesticide. The answer depends only on crop and date, so it is public and cacheable; the
+farmer's own fields (≤ 5) travel inside their profile.
+
 ## Device accounts (S13, ADR 0004)
 
 No sign-up: a phone registers once (`POST /v1/devices` → random user id + 256-bit device secret; the

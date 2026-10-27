@@ -11,6 +11,7 @@ import type { IconName } from "@/components/ui/icon-nodes";
 // Icons are SVG (same shape on every phone); trailing slashes match the static export's URLs.
 const TABS: readonly { href: string; icon: IconName; te: string; en: string }[] = [
   { href: "/", icon: "cloud-sun", te: "వాతావరణం", en: "Weather" },
+  { href: "/field/", icon: "calendar-days", te: "నా పొలం", en: "My field" },
   { href: "/crops/", icon: "sprout", te: "పంటలు", en: "Crops" },
   { href: "/schemes/", icon: "landmark", te: "పథకాలు", en: "Schemes" },
   { href: "/account/", icon: "user", te: "నా సమాచారం", en: "My data" },

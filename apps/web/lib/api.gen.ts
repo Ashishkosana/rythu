@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My-Field crop calendar from a sowing or transplanting date */
+        get: operations["calendar_v1_calendar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/devices": {
         parameters: {
             query?: never;
@@ -128,6 +145,64 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * CalendarOut
+         * @description ``GET /v1/calendar`` 200 body: the crop's tasks dated from the farmer's reference date.
+         */
+        CalendarOut: {
+            crop: components["schemas"]["Crop"];
+            /** @description Which date the offsets count from: sowing or transplanting. */
+            reference: components["schemas"]["Reference"];
+            /** Reference Date */
+            reference_date: string;
+            /** Tasks */
+            tasks: components["schemas"]["CalendarTaskOut"][];
+        };
+        /** CalendarTaskOut */
+        CalendarTaskOut: {
+            /** Id */
+            id: string;
+            kind: components["schemas"]["TaskKind"];
+            /**
+             * Start
+             * @description YYYY-MM-DD; null = stage-based (see stage_*), no reliable date.
+             */
+            start: string | null;
+            /**
+             * End
+             * @description YYYY-MM-DD, inclusive; null with a start = from then on.
+             */
+            end: string | null;
+            /**
+             * Start Day
+             * @description Days after the reference date.
+             */
+            start_day: number | null;
+            /** End Day */
+            end_day: number | null;
+            /** Title Te */
+            title_te: string;
+            /** Title En */
+            title_en: string;
+            /** Detail Te */
+            detail_te: string;
+            /** Detail En */
+            detail_en: string;
+            /** Stage Te */
+            stage_te: string | null;
+            /** Stage En */
+            stage_en: string | null;
+            /**
+             * Source
+             * @description The official source this task restates.
+             */
+            source: string;
+            /**
+             * Needs Verification
+             * @description Show the 'confirm with your AEO / Soil Health Card' note.
+             */
+            needs_verification: boolean;
+        };
         /** Coords */
         Coords: {
             /** @description The farmer's pin. */
@@ -248,6 +323,26 @@ export interface components {
             sources: string[];
         };
         /**
+         * FieldIO
+         * @description One of the farmer's fields (My-Field): what grows there and since when.
+         */
+        FieldIO: {
+            /**
+             * Id
+             * @description Chosen by the phone; stable across edits.
+             */
+            id: string;
+            /** Name */
+            name: string;
+            crop: components["schemas"]["Crop"];
+            /**
+             * Reference Date
+             * Format: date
+             * @description Sowing date, or transplanting date for paddy and chilli (see /v1/calendar). Not more than 400 days ago or 60 days ahead.
+             */
+            reference_date: string;
+        };
+        /**
          * GeocodeResults
          * @description ``GET /v1/geocode`` 200 body: places inside Rythu's coverage, best match first (may be empty).
          */
@@ -334,6 +429,8 @@ export interface components {
              * @enum {string}
              */
             lang: "te" | "en";
+            /** Fields */
+            fields?: components["schemas"]["FieldIO"][];
         };
         /** ProfileOut */
         ProfileOut: {
@@ -347,12 +444,19 @@ export interface components {
              * @enum {string}
              */
             lang: "te" | "en";
+            /** Fields */
+            fields?: components["schemas"]["FieldIO"][];
             /**
              * Updated At
              * @description Server time of the last write, ISO-8601.
              */
             updated_at: string;
         };
+        /**
+         * Reference
+         * @enum {string}
+         */
+        Reference: "sowing" | "transplanting";
         /** Reliability */
         Reliability: {
             /**
@@ -402,6 +506,11 @@ export interface components {
          * @enum {string}
          */
         Severity: "info" | "caution" | "act";
+        /**
+         * TaskKind
+         * @enum {string}
+         */
+        TaskKind: "prepare" | "fertilizer" | "weeds" | "scout";
         /** VillageIO */
         VillageIO: {
             /** Name */
@@ -545,6 +654,43 @@ export interface operations {
             };
             /** @description No geocoding source could be asked (code=upstream_unavailable). */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
+                };
+            };
+        };
+    };
+    calendar_v1_calendar_get: {
+        parameters: {
+            query?: {
+                /** @description One of: cotton, paddy, red_gram, maize, chilli. Omit for crop-independent reads only. */
+                crop?: string | null;
+                /** @description YYYY-MM-DD: sowing date, or transplanting date for paddy and chilli. */
+                date?: string | null;
+            };
+            header?: {
+                /** @description Optional correlation id, echoed back if safe ([A-Za-z0-9._-]{1,128}). */
+                "X-Request-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The crop's tasks, dated (stage-based ones last). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarOut"];
+                };
+            };
+            /** @description Unknown crop, or a malformed / out-of-range date. */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

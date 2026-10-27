@@ -90,9 +90,24 @@ describe("buildProfile", () => {
       crop: "paddy",
       water: "rainfed",
       lang: "te",
+      fields: [],
     });
     expect(buildProfile({ place: { lat: 13.08, lon: 80.27, place: "Chennai" }, crop: null, water: "tank", lang: "en" }).village).toBeNull();
     expect(buildProfile({ place: { ...place, place: "x".repeat(200) }, crop: null, water: null, lang: null }).village?.name).toHaveLength(80);
+  });
+});
+
+describe("buildProfile fields", () => {
+  it("sends fields in the server's date window and keeps stale ones on the phone only", () => {
+    const f = (id: string, reference_date: string) => ({ id, name: " East ", crop: "cotton" as const, reference_date });
+    const out = buildProfile({
+      place: null, crop: null, water: null, lang: null, today: "2026-10-27",
+      fields: [f("aaaaaa", "2026-06-20"), f("bbbbbb", "2025-09-01"), f("cccccc", "2026-12-26"), f("dddddd", "2026-12-27")],
+    });
+    expect(out.fields).toEqual([
+      { id: "aaaaaa", name: "East", crop: "cotton", reference_date: "2026-06-20" },
+      { id: "cccccc", name: "East", crop: "cotton", reference_date: "2026-12-26" }, // exactly 60 days ahead
+    ]);
   });
 });
 
