@@ -28,3 +28,17 @@ async def test_get_weather_propagates_provider_error():
     ctx = FarmerContext(now=now, water_source=WaterSource.RAINFED)
     with pytest.raises(ProviderError):
         await get_weather(FailingProvider(), POINT, ctx)
+
+
+async def test_each_farmer_gets_their_own_pin_and_snap_distance():
+    """One cached cell forecast serves many farmers; coords must be per request, not the first requester's."""
+    now = at(2026, 7, 15, 8)
+    fc = forecast(now, daily=[day(now.date())])  # returned grid point 18.453426, 79.872795
+    ctx = FarmerContext(now=now, water_source=WaterSource.RAINFED)
+    near = await get_weather(FakeProvider(fc), GeoPoint(18.4534, 79.8728), ctx)
+    far = await get_weather(FakeProvider(fc), GeoPoint(18.40, 79.83), ctx)
+    assert near["coords"]["requested"] == {"lat": 18.4534, "lon": 79.8728}
+    assert near["coords"]["snap_distance_km"] < 0.1
+    assert far["coords"]["requested"] == {"lat": 18.40, "lon": 79.83}
+    assert 7.0 < far["coords"]["snap_distance_km"] < 7.5  # ≈ 7.3 km — honest, not the 2.01 km of the fixture
+    assert near["coords"]["returned"] == far["coords"]["returned"]

@@ -46,7 +46,7 @@ export function stopSpeaking(): void {
   if (speechSupported()) window.speechSynthesis.cancel();
 }
 
-/** Build the plain-Telugu spoken summary of today's weather (a farmer's one question). */
+/** Build the plain-Telugu spoken summary (a farmer's one question). `chance` is the next-12-hours max. */
 export function weatherSpeech(opts: {
   place: string;
   chance: number | null;
@@ -57,7 +57,7 @@ export function weatherSpeech(opts: {
   const place = opts.place.split("·")[0].trim();
   if (place) parts.push(place);
   if (opts.chance !== null) {
-    parts.push(`ఈరోజు వర్షం అవకాశం ${opts.chance} శాతం`);
+    parts.push(`రాబోయే 12 గంటల్లో వర్షం అవకాశం ${opts.chance} శాతం`);
     parts.push(opts.wet ? "వర్షం రావచ్చు" : "వర్షం అవకాశం తక్కువ");
   } else {
     parts.push("వాతావరణ సమాచారం అందుబాటులో లేదు");

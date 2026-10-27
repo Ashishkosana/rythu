@@ -26,7 +26,8 @@ describe("weatherSpeech", () => {
   it("builds a plain Telugu sentence with chance, verdict, and temperature", () => {
     const s = weatherSpeech({ place: "రేగొండ · Regonda", chance: 60, temp: 30.4, wet: true });
     expect(s).toContain("రేగొండ");
-    expect(s).toContain("60 శాతం");
+    expect(s).toContain("రాబోయే 12 గంటల్లో వర్షం అవకాశం 60 శాతం"); // matches the hero's window
+    expect(s).not.toContain("ఈరోజు");
     expect(s).toContain("వర్షం రావచ్చు");
     expect(s).toContain("30 డిగ్రీలు");
   });

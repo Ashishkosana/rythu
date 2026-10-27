@@ -105,7 +105,71 @@ def morning_hours(forecast: Forecast, day: date) -> list[HourlyPoint]:
 
 
 def next_days(forecast: Forecast, now: datetime, days: int) -> list[DailyPoint]:
-    """Up to ``days`` daily points from today (``now``'s date) forward, in order."""
+    """Up to ``days`` daily points from today (``now``'s date) forward, in order — FORWARD-only.
+
+    Open-Meteo's daily row for today aggregates the WHOLE calendar day, including hours already
+    gone; at 21:00 it still says "45 mm" for rain that fell at 03:00. So today's row is rebuilt
+    from the hourly rows that are still ahead (see :func:`_rest_of_today`). When nothing of today
+    remains, today is dropped. When the forecast has no hourly rows dated today at all, past and
+    future cannot be told apart and the daily row is kept as-is.
+    """
     today = now.date()
-    upcoming = [d for d in forecast.daily if d.day >= today]
+    upcoming: list[DailyPoint] = []
+    for d in forecast.daily:
+        if d.day < today:
+            continue
+        if d.day == today:
+            rest = _rest_of_today(forecast, now, d)
+            if rest is None:
+                continue
+            d = rest
+        upcoming.append(d)
     return upcoming[:days]
+
+
+def calendar_days(forecast: Forecast, now: datetime, days: int) -> list[DailyPoint]:
+    """Up to ``days`` WHOLE calendar days from today, today's row including hours already gone.
+
+    Only for questions about accumulated state rather than upcoming events — e.g. "is there enough
+    soil moisture to sow?", where rain that fell this morning counts. Event warnings ("heavy rain
+    is coming") must use :func:`next_days`.
+    """
+    today = now.date()
+    return [d for d in forecast.daily if d.day >= today][:days]
+
+
+def _rest_of_today(forecast: Forecast, now: datetime, daily_today: DailyPoint) -> DailyPoint | None:
+    """Today's daily row recomputed over ``now .. midnight`` from hourly data.
+
+    Returns ``daily_today`` unchanged when there is no hourly coverage of today, and ``None`` when
+    today is covered but no hour of it remains. Rain amount follows the module's unknown rule: if
+    any remaining hour's amount is unknown, today's amount is unknown (``None``), never a partial
+    sum that could read as "only light rain".
+    """
+    today = now.date()
+    if not any(h.time_local.date() == today for h in forecast.hourly):
+        return daily_today
+    rest = [h for h in forecast.hourly if h.time_local.date() == today and h.time_local >= now]
+    if not rest:
+        return None
+    amounts = [h.precipitation_mm for h in rest]
+    temps = present(h.temperature_c for h in rest)
+    return DailyPoint(
+        day=today,
+        precipitation_probability_max=_max_int(h.precipitation_probability for h in rest),
+        precipitation_sum_mm=None if any(a is None for a in amounts) else sum_present(amounts),
+        temperature_max_c=float(max(temps)) if temps else None,
+        temperature_min_c=float(min(temps)) if temps else None,
+        weather_code=daily_today.weather_code,
+        wind_speed_max_kmh=_max_float(h.wind_speed_kmh for h in rest),
+    )
+
+
+def _max_int(values: Iterable[int | None]) -> int | None:
+    known = [v for v in values if v is not None]
+    return max(known) if known else None
+
+
+def _max_float(values: Iterable[float | None]) -> float | None:
+    known = [v for v in values if v is not None]
+    return max(known) if known else None

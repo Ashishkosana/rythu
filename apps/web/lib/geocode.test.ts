@@ -5,6 +5,7 @@ import {
   normalizeGeoResults,
   normalizeNominatim,
   roundCoord,
+  withinCoverage,
 } from "./geocode";
 
 describe("roundCoord", () => {
@@ -97,5 +98,16 @@ describe("normalizeNominatim", () => {
     expect(normalizeNominatim([{ place_id: 1, lat: "999", lon: "79", address: { village: "Bad" } }])).toEqual([]);
     expect(normalizeNominatim(null)).toEqual([]);
     expect(normalizeNominatim({ results: [] })).toEqual([]);
+  });
+});
+
+describe("withinCoverage", () => {
+  it("keeps only places Rythu serves (Telangana + border)", () => {
+    const rs = [
+      { id: 1, name: "Regonda", lat: 18.33, lon: 79.88 },
+      { id: 2, name: "Chennai", lat: 13.08, lon: 80.27 },
+      { id: 3, name: "Hyderabad", lat: 17.385, lon: 78.4867 },
+    ];
+    expect(withinCoverage(rs).map((r) => r.name)).toEqual(["Regonda", "Hyderabad"]);
   });
 });

@@ -1,4 +1,5 @@
-import { normalizeGeoResults, normalizeNominatim, type GeoResult } from "@/lib/geocode";
+import { COVERAGE } from "@/lib/coverage";
+import { normalizeGeoResults, normalizeNominatim, withinCoverage, type GeoResult } from "@/lib/geocode";
 
 // Server-side village search. OSM (Nominatim) has the best coverage of small
 // Indian villages; Open-Meteo is the fallback. Proxying here lets us send a
@@ -12,7 +13,12 @@ const OPEN_METEO = "https://geocoding-api.open-meteo.com/v1/search";
 const DAY = 86400;
 
 async function fromNominatim(q: string): Promise<GeoResult[]> {
-  const url = `${NOMINATIM}?q=${encodeURIComponent(q)}&format=jsonv2&countrycodes=in&limit=8&addressdetails=1`;
+  // Bound the search to Rythu's coverage box (viewbox = lon,lat of two corners) so the 8 results
+  // are spent on Telangana, not on same-named villages elsewhere that we'd then have to drop.
+  const viewbox = `${COVERAGE.lonMin},${COVERAGE.latMax},${COVERAGE.lonMax},${COVERAGE.latMin}`;
+  const url =
+    `${NOMINATIM}?q=${encodeURIComponent(q)}&format=jsonv2&countrycodes=in&limit=8&addressdetails=1` +
+    `&viewbox=${viewbox}&bounded=1`;
   const res = await fetch(url, {
     headers: {
       // OSM usage policy requires an identifying User-Agent.
@@ -22,14 +28,14 @@ async function fromNominatim(q: string): Promise<GeoResult[]> {
     next: { revalidate: DAY },
   });
   if (!res.ok) return [];
-  return normalizeNominatim(await res.json());
+  return withinCoverage(normalizeNominatim(await res.json()));
 }
 
 async function fromOpenMeteo(q: string): Promise<GeoResult[]> {
   const url = `${OPEN_METEO}?name=${encodeURIComponent(q)}&count=8&country=IN&language=en`;
   const res = await fetch(url, { next: { revalidate: DAY } });
   if (!res.ok) return [];
-  return normalizeGeoResults(await res.json());
+  return withinCoverage(normalizeGeoResults(await res.json()));
 }
 
 export async function GET(request: Request): Promise<Response> {

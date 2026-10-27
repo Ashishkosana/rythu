@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+import time
+
 import httpx
 import pytest
 import respx
@@ -104,6 +108,41 @@ async def test_missing_latlon_becomes_provider_error():
     respx.route(method="GET", host="api.open-meteo.com").mock(return_value=httpx.Response(200, json=payload))
     with pytest.raises(ProviderError):
         await _provider().fetch(GeoPoint(18.44, 79.86))
+
+
+async def test_total_deadline_turns_a_hanging_upstream_into_provider_error():
+    """httpx timeouts are per phase; the provider enforces one TOTAL deadline on top."""
+
+    async def hang(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(5)
+        return httpx.Response(200, json=SAMPLE)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(hang)) as client:
+        provider = OpenMeteoHttpProvider(client, clock=lambda: at(2026, 7, 15, 12), timeout=0.05)
+        started = time.perf_counter()
+        with pytest.raises(ProviderError, match=r"did not respond within 0\.05 s"):
+            await provider.fetch(GeoPoint(18.44, 79.86))
+        assert time.perf_counter() - started < 1.0
+
+
+def test_default_timeout_is_four_seconds():
+    assert OpenMeteoHttpProvider()._timeout == 4.0
+
+
+@respx.mock
+async def test_upstream_calls_are_logged_with_outcome_and_latency(caplog):
+    caplog.set_level(logging.INFO, logger="rythu_weather")
+    respx.route(method="GET", host="api.open-meteo.com").mock(return_value=httpx.Response(200, json=SAMPLE))
+    await _provider().fetch(GeoPoint(18.44, 79.86))
+    respx.route(method="GET", host="api.open-meteo.com").mock(return_value=httpx.Response(503))
+    with pytest.raises(ProviderError):
+        await _provider().fetch(GeoPoint(18.44, 79.86))
+
+    ok, failed = [r for r in caplog.records if r.getMessage() == "upstream.open_meteo"]
+    assert ok.levelno == logging.INFO and ok.fields["outcome"] == "ok"
+    assert isinstance(ok.fields["latency_ms"], float)
+    assert failed.levelno == logging.WARNING and failed.fields["outcome"] == "error"
+    assert "503" in failed.fields["error"]
 
 
 @pytest.mark.live

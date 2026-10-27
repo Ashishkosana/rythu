@@ -12,7 +12,11 @@ import pathlib
 
 DOMAIN = pathlib.Path(__file__).resolve().parents[1] / "src" / "rythu_weather" / "domain"
 
-FORBIDDEN_IMPORTS = {"httpx", "requests", "boto3", "boto", "os", "socket", "urllib", "zoneinfo", "random"}
+# `logging` too: logging is a side effect that belongs at the edges (adapters/app), so the rules
+# stay pure functions of (forecast, context) and never need a configured logger to test.
+FORBIDDEN_IMPORTS = {
+    "httpx", "requests", "boto3", "boto", "botocore", "os", "socket", "urllib", "zoneinfo", "random", "logging",
+}
 # Attribute-call names that read a wall clock (e.g. datetime.now(), date.today()).
 FORBIDDEN_CLOCK_CALLS = {"now", "today", "monotonic"}
 

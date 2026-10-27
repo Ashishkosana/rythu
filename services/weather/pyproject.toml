@@ -5,6 +5,10 @@ description = "Rythu weather service — honest Open-Meteo forecast + farming-re
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "aiohttp>=3.14.5",
+    "azure-data-tables>=12.7.0",
+    "azure-identity>=1.26.0",
+    "fastapi>=0.143.0",
     "httpx>=0.27",
 ]
 
@@ -15,6 +19,11 @@ dev = [
     "mypy>=1.10",
     "ruff>=0.5",
     "respx>=0.21",
+    "uvicorn>=0.54.0",
+    "azure-functions>=1.25.0,<2",
+]
+functions = [
+    "azure-functions>=1.25.0,<2",
 ]
 
 [build-system]
@@ -44,10 +53,10 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 disallow_any_generics = true
 
-# boto3 is provided by the AWS Lambda runtime and imported lazily in the DynamoDB cache
-# adapter; it is not a build dependency, so it has no stubs here.
+# boto3/botocore are provided by the AWS Lambda runtime and imported lazily in the DynamoDB
+# cache adapter; they are not build dependencies, so they have no stubs here.
 [[tool.mypy.overrides]]
-module = ["boto3", "boto3.*"]
+module = ["boto3", "boto3.*", "botocore", "botocore.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

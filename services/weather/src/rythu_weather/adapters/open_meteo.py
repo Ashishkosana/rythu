@@ -7,6 +7,9 @@ honest-confidence badge) touches only this file.
 
 from __future__ import annotations
 
+import asyncio
+import logging
+import time
 from collections.abc import Callable, Sequence
 from datetime import date, datetime
 from typing import Any
@@ -24,6 +27,9 @@ from rythu_weather.domain.models import (
     HourlyPoint,
     ProviderError,
 )
+from rythu_weather.observability import log_event
+
+_log = logging.getLogger(__name__)
 
 BASE_URL = "https://api.open-meteo.com/v1/forecast"
 HOURLY_FIELDS = (
@@ -58,6 +64,10 @@ def _as_float(v: Any) -> float | None:
     return None if v is None else float(v)
 
 
+def _ms_since(started: float) -> float:
+    return round((time.perf_counter() - started) * 1000, 1)
+
+
 def _column(block: dict[str, Any], name: str, length: int) -> list[Any]:
     """A metric column normalised to exactly ``length`` items.
 
@@ -79,6 +89,10 @@ class OpenMeteoHttpProvider:
     Pass a shared ``httpx.AsyncClient`` (e.g. reused across a Lambda invocation) or let the
     provider create and close one per fetch. ``clock`` is injectable so the recorded
     fetch-time is deterministic in tests.
+
+    ``timeout`` is a TOTAL deadline for the fetch (connect + send + full body). httpx's own
+    timeout is per phase, so a server that trickles bytes could otherwise hold a request far
+    longer than the number suggests.
     """
 
     def __init__(
@@ -86,7 +100,7 @@ class OpenMeteoHttpProvider:
         client: httpx.AsyncClient | None = None,
         *,
         clock: Callable[[], datetime] = _default_clock,
-        timeout: float = 10.0,
+        timeout: float = 4.0,
         forecast_days: int = DEFAULT_FORECAST_DAYS,
     ) -> None:
         self._client = client
@@ -105,11 +119,28 @@ class OpenMeteoHttpProvider:
         }
 
     async def fetch(self, point: GeoPoint) -> Forecast:
-        if self._client is not None:
-            data = await self._request(self._client, point)
-        else:
-            async with httpx.AsyncClient(timeout=self._timeout) as client:
-                data = await self._request(client, point)
+        started = time.perf_counter()
+        try:
+            forecast = await self._fetch(point)
+        except ProviderError as exc:
+            log_event(
+                _log, logging.WARNING, "upstream.open_meteo",
+                outcome="error", error=str(exc), latency_ms=_ms_since(started),
+            )
+            raise
+        log_event(_log, logging.INFO, "upstream.open_meteo", outcome="ok", latency_ms=_ms_since(started))
+        return forecast
+
+    async def _fetch(self, point: GeoPoint) -> Forecast:
+        try:
+            async with asyncio.timeout(self._timeout):
+                if self._client is not None:
+                    data = await self._request(self._client, point)
+                else:
+                    async with httpx.AsyncClient(timeout=self._timeout) as client:
+                        data = await self._request(client, point)
+        except TimeoutError as exc:
+            raise ProviderError(f"Open-Meteo did not respond within {self._timeout:g} s") from exc
         try:
             return self._map(data, point, self._clock())
         except (KeyError, ValueError, TypeError, IndexError) as exc:

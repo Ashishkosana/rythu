@@ -36,7 +36,7 @@
 | **Frontend** | Next.js 16 (App Router, SSR, `force-dynamic`), React 19, TypeScript 5, Tailwind CSS v4, Vitest for unit tests. Deployed on **AWS Amplify** (SSR hosting). |
 | **Backend** | Python 3.12 `rythu-weather` service in **hexagonal / ports-and-adapters** layout (`domain` / `adapters` / `app`). Single runtime dependency: `httpx`. Weather data from [Open-Meteo](https://open-meteo.com) (free, no API key). Packaged with `uv` + `hatchling`. |
 | **Infra** | **AWS CDK** (Python): API Gateway v2 **HTTP API → Lambda** (`rythu_weather.app.handler`, 256 MB, 15 s, reserved concurrency 10) **→ DynamoDB** forecast cache (`PAY_PER_REQUEST`, TTL auto-expire). |
-| **Quality gate** | Backend: `ruff` + `mypy --strict` + `pytest`. Frontend: `vitest`. |
+| **Quality gate** | Backend: `ruff` + `mypy --strict` + `pytest`. Frontend: `eslint` + `tsc` + `vitest` + `next build` + production `npm audit`. |
 
 The front end reaches the backend through a `WEATHER_API` value inlined at build time in `next.config.ts` (a workaround for Amplify not exposing env vars to the SSR runtime), with a `http://127.0.0.1:8001` fallback for local dev.
 
@@ -81,7 +81,7 @@ flowchart TD
 
 - **Hexagonal backend with a domain-purity test.** The Open-Meteo client, the DynamoDB cache, and a fake adapter are all swappable ports; a `test_domain_purity` guard keeps the rules/engine/models free of I/O, so the advice engine is unit-testable without any HTTP. The wire shape is defined in exactly one place (`app/serialize.py`).
 - **The DynamoDB read-through cache is a cost / rate-limit decision.** `PAY_PER_REQUEST` + TTL caps Open-Meteo calls to roughly one per grid cell per window, and Lambda `reserved_concurrent_executions = 10` caps a public endpoint — both keep a free-for-farmers app inside free-tier economics.
-- **One typed JSON contract** between Python and TypeScript, and it deliberately never leaks raw upstream fields or emits a "confidence" score (see the sample below).
+- **One typed JSON contract** between Python and TypeScript, and it deliberately never leaks raw upstream fields or emits a "confidence" score (see the sample below). Pydantic schemas (`api/schemas.py`, golden-tested against the serializer) → committed `services/weather/openapi.json` → generated `apps/web/lib/api.gen.ts`; CI fails if either generated file is stale, and the crop/water lists are compile-checked against the backend enums.
 - **Build-time inlining of `WEATHER_API`** works around Amplify not exposing env vars to the SSR runtime, while a localhost fallback keeps local dev friction-free.
 - **Deploy packaging:** `build_lambda.sh` bundles `httpx` into `infra/build/lambda`; the CDK stack falls back to pure source so `cdk synth` still works without the bundled deps.
 
@@ -131,7 +131,7 @@ Note: `rule_confidence` exists internally but is **intentionally not serialised*
 
 ## Tests & quality gate
 
-CI (GitHub Actions) runs `ruff` + `mypy --strict` + `pytest` for the backend and `vitest` for the frontend on every push and PR — see the CI badge at the top. You can also reproduce the numbers locally with the commands below.
+CI (GitHub Actions) runs `ruff` + `mypy --strict` + `pytest` for the backend and `eslint` + `tsc` + `vitest` + `next build` + a production-dependency `npm audit` for the frontend on every push and PR — see the CI badge at the top. You can also reproduce the numbers locally with the commands below.
 
 - **Backend — 100 tests pass** (1 network "live" test deselected by default); 95 test functions across 12 files in `services/weather/tests` (rules 27, chilli 13, engine 10, open-meteo/serialize/windows ~7–8 each, cache/handler 6, reliability/wmo 4, service 2, domain-purity 1). Gate is `ruff` + `mypy --strict` + `pytest`.
   ```bash
@@ -153,7 +153,7 @@ CI (GitHub Actions) runs `ruff` + `mypy --strict` + `pytest` for the backend and
 - **Crops guide (`/crops`)** — per-crop season / water / sowing / tips, cited to PJTSAU, with an "AEO-confirm" disclaimer.
 - **Fertilizer calculator** — pick a crop + area (acre / guntha) → Urea / DAP / MOP bags & kg computed deterministically and offline from cited PJTSAU / ICAR N:P:K doses, with N-overdose-safe framing, a Telugu "Listen" text-to-speech, and an always-on soil-test / AEO fallback.
 - **5 crops wired end-to-end** (backend `Crop` enum ↔ frontend): chilli/mirchi, cotton, paddy, red gram, maize.
-- **Location picker** — browser GPS, verified pilot mandals, and per-village search via the server-side `/api/geocode` route (Nominatim primary, Open-Meteo geocoding fallback, day-cached). Location persists across crop switches; the default is the district HQ.
+- **Location picker** — browser GPS, verified pilot mandals, and per-village search via the server-side `/api/geocode` route (Nominatim primary, Open-Meteo geocoding fallback, day-cached). Location persists across crop switches; the default is the district HQ. Coverage is **Telangana plus a border margin** (the rules, doses and schemes are Telangana-specific): search only returns places inside it, and GPS or links outside it get a clear "Telangana only" screen with the picker, never a dead end.
 - **Farmer-first UX** — Telugu-first (default Telugu, Telugu ⇄ English toggle), tap-to-hear Telugu voice, a first-run Welcome overlay, remembered village + language, big tap targets, PWA install, and a safe-area-aware iOS-style bottom tab nav (Weather / Crops / Schemes).
 - **Offline / degraded handling** — the DynamoDB read-through cache, an offline-cache badge, a degraded-state message, and the honest source stamp.
 
@@ -178,10 +178,10 @@ This is a tool for farmers, so honesty is encoded in the code and enforced as gu
 ```bash
 cd services/weather
 uv sync --extra dev
-uv run python -m rythu_weather.app.local_server 8001      # http://127.0.0.1:8001/weather
+uv run python -m rythu_weather.app.local_server 8001      # http://127.0.0.1:8001/v1/weather · API docs at /docs
 ```
 
-**2. Frontend** (Node 20+):
+**2. Frontend** (Node 22+; CI uses 22). If `npm install` of a *new* dependency fails with `Cannot read properties of null (reading 'edgesOut')`, that is an npm 10 peer-resolution bug — run it once with `npx npm@11 install`.
 
 ```bash
 cd apps/web

@@ -11,11 +11,22 @@ from dataclasses import replace
 from typing import Any
 
 from rythu_weather.domain.engine import evaluate_reads
-from rythu_weather.domain.models import FarmerContext, GeoPoint, WeatherProvider
+from rythu_weather.domain.geo import haversine_km
+from rythu_weather.domain.models import CoordsResolution, FarmerContext, GeoPoint, WeatherProvider
 
 # Pilot location: Bhupalpally town centre. The ~11 km model snaps this to its grid cell,
 # which is surfaced honestly in the response coords.
 BHUPALPALLY = GeoPoint(lat=18.44, lon=79.86)
+
+
+def _coords_for(point: GeoPoint, coords: CoordsResolution) -> CoordsResolution:
+    """Re-anchor the honesty block on THIS farmer's pin.
+
+    A cached forecast is shared by every farmer in its cell, so its ``requested`` point and snap
+    distance belong to whoever (or whichever cell centre) was fetched. The model grid point that
+    answered (``returned``) is shared; the distance from each farmer's pin to it is not.
+    """
+    return replace(coords, requested=point, snap_distance_km=round(haversine_km(point, coords.returned), 2))
 
 
 async def get_weather(
@@ -33,6 +44,7 @@ async def get_weather(
     from rythu_weather.app.serialize import forecast_to_contract
 
     forecast = await provider.fetch(point)
+    forecast = replace(forecast, coords=_coords_for(point, forecast.coords))
     reads = evaluate_reads(forecast, ctx)
     forecast = replace(forecast, farming_read=reads)
     return forecast_to_contract(forecast, ctx, hourly_hours=hourly_hours)

@@ -12,6 +12,15 @@ jobs:
     defaults:
       run:
         working-directory: services/weather
+    # Azurite = Microsoft's Storage emulator, so the Table Storage cache adapter is tested against
+    # the real protocol. Pinned to the same version the tests document for local runs.
+    services:
+      azurite:
+        image: mcr.microsoft.com/azure-storage/azurite:3.37.0
+        ports:
+          - 10002:10002
+    env:
+      RYTHU_REQUIRE_AZURITE: "1" # missing emulator = failed build, never a silent skip
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
@@ -27,8 +36,20 @@ jobs:
       - name: Tests (pytest)
         run: uv run pytest
 
+  infra:
+    name: infra · bicep build + lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The runner image ships the Azure CLI; `az bicep` fetches the Bicep compiler on first use.
+      # Compiles and lints only — no Azure login, nothing is deployed.
+      - name: Build (compile to ARM)
+        run: az bicep build --file infra/azure/main.bicep --stdout > /dev/null
+      - name: Lint
+        run: az bicep lint --file infra/azure/main.bicep
+
   frontend:
-    name: frontend · vitest
+    name: frontend · lint + tsc + vitest + build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -37,10 +58,27 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # Node 20 reached end-of-life in April 2026; 22 is the maintained LTS.
+          node-version: "22"
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - name: Install
         run: npm ci
+      - name: Lint (eslint)
+        run: npm run lint
+      # lib/api.gen.ts must be generated from services/weather/openapi.json (whose own freshness
+      # is checked by the backend's pytest). Fails if someone changed the contract without regenerating.
+      - name: API types up to date (openapi-typescript --check)
+        run: npm run check:api
+      - name: Types (tsc)
+        run: npx tsc --noEmit
       - name: Tests (vitest)
         run: npm run test
+      - name: Build (next build)
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+      # Gate on what ships to phones. Dev-tool advisories are handled by Dependabot
+      # rather than failing unrelated pushes.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high

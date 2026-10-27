@@ -112,3 +112,14 @@ def test_hourly_slice_is_forward_only():
     start = now.replace(minute=0, second=0, microsecond=0)
     assert c["hourly_rain"][0]["time_local"] == "2026-07-15T12:00:00+05:30"  # current hour, not array start
     assert all(_dt.fromisoformat(h["time_local"]) >= start for h in c["hourly_rain"])
+
+
+def test_daily_drops_days_that_have_already_passed():
+    """A cached copy served after midnight must not present yesterday as "today" (daily[0])."""
+    fetched = at(2026, 10, 22, 20)
+    fc = forecast(fetched, daily=days_from(fetched.date(), 7), fetched_at=fetched)
+    now = at(2026, 10, 23, 1)
+    ctx = FarmerContext(now=now, water_source=WaterSource.RAINFED, crop=Crop.COTTON)
+    daily = forecast_to_contract(fc, ctx)["daily"]
+    assert daily[0]["date"] == "2026-10-23"
+    assert len(daily) == 6  # the remaining days of the saved copy — never padded or invented

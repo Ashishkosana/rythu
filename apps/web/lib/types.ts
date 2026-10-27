@@ -1,76 +1,42 @@
-// Mirrors the JSON contract from the Rythu weather service (services/weather).
-// Kept in sync by hand for v0; a generated client can replace this later.
+// The weather API contract, as the web app sees it. Every type here is DERIVED from
+// lib/api.gen.ts, which is generated from the backend's OpenAPI document
+// (services/weather/openapi.json) — never edit shapes by hand. To change the contract:
+//   1. change the backend (app/serialize.py + api/schemas.py; the golden test keeps them equal)
+//   2. cd services/weather && uv run python -m rythu_weather.api.openapi_export
+//   3. cd apps/web && npm run gen:api
+// CI fails if either generated file is stale.
 
-export type Severity = "info" | "caution" | "act";
+import type { components } from "./api.gen";
 
-export interface FarmingRead {
-  id: string;
-  action: string;
-  crop: string;
-  severity: Severity;
-  triggered: boolean;
-  headline_en: string;
-  detail_en: string;
-  caveat_en: string;
-  headline_te?: string;
-  detail_te?: string;
-  caveat_te?: string;
-  window_note: string | null;
-  sources: string[];
+type Schemas = components["schemas"];
+
+export type WeatherContract = Schemas["WeatherContract"];
+export type FarmingRead = Schemas["FarmingReadOut"];
+export type HourlyRain = Schemas["HourlyRainOut"];
+export type DailyPoint = Schemas["DailyOut"];
+export type Reliability = Schemas["Reliability"];
+export type Severity = Schemas["Severity"];
+export type FarmAction = Schemas["FarmAction"];
+export type Crop = Schemas["Crop"];
+export type WaterSource = Schemas["WaterSource"];
+export type ApiError = Schemas["ErrorBody"];
+
+// Runtime lists (types vanish at runtime), in display order. Checked against the backend enums
+// both ways: `satisfies` rejects a value the backend doesn't know, and the Exhaustive check
+// fails to compile if the backend adds a crop or water source the app doesn't list yet.
+export const CROPS = ["chilli", "cotton", "paddy", "red_gram", "maize"] as const satisfies readonly Crop[];
+export const WATER_SOURCES = ["canal_lift", "tank", "borewell", "rainfed"] as const satisfies readonly WaterSource[];
+
+type Exhaustive<All, Listed> = [Exclude<All, Listed>] extends [never] ? true : Exclude<All, Listed>;
+const cropsComplete: Exhaustive<Crop, (typeof CROPS)[number]> = true;
+const watersComplete: Exhaustive<WaterSource, (typeof WATER_SOURCES)[number]> = true;
+void cropsComplete;
+void watersComplete;
+
+export function isCrop(v: string | undefined): v is Crop {
+  return (CROPS as readonly string[]).includes(v ?? "");
 }
 
-export interface HourlyRain {
-  time_local: string;
-  precipitation_probability: number | null;
-  precipitation_mm: number | null;
-  temperature_c: number | null;
-  relative_humidity: number | null;
-  wind_speed_kmh: number | null;
-  weather_code: number | null;
-  category: string;
-  emoji: string;
-}
-
-export interface DailyPoint {
-  date: string;
-  precipitation_probability_max: number | null;
-  precipitation_sum_mm: number | null;
-  temperature_max_c: number | null;
-  temperature_min_c: number | null;
-  wind_speed_max_kmh: number | null;
-  weather_code: number | null;
-  category: string;
-  emoji: string;
-  farm_note: string;
-}
-
-export interface Reliability {
-  show_confidence_rating: boolean;
-  resolution_km: number;
-  disclaimer_en: string;
-  source_stamp_en: string;
-  is_offline_cache: boolean;
-}
-
-export interface WeatherContract {
-  source: string;
-  model_note: string;
-  resolution_km: number;
-  timezone: string;
-  coords: {
-    requested: { lat: number; lon: number };
-    returned: { lat: number; lon: number };
-    elevation_m: number;
-    snap_distance_km: number;
-  };
-  generated_at: string;
-  upstream_fetched_at: string;
-  reliability: Reliability;
-  farmer_context: { crop: string | null; water_source: string };
-  farming_read: FarmingRead[];
-  hourly_rain: HourlyRain[];
-  daily: DailyPoint[];
-  // present only on a degraded response
-  degraded?: boolean;
-  note_en?: string;
+export function isWaterSource(v: string | undefined): v is WaterSource {
+  return (WATER_SOURCES as readonly string[]).includes(v ?? "");
 }

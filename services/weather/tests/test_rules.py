@@ -272,3 +272,36 @@ def test_sow_moisture_conservative_on_unknown_amount():
         ],
     )
     assert _sow_need_moisture(fc, _ctx(now)) is None  # never advise "wait" on incomplete rainfall
+
+
+# --- S2a regression: no advice about rain that has already fallen -----------------------------
+
+
+def _rained_this_morning(now):
+    day0 = at(2026, 7, 14)
+    hourly = [hour(day0 + timedelta(hours=h), pp=90 if 2 <= h <= 5 else 5, precip=11.25 if 2 <= h <= 5 else 0.0)
+              for h in range(72)]
+    daily = [day(day0.date(), pp_max=90, precip_sum=45.0), *[day(at(2026, 7, 15 + i).date()) for i in range(6)]]
+    return forecast(now, hourly=hourly, daily=daily)
+
+
+def test_evening_after_a_wet_morning_gives_no_rain_advice():
+    now = at(2026, 7, 14, 21)
+    fc, ctx = _rained_this_morning(now), _ctx(now)
+    assert _irrigate_skip(fc, ctx) is None
+    assert _sow_avoid_washout(fc, ctx) is None
+    assert _drainage_heavy_rain(fc, ctx) is None
+
+
+def test_same_rain_still_warns_before_it_falls():
+    now = at(2026, 7, 14, 1)
+    fc, ctx = _rained_this_morning(now), _ctx(now)
+    assert _irrigate_skip(fc, ctx) is not None
+    assert _sow_avoid_washout(fc, ctx) is not None
+    assert _drainage_heavy_rain(fc, ctx) is not None
+
+
+def test_rain_that_fell_this_morning_still_counts_as_soil_moisture():
+    """Forward-only is for EVENT warnings. 'Not enough rain to sow' must count rain already fallen."""
+    now = at(2026, 7, 14, 21)
+    assert _sow_need_moisture(_rained_this_morning(now), _ctx(now)) is None
