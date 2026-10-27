@@ -109,14 +109,24 @@ the threshold, never sprays — `tests/test_calendar.py` pins the offsets to the
 task names a pesticide. The answer depends only on crop and date, so it is public and cacheable; the
 farmer's own fields (≤ 5) travel inside their profile.
 
+## Dry spells
+
+Water shortage drove most of Telangana's 2026 crop loss, so the engine warns of a dry week, not only of
+rain. Inside the Kharif monsoon (1 Jun – 31 Oct) it fires when each of the next 7 days is KNOWN to be
+dry: under IMD's 2.5 mm dry-day threshold and under a 40 % daily chance (`TODO-VET`). Unknown days
+never count as dry. Rainfed farmers get PJTSAU's dry-spell measures (inter-cultivation to hold
+moisture, hold back top-dressing, life-saving irrigation from a farm pond); borewell / canal / tank
+farmers are told to plan their watering turns and mulch. It is a caution, so it shows on the screen;
+the push alert for it is keyed by ISO week, so a long dry spell buzzes once a week, not every run.
+
 ## Push alerts (S14)
 
 Web Push straight on the standards (RFC 8291 encryption, RFC 8188 `aes128gcm`, RFC 8292 VAPID), no
 vendor SDK. The VAPID private key is a non-exportable P-256 key in Key Vault: the app asks Key Vault to
 sign and never holds it. A timer at 06:45 / 12:45 / 17:45 IST works out, for every farmer who agreed to
 a server copy AND subscribed a phone, what is due (`app/alerts.py`, most urgent first, ≤ 3 per run):
-the weather engine's own "act now" reads for their crop, rain ≥ 70 % in the next 12 hours, and
-My-Field tasks starting today or tomorrow. Each becomes a message on the `alerts` queue; a queue
+the weather engine's own "act now" reads for their crop, rain ≥ 70 % in the next 12 hours, a dry
+week ahead (at most one alert a week), and My-Field tasks starting today or tomorrow. Each becomes a message on the `alerts` queue; a queue
 trigger sends it (`app/alert_jobs.py`). Delivery is idempotent — an alert key is claimed in the
 farmer's partition before sending, so a retried message never buzzes twice — and dead subscriptions
 (404/410) are dropped. Endpoints must belong to a real browser push service: the server POSTs to them,

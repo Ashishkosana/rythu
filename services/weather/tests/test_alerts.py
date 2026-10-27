@@ -191,3 +191,13 @@ def test_alert_dates_are_local_dates() -> None:
     late = datetime(2026, 10, 28, 0, 30, tzinfo=IST)
     [a] = due_alerts(PROFILE, contract([80]), late)
     assert a.key == f"rain.{date(2026, 10, 28).isoformat()}.am"
+
+
+def test_a_dry_week_alerts_once_a_week_in_the_farmers_language() -> None:
+    dry = read("dry-spell-rainfed", "caution")
+    [a] = due_alerts(PROFILE, contract([0] * 12, [dry]), MORNING)
+    assert (a.key, a.topic, a.priority) == ("dry.2026-W44", "dry", 1)
+    assert a.title == "dry-spell-rainfed తెలుగు"
+    same_week = due_alerts(PROFILE, contract([0] * 12, [dry]), MORNING + timedelta(days=3))
+    assert [x.key for x in same_week] == ["dry.2026-W44"]  # same key → the sender sends it once
+    assert due_alerts(PROFILE, contract([0] * 12, [{**dry, "triggered": False}]), MORNING) == []

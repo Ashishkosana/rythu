@@ -5,7 +5,8 @@ language, fields) and the forecast contract for that village and crop. Three kin
 
 1. the weather engine's own "act now" reads for their crop (e.g. "don't spray: rain coming") — the
    same rules the app shows, so an alert never says something the screen doesn't;
-2. rain likely (≥ 70 %) in the next 12 hours;
+2. rain likely (≥ 70 %) in the next 12 hours, or a dry week ahead (the engine's dry-spell read) —
+   the dry-spell alert at most once a week, so a long dry spell does not buzz every day;
 3. a My-Field calendar task starting today or tomorrow.
 
 Each alert has a KEY that is unique per user and occasion (a day, a half-day, a task), so the sender
@@ -83,6 +84,21 @@ def _rain(contract: dict[str, Any], profile: dict[str, Any], lang: str, now: dat
     )]
 
 
+def _dry_spell(contract: dict[str, Any], lang: str, today: date) -> list[Alert]:
+    for read in contract.get("farming_read", []):
+        if read.get("triggered") and str(read.get("id", "")).startswith("dry-spell"):
+            year, week, _ = today.isocalendar()
+            return [Alert(
+                key=f"dry.{year}-W{week:02d}",
+                priority=1,
+                title=_pick(lang, read.get("headline_te", ""), read["headline_en"]),
+                body=_pick(lang, read.get("detail_te", ""), read["detail_en"]),
+                url="/",
+                topic="dry",
+            )]
+    return []
+
+
 def _tasks(profile: dict[str, Any], lang: str, today: date) -> list[Alert]:
     out = []
     tomorrow = today + timedelta(days=1)
@@ -118,5 +134,6 @@ def due_alerts(profile: dict[str, Any], contract: dict[str, Any] | None, now: da
     if contract is not None and not contract.get("degraded"):
         alerts += _advice(contract, lang, now.date())
         alerts += _rain(contract, profile, lang, now)
+        alerts += _dry_spell(contract, lang, now.date())
     alerts += _tasks(profile, lang, now.date())
     return sorted(alerts, key=lambda a: (a.priority, a.key))[:MAX_PER_RUN]

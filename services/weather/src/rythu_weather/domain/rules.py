@@ -69,6 +69,14 @@ DRAINAGE_MM_HARD = 50.0  # mm/day of heavy rain → clear drains (waterlogging p
 DRAINAGE_MM_SOFT = 35.0  # mm/day that, WITH high probability, also warrants clearing drains
 DRAINAGE_PROB = 70  # % chance gating the softer amount
 
+# Dry spell (2026 farmer research: water and power shortages drove ~₹20,000 cr of crop loss). A "dry
+# day" is IMD's operational < 2.5 mm; IMD tracks consecutive dry days from 7 upward. The probability
+# cap keeps it quiet when showers are likely even if the model's amounts are small.
+DRY_DAY_MM = 2.5  # IMD Mausam SANKALP dry-day threshold
+DRY_SPELL_DAYS = 7  # IMD's first consecutive-dry-days tier; also the length of our daily forecast
+DRY_SPELL_MAX_PROB = 40  # TODO-VET: daily max % chance below which a day counts as dry
+KHARIF_MONSOON = ((6, 1), (10, 31))  # a dry week matters inside the rainy season, not after it
+
 # Kharif calendar gates for Bhupalpally (tunable data; TODO-VET with the district office).
 SOW_WINDOW = ((6, 1), (8, 15))  # monsoon-onset sowing window for dryland crops
 PADDY_HARVEST_WINDOW = ((9, 1), (12, 31))  # Kharif paddy harvest — never fires on green monsoon paddy
@@ -251,6 +259,51 @@ def _irrigate_skip(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
                 window_note="checked today and tomorrow (amount AND probability, same day)",
             )
     return None
+
+
+def _dry_week(forecast: Forecast, ctx: FarmerContext) -> bool:
+    """Every one of the next DRY_SPELL_DAYS days is KNOWN to be dry. Unknown never counts as dry."""
+    days = next_days(forecast, ctx.now, DRY_SPELL_DAYS)
+    return len(days) == DRY_SPELL_DAYS and all(
+        d.precipitation_sum_mm is not None
+        and d.precipitation_probability_max is not None
+        and d.precipitation_sum_mm < DRY_DAY_MM
+        and d.precipitation_probability_max < DRY_SPELL_MAX_PROB
+        for d in days
+    )
+
+
+_DRY_WINDOW_NOTE = f"next {DRY_SPELL_DAYS} days: every day under {DRY_DAY_MM} mm and under {DRY_SPELL_MAX_PROB}% chance"
+
+
+def _dry_spell_rainfed(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
+    if not _dry_week(forecast, ctx):
+        return None
+    return Fired(
+        headline_en=f"Dry week ahead — no useful rain forecast for the next {DRY_SPELL_DAYS} days.",
+        detail_en=(
+            "Do inter-cultivation to hold the soil moisture, hold back fertilizer top-dressing until the soil "
+            "is moist again, and if your farm pond has water, give the crop a life-saving irrigation."
+        ),
+        headline_te=f"పొడి వారం — వచ్చే {DRY_SPELL_DAYS} రోజులు ఉపయోగపడే వర్షం లేదు.",
+        detail_te=(
+            "నేలలో తేమ నిలవడానికి అంతర కృషి చేయండి, నేల మళ్లీ తడిసే వరకు పైపాటు ఎరువు ఆపండి, "
+            "పంట కుంటలో నీరు ఉంటే పంటకు ప్రాణ రక్షక తడి ఇవ్వండి."
+        ),
+        window_note=_DRY_WINDOW_NOTE,
+    )
+
+
+def _dry_spell_irrigated(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
+    if not _dry_week(forecast, ctx):
+        return None
+    return Fired(
+        headline_en=f"Dry week ahead — no useful rain for the next {DRY_SPELL_DAYS} days: plan your watering.",
+        detail_en="Plan your watering turns now, and mulch where you can so the water lasts longer.",
+        headline_te=f"పొడి వారం — వచ్చే {DRY_SPELL_DAYS} రోజులు వర్షం లేదు: నీటి తడులు ప్లాన్ చేసుకోండి.",
+        detail_te="నీటి తడుల వంతులు ఇప్పుడే ప్లాన్ చేసుకోండి; వీలైన చోట మల్చింగ్ చేస్తే నీరు ఎక్కువ రోజులు నిలుస్తుంది.",
+        window_note=_DRY_WINDOW_NOTE,
+    )
 
 
 def _sow_need_moisture(forecast: Forecast, ctx: FarmerContext) -> Fired | None:
@@ -927,5 +980,35 @@ ACTIVE_RULES: tuple[RuleSpec, ...] = (
             "https://www.intechopen.com/chapters/71703",
         ),
         predicate=_chilli_thrips,
+    ),
+    *(
+        RuleSpec(
+            id=rule_id,
+            action=action,
+            crop_label="any",
+            severity=Severity.CAUTION,
+            confidence="medium",
+            applies_to_water_sources=waters,
+            season=KHARIF_MONSOON,
+            caveat_en=(
+                "The ~11 km forecast can miss a local shower, and a shower of a few mm does not end a dry "
+                "spell. Look at your soil before you act."
+            ),
+            caveat_te=(
+                "~11 కి.మీ ఫోర్‌కాస్ట్ స్థానిక జల్లును చూపకపోవచ్చు; కొన్ని మి.మీ జల్లుతో పొడి కాలం ముగియదు. "
+                "చర్యకు ముందు మీ నేల చూసుకోండి."
+            ),
+            sources=(
+                "https://pjtsau.edu.in/files/amadvise/2018/62bulletin.pdf",  # PJTSAU agromet: dry-spell measures
+                "https://mausamsankalp.imd.gov.in/rfdry",  # IMD: dry day < 2.5 mm, consecutive dry days ≥ 7
+                "https://www.uasbangalore.edu.in/wp-content/uploads/2026/08/BANGALORE-Rural-E-21-08-2026.pdf",
+            ),
+            predicate=predicate,
+        )
+        for rule_id, action, waters, predicate in (
+            ("dry-spell-rainfed", FarmAction.FIELDWORK, frozenset({WaterSource.RAINFED}), _dry_spell_rainfed),
+            ("dry-spell-irrigated", FarmAction.IRRIGATE,
+             frozenset({WaterSource.BOREWELL, WaterSource.CANAL_LIFT, WaterSource.TANK}), _dry_spell_irrigated),
+        )
     ),
 )
