@@ -22,7 +22,7 @@ jobs:
     env:
       RYTHU_REQUIRE_AZURITE: "1" # missing emulator = failed build, never a silent skip
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -55,7 +55,7 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           # Node 20 reached end-of-life in April 2026; 22 is the maintained LTS.
