@@ -16,6 +16,7 @@ import {
   rscPayloads,
   sha256Base64,
   staticWebAppConfig,
+  withCspMeta,
   versionOf,
 } from "./build-lib.mjs";
 
@@ -47,6 +48,12 @@ for (const f of files.filter((f) => f.endsWith(".html") && !pageList.includes(f.
   for (const s of inlineScripts(read(f).toString("utf8"))) scriptHashes.push(sha256Base64(s));
 }
 
+// The CSP goes into every page as a <meta> tag too: the Storage static website sends no headers.
+const csp = contentSecurityPolicy({ scriptHashes, apiBase: API_BASE });
+for (const f of files.filter((f) => f.endsWith(".html"))) {
+  writeFileSync(new URL("." + f, OUT), withCspMeta(read(f).toString("utf8"), csp));
+}
+
 const missing = [...precache].filter((u) => !has.has(u.endsWith("/") ? `${u}index.html` : u));
 if (missing.length) throw new Error(`precache refers to files not in out/: ${missing.join(", ")}`);
 
@@ -58,13 +65,15 @@ const sw = readFileSync(new URL("../sw/sw.js", import.meta.url), "utf8")
 if (sw.includes("__VERSION__") || sw.includes("__PRECACHE__")) throw new Error("sw.js placeholders not filled");
 writeFileSync(new URL("sw.js", OUT), sw);
 
-const csp = contentSecurityPolicy({ scriptHashes, apiBase: API_BASE });
 const links = assetLinks(JSON.parse(readFileSync(new URL("../../android/twa-manifest.json", import.meta.url), "utf8")));
 if (links) {
-  mkdirSync(new URL("." + ASSET_LINKS_PATH.replace(/[^/]+$/, ""), OUT), { recursive: true });
-  writeFileSync(new URL("." + ASSET_LINKS_PATH, OUT), JSON.stringify(links, null, 2) + "\n");
+  // At the real path for the Storage website (no rewrites there), and at the plain one for SWA.
+  for (const path of [ASSET_LINKS_PATH, "/.well-known/assetlinks.json"]) {
+    mkdirSync(new URL("." + path.replace(/[^/]+$/, ""), OUT), { recursive: true });
+    writeFileSync(new URL("." + path, OUT), JSON.stringify(links, null, 2) + "\n");
+  }
 } else {
-  rmSync(new URL("." + ASSET_LINKS_PATH, OUT), { force: true });
+  for (const path of [ASSET_LINKS_PATH, "/.well-known/assetlinks.json"]) rmSync(new URL("." + path, OUT), { force: true });
 }
 writeFileSync(new URL("staticwebapp.config.json", OUT), JSON.stringify(staticWebAppConfig({ csp }), null, 2) + "\n");
 

@@ -15,6 +15,7 @@ import {
   sha256Base64,
   staticWebAppConfig,
   versionOf,
+  withCspMeta,
 } from "./build-lib.mjs";
 
 const HTML = `<!DOCTYPE html><html><head>
@@ -135,5 +136,17 @@ describe("security headers", () => {
   it("lets only this site use location and the microphone (spoken questions), nothing use the camera or payments", () => {
     const pp = staticWebAppConfig({ csp: "x" }).globalHeaders["Permissions-Policy"];
     expect(pp).toBe("geolocation=(self), camera=(), microphone=(self), payment=()");
+  });
+});
+
+describe("withCspMeta — the CSP where no header can carry it", () => {
+  const csp = contentSecurityPolicy({ scriptHashes: ["abc="], apiBase: "https://api.example" });
+  it("goes first in <head>, once, without frame-ancestors (header-only)", () => {
+    const out = withCspMeta('<html><head><script>x</script></head></html>', csp);
+    expect(out.indexOf("Content-Security-Policy")).toBeLessThan(out.indexOf("<script>"));
+    expect(out).toContain("connect-src 'self' https://api.example");
+    expect(out).toContain("'sha256-abc='");
+    expect(out).not.toContain("frame-ancestors");
+    expect(withCspMeta(out, csp)).toBe(out);
   });
 });
