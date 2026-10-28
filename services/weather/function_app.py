@@ -14,6 +14,7 @@ Packaged for deployment by ``scripts/package_functions.sh``.
 from __future__ import annotations
 
 import json
+import typing
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
@@ -60,7 +61,9 @@ async def prewarm_cells(timer: func.TimerRequest) -> None:
 # tomorrow's tasks. Never at night.
 @app.timer_trigger(arg_name="timer", schedule="0 15 1,7,12 * * *", run_on_startup=False, use_monitor=True)
 @app.queue_output(arg_name="out", queue_name=ALERT_QUEUE, connection="AzureWebJobsStorage")
-async def evaluate_alerts(timer: func.TimerRequest, out: func.Out[list[str]]) -> None:
+# typing.List, not list[str]: the Functions Python worker rejects a builtin generic here and then loads
+# none of the app's functions (every route 404s).
+async def evaluate_alerts(timer: func.TimerRequest, out: func.Out[typing.List[str]]) -> None:  # noqa: UP006
     if accounts is None or push is None:
         return
     messages = await evaluate(accounts.users, services.provider, datetime.now(UTC))
