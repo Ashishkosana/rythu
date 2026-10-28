@@ -131,3 +131,15 @@ def test_host_mode_keeps_exceptions(restore_logging, caplog):
     [record] = [r for r in caplog.records if "weather.unhandled_error" in r.getMessage()]
     assert "ZeroDivisionError: bug in a rule" in json.loads(record.getMessage())["exc"]
     assert record.exc_info is not None and record.exc_info[0] is ZeroDivisionError
+
+
+def test_output_bindings_use_types_the_functions_worker_accepts(restore_logging):
+    """The worker refuses ``func.Out[list[str]]`` (a builtin generic) and then indexes no functions at all."""
+    import types
+    import typing
+
+    for fn in _load_function_app().app.get_functions():
+        for param, hint in typing.get_type_hints(fn.get_user_function()).items():
+            if typing.get_origin(hint) is func.Out:
+                [inner] = typing.get_args(hint)
+                assert not isinstance(inner, types.GenericAlias), f"{fn.get_function_name()}.{param}: use typing.List"
