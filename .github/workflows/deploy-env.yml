@@ -35,6 +35,8 @@ jobs:
         working-directory: services/weather
     steps:
       - name: The variables belong to this environment
+        # Runs before checkout, so not in the job's default working directory (it doesn't exist yet).
+        working-directory: ${{ github.workspace }}
         env:
           APP: ${{ vars.AZURE_FUNCTIONAPP_NAME }}
           ENV_NAME: ${{ inputs.environment }}
@@ -109,6 +111,8 @@ jobs:
         working-directory: apps/web
     steps:
       - name: The variables belong to this environment
+        # Runs before checkout, so not in the job's default working directory (it doesn't exist yet).
+        working-directory: ${{ github.workspace }}
         env:
           APP: ${{ vars.AZURE_STATICWEBAPP_NAME }}
           ENV_NAME: ${{ inputs.environment }}
