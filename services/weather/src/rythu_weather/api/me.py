@@ -132,7 +132,7 @@ def accounts_router(
         try:
             allowed = await guarded(
                 "register_budget",
-                acc.registrations.try_acquire(f"devices#{window_key(now)}", acc.registrations_per_hour),
+                acc.registrations.try_acquire(f"devices_{window_key(now)}", acc.registrations_per_hour),
             )
         except BudgetContention:
             allowed = False

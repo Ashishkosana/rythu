@@ -229,3 +229,10 @@ async def test_contention_is_a_refusal_not_a_fail_open():
     with pytest.raises(BudgetExhausted):
         await BudgetedProvider(upstream, Contended(), per_hour=10, clock=lambda: NOW).fetch(GeoPoint(18.44, 79.86))
     assert upstream.calls == []
+
+
+@pytest.mark.parametrize("window", ["devices#2026-10-29T06", "a/b", "a\\b", "a?b", "a\tb", ""])
+async def test_budget_windows_must_be_valid_table_row_keys(window):
+    """Azure Table Storage answers 400 for these (the Azurite emulator doesn't), so every budget refuses them."""
+    with pytest.raises(ValueError, match="row key"):
+        await InMemoryUpstreamBudget().try_acquire(window, 1)
