@@ -35,6 +35,17 @@ def window_key(now: datetime) -> str:
     return now.strftime("%Y-%m-%dT%H")
 
 
+_FORBIDDEN_IN_TABLE_KEYS = frozenset("#/\\?")
+
+
+def check_window(window: str) -> None:
+    """A window becomes a Table Storage row key, which may not contain '#', '/', '\\', '?' or control
+    characters (Azure answers 400; the Azurite emulator accepts them). Checked by every budget, so a
+    bad key fails in tests, not in production."""
+    if not window or any(c in _FORBIDDEN_IN_TABLE_KEYS or ord(c) < 0x20 or 0x7F <= ord(c) <= 0x9F for c in window):
+        raise ValueError(f"budget window {window!r} is not a valid Table Storage row key")
+
+
 class UpstreamBudget(Protocol):
     async def try_acquire(self, window: str, limit: int) -> bool:
         """Spend one call from ``window`` if fewer than ``limit`` were spent; report whether it was."""
@@ -46,6 +57,7 @@ class InMemoryUpstreamBudget:
         self._spent: dict[str, int] = {}
 
     async def try_acquire(self, window: str, limit: int) -> bool:
+        check_window(window)
         if self._spent.get(window, 0) >= limit:
             return False
         self._spent[window] = self._spent.get(window, 0) + 1

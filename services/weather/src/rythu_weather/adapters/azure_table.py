@@ -43,7 +43,7 @@ from azure.core.exceptions import (
 from azure.data.tables import UpdateMode
 from azure.data.tables.aio import TableClient
 
-from rythu_weather.adapters.budget import BudgetContention
+from rythu_weather.adapters.budget import BudgetContention, check_window
 from rythu_weather.adapters.cache import MAX_STALE
 from rythu_weather.app.accounts import ASSISTANT_PARTITION, PreconditionFailed, alert_row, ask_row, push_row
 from rythu_weather.app.push_subscription import Subscription
@@ -199,6 +199,7 @@ class AzureTableUpstreamBudget:
     max_attempts: int = 6
 
     async def try_acquire(self, window: str, limit: int) -> bool:
+        check_window(window)
         async with self.auth.client(self.table_name) as client:
             for attempt in range(1, self.max_attempts + 1):
                 try:
