@@ -40,11 +40,11 @@ generated project does.
 
 1. **Decide the package id — it is permanent on Play.** `twa-manifest.json` has
    `io.github.ashishkosana.rythu` (unique without owning a domain). Change it now or never.
-2. **Deploy the site** (`infra/azure/README.md`) and note its host, e.g. `nice-sea-0a1b2c3d4.azurestaticapps.net`.
+2. **Deploy the site** (`infra/azure/README.md`) and note its host (the Storage static website, e.g. `stwebdev<suffix>.z1.web.core.windows.net`).
    A custom domain is optional; the app is tied to whatever host you put here, and changing it later
    means a new upload.
-3. **Set the host**: replace `replace-me.azurestaticapps.net` everywhere in `twa-manifest.json`
-   (`host` and the four URLs). Commit. A release build refuses the placeholder.
+3. **Set the host** in `twa-manifest.json` (`host` and the URLs that use it). Commit. A release build refuses
+   the placeholder (`replace-me.azurestaticapps.net`). Now set to the dev site, `stwebdev5lwqnva5y6yym.z1.web.core.windows.net`.
 4. **Create the upload key** on your own computer and keep it safe (with Play App Signing, Google holds
    the real signing key; a lost upload key can be reset through Play support):
    ```bash
