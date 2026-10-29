@@ -56,8 +56,8 @@ migration, or something users or Google would notice.
 | # | Decision | Why | Alternatives | Cost to change | Your call |
 | --- | --- | --- | --- | --- | --- |
 | A1 | Trusted Web Activity: the app is the website in a thin Android shell | Web updates reach users without a Play review (ADR 0005) | Capacitor; native app | high | |
-| A2 | Tied to `stwebdev5lwqnva5y6yym.z1.web.core.windows.net` (the dev site) | The only deployed site today | A custom domain or a prod site — **decide before the first Play upload**; changing later means a new upload | low now, high after release | |
-| A3 | Package id `io.github.ashishkosana.rythu` | Unique without owning a domain | Your own domain's id | **permanent once on Play** | |
+| A2 | Tied to `stwebdev5lwqnva5y6yym.z1.web.core.windows.net` (the dev site) | The only deployed site today | A custom domain or a prod site — **decide before the first Play upload**; changing later means a new upload | low now, high after release | **Keep the dev site for now** (2026-10-29). A move after the Play release needs a new upload. |
+| A3 | Package id `io.github.ashishkosana.rythu` | Unique without owning a domain | Your own domain's id | **permanent once on Play** | **Keep** (2026-10-29) |
 | A4 | Min Android 7.0 (API 24), target API 36 | Required by the Android browser helper; Play's 2026 rule | — | — | |
 
 ## Money and limits
